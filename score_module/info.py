@@ -1,0 +1,163 @@
+"""Computations related to information matrix."""
+
+import jax
+import itertools
+
+import jax.numpy    as jnp
+import numpy        as np
+import scipy.sparse as sps
+
+from score_module import intermed
+
+
+def info_tau_sqr_j_tau_sqr_l(
+        model,
+        j: int = 0,
+        l: int = 0
+    ) -> jnp.array:
+    """
+    Compute variance of score for tau_sqr. 
+
+    ARGS:
+        model - an instance of class Model
+        j     - int; first index of tau sqr score
+        l     - int; second index of tau sqr score
+    RETURNS:
+        jnp.array - the covariance of the score component corresponding to the j-th and l-th coordinates of tau_sqr (1, 1)
+    RAISES:
+        None
+    """
+    ## (n_targs, n_samps, n_samps)
+    r_arrs = intermed.compute_r(model)
+    ## (n_samps, n_samps)
+    a_j_arr = intermed.compute_a_j(model, j = j)
+    a_l_arr = intermed.compute_a_j(model, j = l)
+
+    def wrap_func(r_arr):
+        return jnp.sum(jnp.multiply(a_j_arr, jnp.multiply(r_arr, a_l_arr)))
+
+    vmap_func = jax.vmap(wrap_func, in_axes = [0])
+    vals = vmap_func(r_arrs)
+    return jnp.sum(vals) / 4
+
+
+def info_fx_effs_tau_sqr_j(
+        model,
+        j: int
+    ) -> jnp.array:
+    """
+    Compute covariance of score for fixed effects vector and j-th coordinate of tau_sqr. Eq. (14) in Lin (1997).
+
+    ARGS:
+        model       - an instance of class Model
+        j           - int; first index of tau sqr score
+    RETURNS:
+        jnp.array - the covariance of score for fixed effects vector and j-th coordinate of tau_sqr (p * n_targs,)
+    RAISES:
+        None
+    """
+    ## (n_targs, n_samps)
+    c_vals = intermed.compute_c(model)
+    ## (n_samps, n_samps)
+    a_j_arr = intermed.compute_a_j(model, j = j)
+    ## (n_samps, 1)
+    a_j_diag = jnp.expand_dims(jnp.diag(a_j_arr), 1)
+    ## (n_samps, p)
+    x_arr = model.data.x_arr
+    def wrap_func(c_targ):
+        c_targ = jnp.expand_dims(c_targ, 1)
+        return a_j_diag * c_targ * x_arr 
+    vmap_func = jax.vmap(wrap_func, in_axes = [0])
+    ## (n_targs, n_samps, p)
+    vals = vmap_func(c_vals)
+    return jnp.squeeze(jnp.sum(vals, 1))
+
+
+
+def info_fx_effs_fx_effs(
+        model
+    ) -> jnp.array:
+    """
+    Compute variance of score for fixed effects vector. Eq. (15) in Lin (1997).
+
+    ARGS:
+        model       - an instance of class Model
+    RETURNS:
+        jnp.array - the covariance matrix for the score components for the fixed effects (p * n_targs, p * n_targs)
+    RAISES:
+        None
+    """
+    n_targs = model.data.n_targs
+    n_samps = model.data.n_samps
+    targs_samps = n_targs * n_samps
+    ## omega values to sparse diagonal matrix
+    omega_vals = intermed.compute_omega(model)
+    omega_crc  = sps.coo_array(
+        (jnp.ravel(omega_vals), (range(targs_samps), range(targs_samps))), 
+        (targs_samps, targs_samps)
+    ).tocsc()
+    ## (n_samps, p)
+    x_arr = model.data.x_arr
+    ## x_arr values to sparse matrix
+    vals = []
+    row_idx = []
+    col_idx = []
+    ## loop shouldn't be prohibitively slow maybe? because p should be like 1 or 2
+    for i in range(x_arr.shape[-1]):
+        x_arr_i = x_arr[:, i]
+        vals += list(itertools.chain.from_iterable(itertools.repeat(x_arr_i, n_targs)))
+        row_idx += list(range(targs_samps))
+        col_idx += list(np.repeat(range(n_targs), n_samps))
+
+    x_arr_crc = sps.coo_array(
+        (list(vals), (list(row_idx), list(col_idx))),
+        (targs_samps, n_targs * x_arr.shape[-1])
+    ).tocsc()
+
+    return x_arr_crc.T @ omega_crc @ x_arr_crc
+
+
+def compute_info(
+        model,
+        scale_val: float = None
+    ) -> jnp.array:
+    r"""
+    Compute the (scaled) information matrix under H0. 
+
+    ARGS:
+        model       - an instance of class Model
+        scale_val   - float; scaling value used to scale the score vector
+    RETURNS:
+        jax.numpy array; the information matrix under H0 (p* + q, p* + q)
+    RAISES:
+        None
+    """
+    total_p = model.data.p * model.data.n_targs
+    q = model.data.q
+    ## initializations
+    info_arr = jnp.zeros((total_p + q, total_p + q))
+
+    ## fx effs
+    info_fx_effs = info_fx_effs_fx_effs(model)
+    info_arr = info_arr.at[0:total_p, 0:total_p].set(info_fx_effs.todense())
+
+    for idx1 in range(q):
+        info_fx_tau_j = info_fx_effs_tau_sqr_j(model, j = idx1)
+        info_arr = info_arr.at[0:total_p, total_p + idx1].set(info_fx_tau_j.T)
+        info_arr = info_arr.at[total_p + idx1, 0:total_p].set(info_fx_tau_j)
+
+        for idx2 in range(idx1 + 1):
+            info_tau_tau = info_tau_sqr_j_tau_sqr_l(
+                model,
+                j = idx1,
+                l = idx2
+            )
+            info_arr = info_arr.at[total_p + idx1, total_p + idx2].set(info_tau_tau)
+            info_arr = info_arr.at[total_p + idx2, total_p + idx1].set(info_tau_tau)
+
+    if scale_val is not None:
+        info_arr /= scale_val**2
+    return info_arr
+
+
+

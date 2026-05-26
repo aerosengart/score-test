@@ -1,0 +1,14 @@
+## helpful stuff
+.DS_Store
+__pycache__
+## files that should not be tracked
+*.pdf
+*.ipynb
+*.zip
+## folders
+analyses/
+data/
+splash/
+temp/
+*_test/
+test_*/

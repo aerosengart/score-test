@@ -1,0 +1,4 @@
+outcome: 'neg_bin'
+use_true:    False      ## use true values of nuisance parameters?
+scale:       True       ## scale score/information
+debug:       'off'

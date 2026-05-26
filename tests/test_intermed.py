@@ -1,0 +1,39 @@
+import jax.numpy as jnp
+from score_module import intermed
+
+
+def test_quantities(simul_data, nb_model):
+    data = simul_data('tests/configs/simul_data.yaml')
+    model = nb_model('tests/configs/nb_model.yaml', data)
+
+    n_targs = data.n_targs
+    n_samps = data.n_samps
+    exp_shape = (n_targs, n_samps)
+
+    omega_vals     = intermed.compute_omega(model)
+    delta_vals     = intermed.compute_delta(model, inv = False)
+    delta_inv_vals = intermed.compute_delta(model, inv = True)
+    epsilon_vals   = intermed.compute_epsilon(model)
+    xi_vals        = intermed.compute_xi(model)
+    
+    c_vals = intermed.compute_c(model)
+    r_vals = intermed.compute_r(model)
+    a_vals = intermed.compute_a_j(model, j = 0)
+
+    assert omega_vals.shape == exp_shape
+    assert delta_vals.shape == exp_shape
+    assert delta_inv_vals.shape == exp_shape
+    assert epsilon_vals.shape == exp_shape
+    assert xi_vals.shape == exp_shape
+    assert c_vals.shape == exp_shape
+    assert r_vals.shape == (n_targs, n_samps, n_samps)
+    assert a_vals.shape == (n_samps, n_samps)
+
+    assert not jnp.isnan(omega_vals).any()
+    assert not jnp.isnan(delta_vals).any()
+    assert not jnp.isnan(delta_inv_vals).any()
+    assert not jnp.isnan(epsilon_vals).any()
+    assert not jnp.isnan(xi_vals).any()
+    assert not jnp.isnan(c_vals).any()
+    assert not jnp.isnan(r_vals).any()
+    assert not jnp.isnan(a_vals).any()
