@@ -11,7 +11,7 @@ helpFunction()
    exit 1 ## Exit script after printing help
 }
 
-while getopts "b:p:f:o:" opt
+while getopts "b:o:" opt
 do
    case "$opt" in
       b ) bp_id="$OPTARG" ;;

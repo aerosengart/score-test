@@ -28,8 +28,6 @@ ATTRIBUTES:
     q - int; total number of random effects
 """
 
-from data_module.dispatch import lin_pred_types
-
 class Data():
     def __init__(self, config):
         """Constructor for class Data. This class organizes all of the data-related information like the response vector/array, the covariates, etc.
@@ -70,7 +68,20 @@ class Data():
         self.samp_idx = samp_idx
         self.counts   = counts
 
+    def construct_y(self):
+        """
+        Construct anchor table as a compressed sparse column array (CSC).
 
+        ARGS:
+        RAISES:
+        RETURNS:
+        """
+        coo_arr = sps.coo_array(
+            (np.array(self.counts), 
+            (np.array(self.targ_idx) - 1, np.array(self.samp_idx) - 1)),
+            (self.n_targs, self.n_samps)
+        )
+        return coo_arr.tocsc()
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##

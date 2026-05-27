@@ -115,37 +115,36 @@ def compute_test_stat(model, one_sided = False):
 
 
 
-def compute_score(
-        model,
-        scale: bool = True
-    ):
-    r"""
-    Compute the first derivative of the (full) marginal log-likelihood with respect to the fixed effects and variance components evaluated at the provided parameter values. We only can compute this under H0 (i.e. tau_sqr = 0). 
+# def compute_score(
+#         model,
+#         scale: bool = True
+#     ):
+#     r"""
+#     Compute the first derivative of the (full) marginal log-likelihood with respect to the fixed effects and variance components evaluated at the parameter MLEs/values under H0.
 
-    ARGS:
-        model         - instance of Model class
-        fx_effs_arr   - jnp.array; matrix of fixed effects estimates (n, k, p)
-        scale         - boolean; whether to scale by :math:`\frac{1}{\sqrt{k}}`. default: True
-    RETURNS:
-        jax.numpy array; the first derivative of the full data's marginal log-likelihood with respect to fixed effects and variance component(s) (p* + q,)
-        float; scaling value (1 if scale == False)
-    RAISES:
-        NONE
-    """
-    var_comp, _ = compute_score_var_comp(
-        model,
-        scale = False
-    )
-    fx_effs, _  = compute_score_fx_effs(
-        model,
-        scale = False
-    )
-    ## combine
-    full_score = jnp.concatenate([fx_effs, jnp.reshape(var_comp, (model.data.q,))])
-    if scale:
-        ## 2-norm
-        scale_val = jnp.linalg.norm(full_score)
-    else:
-        scale_val = 1
-    scores = full_score / scale_val
-    return scores, scale_val
+#     ARGS:
+#         model  - instance of Model class
+#         scale         - boolean; whether to scale by :math:`\frac{1}{\sqrt{k}}`. default: True
+#     RETURNS:
+#         jax.numpy array; the first derivative of the full data's marginal log-likelihood with respect to fixed effects and variance component(s) (p* + q,)
+#         float; scaling value (1 if scale == False)
+#     RAISES:
+#         NONE
+#     """
+#     var_comp, _ = compute_score_var_comp(
+#         model,
+#         scale = False
+#     )
+#     fx_effs, _  = compute_score_fx_effs(
+#         model,
+#         scale = False
+#     )
+#     ## combine
+#     full_score = jnp.concatenate([fx_effs, jnp.reshape(var_comp, (model.data.q,))])
+#     if scale:
+#         ## 2-norm
+#         scale_val = jnp.linalg.norm(full_score)
+#     else:
+#         scale_val = 1
+#     scores = full_score / scale_val
+#     return scores, scale_val

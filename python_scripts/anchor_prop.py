@@ -155,7 +155,7 @@ for i in tqdm(range(len(bin_files))):
                     md_samps = md[md['splash_id'].astype(str).isin(unique_samples)]
                     md_samps_unique_covar = md_samps[args.covar].unique()
                     ## only write to file if ALL conditions pass
-                    if len(md_samps) == len(unique_covar) \
+                    if len(md_samps) > 1 \
                         and len(unique_samples) >= 20 \
                         and len(prop_nonzero_geq_65) >= 5:
                         with open(covar_filt_file, 'a') as out_file:

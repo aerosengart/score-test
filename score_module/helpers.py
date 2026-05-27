@@ -142,28 +142,12 @@ def compute_score_test_p_val(test_stat, one_sided = False):
     else:
         return one_df_p
 
-## SAMPLING/QUANTILE FUNCTIONS
-def chi_sqr_01_mix_sample(n):
-    rng   = np.random.default_rng(None)
-    chi_sqr = rng.chisquare(df = 1, size = n)
-    coin_flip = rng.binomial(n = 1, p = 0.5, size = n)
-    return chi_sqr * coin_flip
 
+## SAMPLING/QUANTILE FUNCTIONS
 def chi_sqr_01_mix_quantiles(x):
     if x < 0.5:
         return 0.0
     return scipy.stats.chi2.ppf((x - 0.5) / 0.5, df = 1)
-
-def chi_bar_12_mix_quantiles(num_samps):
-    weights      = [0.5, 0.5]
-    components   = [None] * 2
-    components = Chi2(df = jnp.array(range(1, 3)))
-    mixing_dist  = CategoricalProbs(probs = jnp.array(weights))
-    mixture_dist = MixtureSameFamily(mixing_dist, components)
-    sample = mixture_dist.sample(jax.random.key(0), sample_shape = (num_samps,))
-    return sample
-
-
 
 def chi_sqr_m_quantiles(x, m):
     return scipy.stats.chi2.ppf(x, df = m)

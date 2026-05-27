@@ -74,4 +74,3 @@ for i in range(len(header_vals)):
     plt.savefig(plt_name)
     plt.close()
 
-

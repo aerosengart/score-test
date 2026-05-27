@@ -4,8 +4,8 @@
 #SBATCH --nodes=1                      # node count
 #SBATCH --ntasks=1                     # total number of tasks across all nodes
 #SBATCH --ntasks-per-node 1
-#SBATCH --time=08:00:00          # total run time limit (HH:MM:SS)
-#SBATCH --array=1-5
+#SBATCH --time=02:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --array=1-60
 #SBATCH --nice=200               ## deprioritize to be nice to others
 
 # module purge
@@ -16,10 +16,4 @@
 source /home/arosenga/miniconda/bin/activate /home/arosenga/miniconda/envs/score-test
 
 anchor=$(sed "${SLURM_ARRAY_TASK_ID}q;d" $3)
-python glmm_score_test.py -d $1 -m $2 -a $anchor -o $4
-
-### How to run
-### D_CONFIG    = data_configs/viana_config.yaml
-### M_CONFIG    = data_configs/viana_m_config.yaml
-### ANCHOR_FILE = analyses/viana/2026_05_19/test_anchors.txt
-### sbatch slurm/real_data_test.sh $D_CONFIG $M_CONFIG $ANCHOR_FILE $OUT_DIR
+python routines/splash_score_test.py -d $1 -m $2 -a $anchor -o $4

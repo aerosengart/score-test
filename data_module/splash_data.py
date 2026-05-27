@@ -1,8 +1,9 @@
 """
 Child class of `data.Data` for SPLASH-type datasets. 
 """
-
-import jax.numpy   as jnp
+import numpy        as np
+import jax.numpy    as jnp
+import scipy.sparse as sps
 
 from data_module import data, helpers
 
@@ -40,6 +41,21 @@ class Data(data.Data):
         x_arr, z_arr = self.get_covars()
         self.set_covars(x_arr, z_arr)
 
+
+    def construct_y(self):
+        """
+        Construct anchor table as a compressed sparse column array (CSC).
+
+        ARGS:
+        RAISES:
+        RETURNS:
+        """
+        coo_arr = sps.coo_array(
+            (np.array(self.counts), 
+            (np.array(self.targ_idx) - 1, np.array(self.samp_idx) - 1)),
+            (self.n_targs, self.n_samps)
+        )
+        return coo_arr.tocsc()
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
@@ -88,6 +104,9 @@ class Data(data.Data):
 
         return x_arr, z_arr
     
+
+
+
         ## categorical data
         # for i in range(len(self.fx_covars)):
         #     col = self.fx_covars[i]
