@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
 
+"""
+Run (one- AND two-sided) score test based on a negative binomial GLMM on a single anchor S(A)TC table. Output is a .json file in the specified output directory with the following structure:
+
+- test (quantities related to the test itself)
+    - score_val: component(s) of score corresponding to the random effect(s) variance component(s)
+    - scale_val: value used to scale the score and the information (equal to the 2-norm of the score vector)
+    - schur_inv: inverse schur complement of variance of the component(s) of the score corresponding to the random effect(s) variance component(s)
+    - inf_val: solution to the quadratic cone program used to construct the one-sided test statistic
+    - one_side: one-sided score test statistic
+    - one_side_p: one-sided score test p-value (based on chi-bar-squared distribution)
+    - two_side: two-sided score test statistic
+    - two_side_p: two-sided score test p-value (based on chi-squared distribution)
+- model (quantities related to the model/data used in the test)
+    - fx_effs: estimated fixed effects coefficients
+    - gamma: estimated target-specific negative binomial dispersion parameters
+"""
+
 import argparse
 import yaml
 import json
@@ -10,7 +27,7 @@ import jax.numpy as jnp
 
 sys.path.append('/home/arosenga/score-test')
 from score_module import score, info, helpers
-from main_module  import dispatch
+from data_module  import dispatch
 
 def main():
     ## create an argument parser, add options, parse arguments
@@ -98,7 +115,7 @@ def main():
                    'model': model_info}
     
     ## check if save path exists
-    out_dir = os.path.join(args.out_dir, 'score_test')
+    out_dir = os.path.join(args.out_dir, 'score_test/anchor_json')
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir, exist_ok = True)
     anchor_file = os.path.join(out_dir, f'{args.anchor}.json')

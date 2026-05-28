@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
 def test_nb_fx_targ_int_rd_slope(simul_data):
-    data = simul_data('tests/configs/simul_data.yaml')
+    data = simul_data('tests/data/simul_data.yaml')
     ## check dimensions
     n_samps = data.n_samps
     n_targs = data.n_targs

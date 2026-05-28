@@ -255,7 +255,7 @@ First, we need a list of all of the anchors we want to test where each line is a
 `bash shell_scripts/list_anchors.sh -p "analyses/viana/2026_05_19/anchor_satc" -o "analyses/viana/2026_05_19"`
 
 
-We then run the score test with a shell script that submits a separate job that runs `routines/splash_score_test.py` for one anchor in the provided anchor list. 
+We then run the score test with a shell script that submits a job array for 1000 lines of the passed anchor list as slurm job arrays. Each array then submits a separate job that runs `routines/splash_score_test.py` for one anchor in the provided anchor list. This is done with `all_anchors_job.sh`. 
 
 #### Usage
 `bash [path to all_anchors_test.sh] -a  [path to anchor list .txt in quotes] -d [path to data config .yaml in quotes] -m [path to model config .yaml in quotes] -o [output directory in quotes]`
@@ -263,9 +263,11 @@ We then run the score test with a shell script that submits a separate job that 
 #### Example
 `bash shell_scripts/all_anchors_job.sh -a "analyses/viana/2026_05_19/test_anchors.txt" -d "data/configs/d_viana.yaml" -m "data/configs/m_viana.yaml" -o "analyses/viana/2026_05_19"`
 
-This will create thousands of output files, so to delete the ones corresponding to successful runs (i.e. the empty output files), we can run the following:
+This will create thousands and thousands of output files, so to delete the ones corresponding to successful runs (i.e. the empty output files), we can run the following:
 
 `find . -type f -name '*.out' -size 0b -delete`
+
+**NOTE**: There may be a few anchor tables that run into problems. This is usually because there are too few samples, which leads to only one unique value across samples for the covariate associated with the random effect we are testing. I am not sure what is causing this because the filtering steps above should have caught this, but for now we can just ignore these anchors. 
 
 
 ### Analyzing Results
@@ -275,7 +277,90 @@ We analyze the anchor-specific .json output with `json_summary.py`. This reads e
 `python [path to json_summary.py] --json_dir [path to anchor .json files] --out_dir [output directory]`
 
 #### Example
-`python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/anchors_test/score_test --out_dir /home/arosenga/score-test/anchors_test`
+`python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/analyses/viana/2026_05_19/score_test/anchor_json --out_dir /home/arosenga/score-test/analyses/viana/2026_05_19/score_test`
+
+
+---
+
+## Simulations
+All of the following simulations can be performed with a slurm job array or by manually calling `routines/run_routine.py`. A job array is nice for settings where we want to run many iterations (i.e. many different data-generating mechanisms). The general syntax for such a job array is:
+
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] [routine in quotes] [number of replicates per iteration] [OPTION 0/1 FLAG]`
+
+This will create `[number of iterations]` different `.npz` files where each file contains the output of one iteration (which itself has the results of the `[number of replicates per iteration]` replicates drawn). The `.npz` files are saved in a sub-directory named after the routine under a sub-directory named after the configuration specified in the data config file under the output directory specified as `out_dir` in the model config file. The path will have the following form:
+
+`[model out_dir]/d[data outcome]_m[model outcome]_fx_p[number of fixed effects]_rd_q[number of random effects]_samps[number of samples]_targs[number of targets]_[distribution specific parameters]/[routine]`
+
+For negative binomial data, `[distribution specific parameters]` will be `dgamma[data gamma]`. For quasi-Poisson data, it will be `dphi[data phi]`. The results are saved under the name `results_iter[iteration ID].npz` where `iteration ID` is an integer that represents which iteration is being run (i.e. it is arbitrary). A `config.txt` is also created in this sub-directory that records the data config contents (since we re-use the data configuration file across many different simulations and may overwrite things accidentally...). 
+
+To visualize the results, we use `routines/plot_routine.py`. This file combines all of the results (all iterations) into a single array, makes the appropriate plot, and saves it as a PDF in the output directory. The general usage is:
+
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r [routine]`
+
+
+### Empirical Distribution of Score
+We can plot the empirical distribution of the score vector by simulating many datasets with the same data-generating mechanism.
+
+#### Usage
+`sbatch --array=1 [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "score_var_comp" [number of replicates per iteration]`
+
+#### Example
+`sbatch --array=1 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "score_var_comp" 100`
+
+We then plot the results with `routines/plot_routine.py`. This creates a histogram (or an array of histograms) that shows the empirical distribution of the score component(s) corresponding to the random effect(s) variance component(s) on the density scale.
+
+#### Usage
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r score_var_comp`
+
+#### Example
+This is very fast (maybe 2-3 minutes).
+
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r score_var_comp`
+
+**NOTE**: We specify this routine as `score_var_comp` but the sub-directory will be `score_var_comp_emp_dist` since we are plotting the empirical distribution of the score component(s).
+
+
+### One-Sided and Two-Sided Comparison
+In basically the same way as the previous routine, we can compare QQ-plots of the one- and two-sided score test statistics over many iterations and replicates. 
+
+#### Usage
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "one_two_sided" [number of replicates per iteration]`
+
+### Example
+This is also pretty fast (< 10 minutes).
+`sbatch --array=1-20 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "one_two_sided" 100`
+
+We plot the results with `routines/plot_routine.py`. This creates two QQ-plots side-by-side. The left sub-plot shows the two-sided test statistic empirical quantiles against the $\chi^2_q$ theoretical quantiles (where $q$ is the dimension of $\boldsymbol{\tau^2}$, the random effect(s) variance(s)). The right sub-plot show the one-sided test statistic empirical quantiles against the $\bar{\chi}^2$ theoretical quantiles (the specific choice of $\bar{\chi}^2$ depends on $q$). 
+
+#### Usage
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r one_two_sided`
+
+#### Example
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r one_two_sided`
+
+
+### Fixed Effects Sensitivity
+We can explore the sensitivity of the one- or two-sided score test statistics to misspecification (i.e. mis-estimation) of the fixed effects coefficients.
+
+
+#### Usage
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "fx_effs_sens" [number of replicates per iteration] [0/1 flag for known dispersion parameter]`
+
+#### Example
+A bit slow (~20 minutes/iteration).
+`sbatch --array=1-20 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "fx_effs_sens" 100 1`
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 <!-- ### Unfiltered Tests

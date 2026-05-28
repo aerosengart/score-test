@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 
-## test.txt
+## test_anchor.txt
 # 76 AATTAAGCTGACCTACTGCAATGAAAG 1
 # 73 AGGTGGCTGACCTGCAATGAAAGGTGC 1
 # 30 AGGTGGCTGACCTGCAATGAAGGTGCA 1
@@ -17,7 +17,7 @@ import jax.numpy as jnp
 ## 20 - 2021-12-01
 
 def test_splash_fx_targ_int_rd_slope(splash_data):
-    data = splash_data('tests/configs/splash_data.yaml', 'test')
+    data = splash_data('tests/data/splash_data.yaml', 'test_anchor')
 
     ## check dimensions
     n_samps = data.n_samps

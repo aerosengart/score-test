@@ -36,7 +36,6 @@ class Data(simul_data.Data):
                 rng.negative_binomial(n = self.succs, p = self.probs)
             )
         return y_arr
-    
 
     def set_dist_attrs(self, disp_param):
         """
@@ -47,7 +46,7 @@ class Data(simul_data.Data):
         RETURNS: None
         """        
         ## set gamma
-        self.gamma = jnp.array(disp_param)
+        self.set_disp_param(disp_param)
         ## set means
         self.mu_arr = jnp.exp(self.eta_arr)
         ## vars
@@ -57,6 +56,18 @@ class Data(simul_data.Data):
         ## r = gamma; p = r / (m + r)
         self.probs = jnp.divide(self.gamma, jnp.add(self.mu_arr, self.gamma))
         self.succs = self.gamma
+
+    def set_disp_param(self, disp_param):
+        """
+        Set negative binomial dispersion/scale parameter.
+        """
+        self.gamma = disp_param
+
+
+
+
+
+
 
     
     # def load_from_file(self, path):

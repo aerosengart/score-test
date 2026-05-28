@@ -1,8 +1,8 @@
 import jax.numpy as jnp
 
 def test_nb_simul(simul_data, nb_model):
-    data = simul_data('tests/configs/simul_data.yaml')
-    model = nb_model('tests/configs/nb_model.yaml', data)
+    data = simul_data('tests/data/simul_data.yaml')
+    model = nb_model('tests/data/nb_model.yaml', data)
 
     ## check dimensions
     n_samps = data.n_samps

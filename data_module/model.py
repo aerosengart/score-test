@@ -82,11 +82,11 @@ class Model():
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
-    # def set_dist_attrs(
-    #         self,
-    #         config
-    #     ):
-    #     raise NotImplementedError("Subclasses must implement this method.")
+    def set_disp_param(self, disp_param):
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def set_dist_param(self, disp_param):
+        raise NotImplementedError("Subclasses must implement this method.")
     
     def set_dist_params_estim(self):
         raise NotImplementedError("Subclasses must implement this method.")

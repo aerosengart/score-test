@@ -1,8 +1,7 @@
 import pytest
 import yaml
 
-from main_module.dispatch import data_types
-from main_module.dispatch import model_types
+from data_module.dispatch import data_types, model_types
 
 ## fixtures 
 @pytest.fixture

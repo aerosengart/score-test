@@ -21,9 +21,9 @@ class Model(model.Model):
     ## ---------------------------------------------------------------------- ##
     ## GETTERS/SETTERS                                                        ##
     ## ---------------------------------------------------------------------- ##
-    def set_gamma(self, gamma):
+    def set_disp_param(self, disp_param):
         """Set negative binomial dispersion/scale parameter."""
-        self.gamma = gamma
+        self.gamma = disp_param
         
     def set_dist_params_estim(self):
         """Compute the maximum likelihood estimate for the fixed effects and the negative binomial dispersion/scale parameters.
@@ -38,7 +38,7 @@ class Model(model.Model):
         ## use glmGamPoi if we have "real" data (i.e null model is a cluster-specific intercept)
         fx_effs, disp = glm_fit.glmgampoi_fit(model = self)
         self.set_fx_effs_arr(fx_effs)
-        self.set_gamma(disp)
+        self.set_disp_param(disp)
 
 
     ## ---------------------------------------------------------------------- ##

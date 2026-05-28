@@ -194,6 +194,9 @@ class Data(data.Data):
     def set_dist_attrs(self, disp_param):
         raise NotImplementedError("Subclasses must implement this method.")
 
+    def set_disp_param(self, disp_param):
+        raise NotImplementedError("Subclasses must implement this method.")
+
     # def load_from_file(self, path):
     #     raise NotImplementedError("Subclasses must implement this method.")
 

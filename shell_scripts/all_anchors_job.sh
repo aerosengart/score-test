@@ -35,7 +35,7 @@ fi
 num_anchors="$(cat $anchor_list | wc -l)"
 num_anchors_mod=$(( $num_anchors % 1000 ))
 
-for (( i=1; i<=1000; i+=1000 )); do
+for (( i=1001; i<=5000; i+=1000 )); do
    start=$(($i % 1000))
    v=$(($i + 1000 - 1))
    offset=$(($i - 1))
@@ -46,8 +46,7 @@ for (( i=1; i<=1000; i+=1000 )); do
    echo "sbatch --array=$start-$end slurm_scripts/anchors_filt.sh $d_config $m_config $anchor_list $out_dir $offset"
 done
 
-
-# for (( i=1; i<=$num_anchors; i+=1000 )); do
+# for (( i=1001; i<=$num_anchors; i+=1000 )); do
 #    start=$(($i % 1000))
 #    v=$(($i + 1000 - 1))
 #    offset=$(($i - 1))
