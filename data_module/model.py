@@ -26,6 +26,8 @@ class Model():
         self.scale       = config['scale']
         self.use_true    = config['use_true']
         self.debug       = config['debug']
+        self.global_disp = config['global_disp']
+        self.estim_mu    = config['estim_mu']
         ## !! these are not the MLEs --- they are the values under H0 !!
         self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, self.data.q)))
         self.set_tau_sqr(jnp.zeros((self.data.q)))
@@ -43,6 +45,9 @@ class Model():
 
     def set_tau_sqr(self, tau_sqr):
         self.tau_sqr = tau_sqr
+
+    def set_mu_arr(self, mu_arr):
+        self.mu_arr = mu_arr
 
     ## ---------------------------------------------------------------------- ##
     ## INTERMEDIATE QUANTITIES                                                ##

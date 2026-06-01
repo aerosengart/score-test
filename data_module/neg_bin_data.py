@@ -12,6 +12,49 @@ class Data(simul_data.Data):
         ## initialize parent class
         super().__init__(config)
 
+        ## number of samples
+        self.n_samps     = int(config['n_samps'])
+        ## number of targets
+        self.n_targs     = int(config['n_targs'])
+
+        ## mean and standard deviation for fixed effects
+        self.fx_effs_mu      = float(config['fx_effs']['mu'])
+        self.fx_effs_sigma   = float(config['fx_effs']['sigma'])
+        ## mean and standard deviation for fixed effects covariates
+        self.x_mu      = float(config['x']['mu'])
+        self.x_sigma   = float(config['x']['sigma'])
+        ## mean and standard deviation for random effects covariates
+        self.z_mu    = float(config['z']['mu'])
+        self.z_sigma = float(config['z']['sigma'])
+        ## set tau_sqr
+        self.tau_sqr = jnp.array(config['tau_sqr'])
+
+        ## set total number of fixed effects (accounting for target-specific)
+        self.p_star = self.n_targs + self.fx_slopes * self.n_targs
+
+        ## set covariates: (n_samps, p), (n_samps, q)
+        x_arr, z_arr = self.get_covars()
+        self.set_covars(x_arr, z_arr)
+
+        ## set coefficients: (n_targs, p), (n_targs, q)
+        fx_effs_arr, rd_effs_arr = self.draw_effs()
+        self.set_coefs(fx_effs_arr, rd_effs_arr)
+
+        # compute linear predictor
+        self.eta_arr = self.compute_eta()
+
+        ## draw responses
+        self.set_dist_attrs(disp_param = config['disp_param'])
+        targ_idx, samp_idx, counts = self.get_tab_vals()
+        self.set_tab_vals(targ_idx, samp_idx, counts)
+
+        ## debugging dictionary
+        self.debug = {
+            'iter':    'default',
+            'rep':     'default',
+            'routine': 'default'
+        }
+
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
@@ -41,8 +84,8 @@ class Data(simul_data.Data):
         """
         Set negative binomial distribution attributes.
         
-        ARGS: None
-        RAISES: None
+        ARGS:    None
+        RAISES:  None
         RETURNS: None
         """        
         ## set gamma

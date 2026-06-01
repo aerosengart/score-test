@@ -88,6 +88,11 @@ class Data(data.Data):
         """Set coefficient arrays."""
         self.fx_effs_arr = fx_effs_arr
         self.rd_effs_arr = rd_effs_arr
+
+    def set_var_comps(self, tau_sqr):
+        """Set random effect(s) variance component(s)."""
+        ## add dimension/non-negative check?
+        self.tau_sqr = tau_sqr
         
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##

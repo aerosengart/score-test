@@ -1,5 +1,6 @@
 For Viana data, I have run the following:
 
+---
 
 ## 2026 May 26
 
@@ -19,7 +20,7 @@ Ran score test on the hand-selected anchor list (`test_anchors.txt`). All but th
 
 One anchor failed: 51. See `slurm-7567_51.out` in output directory for more information. 
 
-
+---
 
 ## 2026 May 27
 
@@ -66,8 +67,9 @@ find . -type f -name '*.out' -size 0b -delete
 
 Moved slurm output files for jobs with errors to `analyses/viana/2026_05_19/score_test` manually.
 
+---
 
-### 2026 May 28
+## 2026 May 28
 
 #### Run 1
 Ran score test on the next 4000 anchors in the filtered anchor list (i.e. anchor lines 1001-5000) by manually adjusting the loop in `shell_scripts/all_anchors_job.sh`. Results are in `analyses/viana/2026_05_19/score_test`. 
@@ -78,3 +80,32 @@ find . -type f -name '*.out' -size 0b -delete
 ```
 
 Moved slurm output files for jobs with errors to `analyses/viana/2026_05_19/score_test` manually.
+
+---
+
+## 2026 May 31
+
+#### Analyses
+Ran power analyses over different choices of sample size and values of $\tau^2$. Results are in `/home/arosenga/score-test/test_routine/dneg_bin_mneg_bin_fx_p1_rd_q1_samps100_targs100_dgamma1.0`. Power appears to be consistently greater for the two-sided test. 
+
+Ran analysis of test statistic sensitivity to fixed effects values with $\gamma$ known. Results are in `/home/arosenga/score-test/test_routine/dneg_bin_mneg_bin_fx_p1_rd_q1_samps100_targs200_dgamma1.0/test_stat_fx_effs_sens_disp_known`. Distribution of one-sided test appears to deviate quite strongly from the expected $\bar{\chi}^2$ while the two-sided test looks pretty good. 
+
+
+---
+
+## 2026 June 01
+
+#### Analyses
+Ran power analyses over different values of $\tau^2$ (for fixed sample size and number of targets) with fixed effects held constant over iterations (so the iterations are basically replicates). 
+
+#### Updates
+I edited the modules to use the estimated mean (under $H_0$) array returned by `glmGamPoi` rather than manual computation of the asqrray by first computing the linear predictor with the fixed effects MLEs. This may result in something different because there is a `size_factor` term in the implementation of `glmGamPoi` that accounts for differences in sequencing depth between samples (e.g. differences in column sums). I re-ran the one-/two-sided score test comparison to check the effect.
+
+NOTE: This overwrote the previous results in `/home/arosenga/score-test/test_routine/dneg_bin_mneg_bin_fx_p1_rd_q1_samps100_targs100_dgamma1.0/one_two_sided`.
+
+I added `estim_mu` and `global_disp` to the model configuration .yaml files. The first is a flag to use the estimated `Mu` from `glmGamPoi`, which is the estimated mean array under $H_0$. The latter is a flag to estimate a shared dispersion parameter ($\gamma$ for negative binomial) for all targets. 
+
+#### File Management
+I deleted the sub-directory `/home/arosenga/score-test/analyses/viana/2026_05_19` because the results were computed using an outdated version of SPLASH.
+
+

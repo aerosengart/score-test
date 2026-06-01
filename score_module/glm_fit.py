@@ -18,7 +18,7 @@ def glmgampoi_fit(model):
     RAISES:
         None
     RETURNS:
-        two jnp.arrays (n, k, 1) and (n, k, 1)
+        three jnp.arrays; fixed effects estimates (k, p), dispersion parameter estimates (k, 1), estiamted means (n, k)
     """
     matrix_lib = importr('Matrix')
     glmgampoi  = importr('glmGamPoi')
@@ -41,16 +41,21 @@ def glmgampoi_fit(model):
             model_df, 
             design   = ro.Formula(formula), 
             col_data = col_df,
-            overdispersion_shrinkage = False
+            do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+            overdispersion_shrinkage = False,
+            overdispersion = model.global_disp ## shared gamma or not?
         ) 
     else:
         ## fit model
         fit = glmgampoi.glm_gp(
             model_df,
-            overdispersion_shrinkage = False
+            do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+            overdispersion_shrinkage = False,
+            overdispersion = model.global_disp ## shared gamma or not?
         ) 
+    mu_arr = jnp.array(fit.rx2['Mu'])
     fx_effs, disp = extract_estims(fit)
-    return fx_effs, disp
+    return fx_effs, disp, mu_arr
 
 
 def extract_estims(fit):

@@ -9,7 +9,7 @@ import yaml
 import sys
 
 sys.path.append('/home/arosenga/score-test')
-from main_module import dispatch
+from routine_module import dispatch
 
 def main(): 
     ## create an argument parser and add options

@@ -26,7 +26,7 @@ class Model(model.Model):
         self.gamma = disp_param
         
     def set_dist_params_estim(self):
-        """Compute the maximum likelihood estimate for the fixed effects and the negative binomial dispersion/scale parameters.
+        """Compute the maximum likelihood estimate for the fixed effects and the negative binomial dispersion/scale parameters. Also compute the estimated means because there are adjustments made by glmGamPoi.
 
         ARGS:
             self
@@ -35,11 +35,15 @@ class Model(model.Model):
         RAISES:
             None
         """
-        ## use glmGamPoi if we have "real" data (i.e null model is a cluster-specific intercept)
-        fx_effs, disp = glm_fit.glmgampoi_fit(model = self)
+        fx_effs, disp, mu_arr = glm_fit.glmgampoi_fit(model = self)
         self.set_fx_effs_arr(fx_effs)
         self.set_disp_param(disp)
-
+        ## compute mu by hand? or use estimate from glmGamPoi?
+        if self.estim_mu:
+            ## if using estimate, random effects covariates will not be used!
+            self.set_mu_arr(mu_arr)
+        else:
+            self.set_mu_arr(self.compute_mu())
 
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##
@@ -78,7 +82,7 @@ class Model(model.Model):
         RETURNS: jnp.array (n_targs, n_samps)
         """
         ## (n_targs, n_samps)
-        exp_val = self.compute_mu()
+        exp_val = self.mu_arr #self.compute_mu()
         exp_val_csc = sps.csc_array(exp_val)
         y_arr = self.data.construct_y()
         resid_arr = y_arr - exp_val_csc
@@ -95,7 +99,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return self.compute_eta()
+        return jnp.exp(self.mu_arr) #self.compute_eta()
 
 
     def compute_g_prime(self) -> jnp.array:
@@ -108,7 +112,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return 1 / self.compute_mu()
+        return 1 / self.mu_arr #self.compute_mu()
 
 
     def compute_g_prime_2(self) -> jnp.array:
@@ -121,7 +125,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return -1 / self.compute_mu()**2
+        return -1 / self.mu_arr**2 #self.compute_mu()**2
 
 
     def compute_v(self) -> jnp.array:
@@ -134,7 +138,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array; diagonal array (n, k, 1)
         """
-        mu_arr = self.compute_mu()
+        mu_arr = self.mu_arr #self.compute_mu()
         prod = (1 / self.gamma) * mu_arr**2
         return mu_arr + prod
 
@@ -149,7 +153,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array; diagonal array (n, k, 1)
         """        
-        mu_arr = self.compute_mu()
+        mu_arr = self.mu_arr #self.compute_mu()
         prod = (2 / self.gamma) * mu_arr
         return 1 + prod
 

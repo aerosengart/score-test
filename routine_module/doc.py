@@ -1,13 +1,7 @@
 import os
 
-from score_module import helpers, intermed, score, info
-
-import rpy2.robjects as ro
 import jax.numpy     as jnp
 
-from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
-from rpy2.robjects import globalenv
 
 def output_directory_path(d_config, m_config):
     """Construct appropriate sub-directory for output.
@@ -69,7 +63,7 @@ def document_routine(d_config, m_config, routine):
 
     ## check if save path exists
     if not os.path.isdir(routine_dir):
-        os.makedirs(routine_dir)
+        os.makedirs(routine_dir, exist_ok = True)
 
     ## write README file
     readme_name = os.path.join(routine_dir, 'config.txt')
@@ -123,7 +117,7 @@ def debug_sample(model):
 
     ## check if save path exists
     if not os.path.isdir(save_dir):
-        os.makedirs(save_dir)
+        os.makedirs(save_dir, exist_ok = True)
 
     ## what to save
     targs_idx = model.data.targs_idx

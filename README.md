@@ -130,20 +130,20 @@ We need to copy all of the FASTQ files from their subdirectories into the same d
 ## SPLASH Analysis
 
 ### Run SPLASH
-We now have all of the data needed for running SPLASH. One can run it with whatever parameters, but it must include the flags `--dump_Cjs` and `--dump_sample_anchor_target_count_bin` so that the output includes the embedding vectors and the SATC output to make the contingency tables.
+We now have all of the data needed for running SPLASH. One can run it with whatever parameters, but it must include the flags `--dump_Cjs` and `--dump_sample_anchor_target_count_bin` so that the output includes the embedding vectors and the SATC output to make the contingency tables. We also include the `--without_compactors` and `--with_pval_asymp_opt` so that we do not compute the compactors (new to SPLASH2) and do compute the asymptotic $p$-value. 
 
-It's nice to just put the SPLASH run in a shell script for reproducability, but we will cover the contents here for completeness. The first command runs SPLASH with the desired flags. The last two commands copy the sample name/sample index mapping file and the results sub-directory to the output directory.  We run it by calling `bash [path to splash_run.sh]` from within the `fastq/` sub-directory. All of the output is written here, but we want it to be in the output directorym, which is why we include the last two commands.
+It's nice to just put the SPLASH run in a shell script for reproducability, but we will cover the contents here for completeness. The first command runs SPLASH with the desired flags. The last two commands copy the sample name/sample index mapping file and the results sub-directory to the output directory.  We run it by calling `bash [path to splash_run.sh]` from within the `fastq/` sub-directory. All of the output is written here, but we want it to be in the output directory, which is why we include the last two commands.
 
 The results include `logs/` (logging of run), `result_Cjs/` (binarized files of $\mathbf{c}$ data), `result_satc/` (binarized files of SATC data), four .csv files of results where each row corresponds to an anchor-target pair, and `sample_name_to_id.mapping.txt` (mapping between BioSample IDs and the indexing used in SPLASH).
 
 The shell script is finally moved to the output directory.
 
 #### Usage
-
 ```
 #!/bin/bash (shebang)
 
 [path to splash] --dump-Cjs --dump_sample_anchor_target_count_bin \
+    --without_compactors --with_pval_asymp_opt \
     --bin_path [path to splash top directory] \
     --tmp_dir [path to temporary directory for intermediate writing] \
     --logs_dir [path to logs directory for run documentation] \
@@ -155,24 +155,26 @@ mv [path to shell script] [path to output directory]
 ```
 
 #### Example
-
 ```
 #!/bin/bash
 
 ../../../splash/splash \
-    --dump_Cjs --dump_sample_anchor_target_count_bin \
+    --dump_Cjs \
+    --dump_sample_anchor_target_count_bin \
+    --without_compactors \
+    --with_pval_asymp_opt \
     --max_pval_opt_for_Cjs 1 \
     --n_threads_stage_1 10 \
     --n_threads_stage_1_internal 2 \
     --n_threads_stage_2 16 \
     --bin_path ../../../splash \
-    --tmp_dir ../../../analyses/viala/2026_05_15/tmp \
-    --logs_dir ../../../analyses/viala/2026_05_15/logs \
+    --tmp_dir ../../../analyses/viana/2026_05_29/tmp \
+    --logs_dir ../../../analyses/viana/2026_05_29/logs \
     splash_input.txt
 
-mv sample_name_to_id.mapping.txt ../../../analyses/viala/2026_05_15
-mv result* ../../../analyses/viala/2026_05_15
-mv ../../../analyses/viala/splash_run.sh ../../../analyses/viala/2026_05_15
+mv sample_name_to_id.mapping.txt ../../../analyses/viana/2026_05_29
+mv result* ../../../analyses/viana/2026_05_29
+mv ../../../analyses/viana/splash_run.sh ../../../analyses/viana/2026_05_29
 ```
 
 
@@ -192,7 +194,7 @@ To do the contingency table analysis, it is helpful for us to first organize our
 `python [path to clean_metadata.py] --meta [path to metadata_filt.tsv] --id_key [path to sample_name_to_id.mapping.txt output by SPLASH] --output [output directory]`
 
 #### Example
-`python python_scripts/clean_metadata.py --meta data/viana/metadata_filt.tsv --id_key analyses/viana/2026_05_19/sample_name_to_id.mapping.txt --output data/viana`
+`python python_scripts/clean_metadata.py --meta data/viana/metadata_filt.tsv --id_key analyses/viana/2026_05_29/sample_name_to_id.mapping.txt --output data/viana`
 
 ---
 
@@ -206,7 +208,7 @@ The key will be saved in the specified output directory as `anchor_bin_key.csv`.
 `python [path to anchor_bin_key.py] --sp_dir [path to splash bin files] --bin_dir [path to satc sub-directory] --output [output directory]`
 
 #### Example
-`python python_scripts/anchor_bin_key.py --sp_dir splash --bin_dir analyses/viana/2026_05_19/result_satc --output analyses/viana/2026_05_19/`
+`python python_scripts/anchor_bin_key.py --sp_dir splash --bin_dir analyses/viana/2026_05_29/result_satc --output analyses/viana/2026_05_29/`
 
 
 ### Anchor Summary Statistics
@@ -220,7 +222,7 @@ While the program iterates through the bin files above, it also separates out th
 `python [path to anchor_prop.py] --sp_dir [path to splash bin files] --bin_dir [path to satc sub-directory] --bin_key [path to anchor_bin_key.csv] --meta [path to clean_metadata.tsv] --covar [name of covariate] --output [output directory] --scratch [path to temporary directory for reading/writing files]`
 
 #### Example
-`python python_scripts/anchor_prop.py --sp_dir splash --bin_dir analyses/viana/2026_05_19/result_satc --bin_key analyses/viana/2026_05_19/anchor_bin_key.csv --meta data/viana/clean_metadata.tsv --covar date --output analyses/viana/2026_05_19 --clean_up --scratch /scratch/arosenga`
+`python python_scripts/anchor_prop.py --sp_dir splash --bin_dir analyses/viana/2026_05_29/result_satc --bin_key analyses/viana/2026_05_29/anchor_bin_key.csv --meta data/viana/clean_metadata.tsv --covar date --output analyses/viana/2026_05_29 --scratch /scratch/arosenga`
 
 One can optionally plot some of the summary statistics with `anchor_prop_plot.py`. 
 
@@ -228,7 +230,7 @@ One can optionally plot some of the summary statistics with `anchor_prop_plot.py
 `python [path to anchor_prop_plot.py] --output [output directory] --anchor_file [path to anchor_filt_summary.csv]`
 
 #### Example
-`python python_scripts/anchor_prop_plot.py --output analyses/viana/2026_05_19 --anchor_file analyses/viana/2026_05_19/anchor_filt_summary.csv`
+`python python_scripts/anchor_prop_plot.py --output analyses/viana/2026_05_29 --anchor_file analyses/viana/2026_05_29/anchor_filt_summary.csv`
 
 
 ### Anchor Filtering
@@ -238,9 +240,9 @@ In this step, we filter the anchor-specific S(A)TC files to just the ones presen
 `python [path to satc_filt.py] --satc_dir [path to directory of anchor-specific S(A)TC files] --anchor_file [path to anchor_filt_summary.csv] --output [output directory] --clean_up`
 
 #### Example
-`python python_scripts/satc_filt.py --satc_dir /scratch/arosenga/anchor_satc --anchor_file analyses/viana/2026_05_19/anchor_filt_by_date.csv --output analyses/viana/2026_05_19`
+`python python_scripts/satc_filt.py --satc_dir /scratch/arosenga/anchor_satc --anchor_file analyses/viana/2026_05_29/anchor_filt_by_date.csv --output analyses/viana/2026_05_29`
 
-This example resulted in 15,077 anchors.
+This example resulted in 9,282 anchors in the filtered list.
 
 
 ### Running Score Test
@@ -252,7 +254,7 @@ First, we need a list of all of the anchors we want to test where each line is a
 `bash [path to list_anchors.sh] -p [path to directory of anchor-specific S(A)TC files] -o [output directory]`
 
 #### Example
-`bash shell_scripts/list_anchors.sh -p "analyses/viana/2026_05_19/anchor_satc" -o "analyses/viana/2026_05_19"`
+`bash shell_scripts/list_anchors.sh -p "analyses/viana/2026_05_29/anchor_satc" -o "analyses/viana/2026_05_29"`
 
 
 We then run the score test with a shell script that submits a job array for 1000 lines of the passed anchor list as slurm job arrays. Each array then submits a separate job that runs `routines/splash_score_test.py` for one anchor in the provided anchor list. This is done with `all_anchors_job.sh`. 
@@ -339,9 +341,64 @@ We plot the results with `routines/plot_routine.py`. This creates two QQ-plots s
 `python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r one_two_sided`
 
 
+### Power Analysis (Variance Components)
+We can explore the power of the one- or two-sided score tests over different values of the random effect(s) variance component(s). We only need one replicate because we need to construct entirely new datasets for each calculation of the test statistics.
+
+#### Usage
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "power_by_tau_sqr" [number of replicates per iteration]`
+
+#### Example
+`sbatch --array=1-100 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "power_by_var_comp" 1`
+
+We plot the results with `routines/plot_routine.py`. This creates a line plot with two lines: one for the power of the one-sided test (blue) and one for the power of the two-sided test (red). 
+
+#### Usage
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r power_by_var_comp`
+
+#### Example
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r power_by_var_comp`
+
+
+
+### Power Analysis (Sample Size)
+We can explore the power of the one- or two-sided score tests over different values of the number of samples (for fixed $\tau^2$ and number of targets). We only need one replicate because we need to construct entirely new datasets for each calculation of the test statistics.
+
+#### Usage
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "power_by_n_samps" [number of replicates per iteration]`
+
+#### Example
+`sbatch --array=1-100 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "power_by_n_samps" 1`
+
+We plot the results with `routines/plot_routine.py`. This creates a line plot with two lines: one for the power of the one-sided test (blue) and one for the power of the two-sided test (red). 
+
+#### Usage
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r power_by_n_samps`
+
+#### Example
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r power_by_n_samps`
+
+
+### Power Analysis (Number of Targets)
+We can explore the power of the one- or two-sided score tests over different values of the number of targets (for fixed $\tau^2$ and sample size). We only need one replicate because we need to construct entirely new datasets for each calculation of the test statistics.
+
+#### Usage
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "power_by_n_targs" [number of replicates per iteration]`
+
+#### Example
+`sbatch --array=1-100 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "power_by_n_targs" 1`
+
+We plot the results with `routines/plot_routine.py`. This creates a line plot with two lines: one for the power of the one-sided test (blue) and one for the power of the two-sided test (red). 
+
+#### Usage
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r power_by_n_targs`
+
+#### Example
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r power_by_n_targs`
+
+
+
 ### Fixed Effects Sensitivity
 We can explore the sensitivity of the one- or two-sided score test statistics to misspecification (i.e. mis-estimation) of the fixed effects coefficients.
-
 
 #### Usage
 `sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "fx_effs_sens" [number of replicates per iteration] [0/1 flag for known dispersion parameter]`
@@ -350,13 +407,7 @@ We can explore the sensitivity of the one- or two-sided score test statistics to
 A bit slow (~20 minutes/iteration).
 `sbatch --array=1-20 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "fx_effs_sens" 100 1`
 
-
-
-
-
-
-
-
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r fx_effs_sens`
 
 
 

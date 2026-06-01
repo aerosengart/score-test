@@ -1,107 +1,30 @@
-"""Single iteration routines."""
+"""
+Single iteration routines for assessing test statistic sensitivity to parameter misspecification.
 
+Methods:
+    - test_stat_fx_eff_sensitivity
+"""
 import os
+import glob
 
-import jax.numpy  as jnp
+import matplotlib.pyplot as plt
+import jax.numpy         as jnp
+import numpy             as np
 
 from tqdm        import tqdm
 
-from main_module  import doc
-from score_module import score
+from routine_module  import doc
+from score_module import score, helpers
 
 from data_module.dispatch import data_types, model_types
 
-def score_var_comp_emp_dist(
-        d_config,
-        m_config,
-        iter_id: int,
-        reps:    int = 100
-    ):
-    """Plot score function for each component of :math:`\tau^2` to check approximate Gaussianity and zero expectation under the null hypothesis. 
+## some sort of issue with matplotlib, latex, and the unicode minus sign???
+#plt.rcParams['text.usetex'] = True
+plt.rcParams['axes.unicode_minus'] = False
 
-    ARGS:
-        d_config - str; path to data configuration .yaml
-        m_config - str; path to model configuration .yaml
-        iter_id  - int; iteration ID (for labelling)
-        reps     - int; number of replicates 
-    RAISES:  None
-    RETURNS: None
-    """
-    ## instantiate data
-    data = data_types[d_config['outcome']](d_config)
-    ## initialize
-    scores_arr = jnp.zeros((data.q, reps)) 
-    routine = 'score_var_comp_emp_dist'
-    ## get plot name and document routine
-    out_dir = doc.document_routine(d_config, m_config, routine)
-
-    for i in tqdm(range(reps)):
-        ## draw observations and build model
-        data.resample()
-        data.set_debug(iter = '', rep = str(i), routine = routine)
-        model = model_types[m_config['outcome']](m_config, data)
-        ## update debugging dictionary
-        if m_config['debug'] == 'full':
-            doc.debug_sample(model = model)
-        ## compute score
-        gradient, _ = score.compute_score_var_comp(model, scale = False)
-        scores_arr = scores_arr.at[:, i].set(gradient)
-
-    ## save full results
-    jnp.savez(
-        os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
-        scores = scores_arr
-    )
-
-
-def one_two_sided_comparison(
-        d_config,
-        m_config,
-        iter_id: int,
-        reps:    int = 100,
-    ):
-    """Compute the one- and two-sided score test statistic for reps number of replicates of Data instance.
-
-    The two-sided test statistic is computed in the traditional way where we compute the score, square it, and divide by the corresponding portion of the Fisher information (computed as the negative expected Hessian). The one-sided test statistic is computed as in Silvapulle and Silvapulle.
-
-    ARGS:
-        d_config - data configuration dictionary
-        m_config - model configuration dictionary
-        iter_id  - positive int: iteration number for output name
-        reps     - positive int: number of replicates to draw. default: 100
-    RAISES:  None
-    RETURNS: None
-    """
-    ## instantiate data
-    data = data_types[d_config['outcome']](d_config)
-    ## document routine
-    routine = 'one_two_sided'
-    out_dir = doc.document_routine(d_config, m_config, routine)
-    ## initialize
-    one_sided_stats = jnp.zeros((reps))
-    two_sided_stats = jnp.zeros((reps))
-
-    for r in tqdm(range(reps)):
-        ## draw data and build model
-        data.resample()
-        data.set_debug(iter = str(iter_id), rep = str(r), routine = routine)
-        model = model_types[m_config['outcome']](m_config, data)
-        ## update debugging dictionary
-        if m_config['debug'] == 'full':
-            doc.debug_sample(model = model)
-        ## compute test statistics
-        one_sided_stat = score.compute_test_stat(model, one_sided = True)
-        two_sided_stat = score.compute_test_stat(model, one_sided = False)
-        ## record values
-        one_sided_stats = one_sided_stats.at[r].set(one_sided_stat)
-        two_sided_stats = two_sided_stats.at[r].set(two_sided_stat)
-    ## save iteration
-    jnp.savez(
-        os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
-        one_sided_stats = one_sided_stats,
-        two_sided_stats = two_sided_stats
-    )
-    
+##----------------------------------------------------------------------------##
+## Computations                                                               ##
+##----------------------------------------------------------------------------##
 
 def test_stat_fx_eff_sensitivity(
         d_config,
@@ -181,6 +104,7 @@ def test_stat_fx_eff_sensitivity(
         one_sided_stats = one_sided,
         two_sided_stats = two_sided
     )
+
 
 
 # def test_stat_gamma_sensitivity(
@@ -292,3 +216,76 @@ def test_stat_fx_eff_sensitivity(
 #         x_axis_ticks = x_axis_ticks, 
 #         plt_name = plt_name
 #     )
+
+
+##----------------------------------------------------------------------------##
+## Plotting                                                                   ##
+##----------------------------------------------------------------------------##
+
+def fx_effs_jitter(d_config, m_config):
+    qq_jitter_grid(d_config, m_config, jitter_vals = [-0.1, -0.05, -0.025, -0.01, 0.0, 0.01, 0.025, 0.05, 0.1], routine = 'test_stat_fx_effs_sens_disp_known')    
+
+
+def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
+    """Save grid of QQ-plots with jitter."""
+    ## read all results from output directory
+    out_dir = doc.output_directory_path(d_config, m_config)
+    one_sided = []
+    two_sided = []
+    for file in glob.glob(os.path.join(out_dir, routine, 'results_iter*.npz')):
+        iter_res = jnp.load(file)
+        ## expand dims because we want to create a 2D array
+        one_sided.append(jnp.expand_dims(iter_res['one_sided_stats'], 1))
+        two_sided.append(jnp.expand_dims(iter_res['two_sided_stats'], 1))
+
+    ## join together results (reps, iters, # jitter vals)
+    one_sided_stats = jnp.concatenate(one_sided, axis = 1)
+    two_sided_stats = jnp.concatenate(two_sided, axis = 1)
+
+    ## get necessary quantities/names
+    q = len(d_config['tau_sqr'])
+    k = d_config['n_targs']
+    plt_name = os.path.join(out_dir, routine, f'{routine}.pdf')
+    iters = len(one_sided)
+
+    plt.rcParams.update({'font.size': 8})
+    _, axs = plt.subplots(
+        len(jitter_vals), 2,
+        tight_layout = True, 
+        figsize = (8, 24)
+    )
+
+    ## compute theoretical quantiles
+    quantiles = np.linspace(0.01, 0.99, 100)
+    ## sample chi bar squared distribution for qq plot since CDF not invertible
+    if q > 1:
+        chi_bar_sqrs = helpers.chi_bar_sqr_sample(q, k)
+        chisqr_mix_qs = np.quantile(chi_bar_sqrs, quantiles)
+    ## theoretical quantiles when q = 1
+    else:
+        chisqr_mix_qs = np.vectorize(helpers.chi_sqr_01_mix_quantiles)(quantiles)
+
+    for i in range(iters):
+        ## loop over x-axis ticks
+        for l in range(len(jitter_vals)):
+            ## compute quantiles
+            lrt_qs   = np.quantile(one_sided_stats[:, i, l], quantiles)
+            score_qs = np.quantile(two_sided_stats[:, i, l], quantiles)
+            
+            ## plot two-sided stats
+            axs[l, 0].axline((0, 0), slope = 1, color = 'black', linestyle = 'dotted')
+            axs[l, 0].plot(chisqr_mix_qs, lrt_qs, color = 'red', alpha = 0.3)
+            axs[l, 0].set_ylabel(f'Jitter = {jitter_vals[l]}')
+
+            ## plot one-sided stats
+            axs[l, 1].axline((0, 0), slope = 1, color = 'black', linestyle = 'dotted')
+            axs[l, 1].plot(chisqr_mix_qs, score_qs, color = 'blue', alpha = 0.3)
+
+    axs[0, 0].set_title('Likelihood Ratio Test')
+    axs[0, 1].set_title('Score Test')
+    axs[len(jitter_vals) - 1, 0].set_xlabel(r'$\bar{\chi}^2$ theoretical quantiles')
+    axs[len(jitter_vals) - 1, 1].set_xlabel(r'$\bar{\chi}^2$ theoretical quantiles')
+    plt.suptitle('QQ Plots of One-Sided Test Statistics with Jitter')
+    plt.tight_layout(rect=[0, 0.03, 1, 0.98])
+    plt.savefig(plt_name)
+    plt.close()

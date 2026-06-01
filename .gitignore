@@ -10,6 +10,7 @@ __pycache__
 analyses/
 data/
 splash/
+splash1/
 temp/
 *_test/
 test_*/
