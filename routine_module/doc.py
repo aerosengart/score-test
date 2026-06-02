@@ -1,6 +1,7 @@
 import os
 
 import jax.numpy     as jnp
+import pickle
 
 
 def output_directory_path(d_config, m_config):
@@ -69,9 +70,26 @@ def document_routine(d_config, m_config, routine):
     readme_name = os.path.join(routine_dir, 'config.txt')
     with open(readme_name, 'w') as f:
         f.write('========================================================== \n')
-        f.write('Configuration \n')
+        f.write('Data Configuration \n')
         f.write('========================================================== \n')
         for k, v in d_config.items():
+            if isinstance(v, dict):
+                f.write(str(k) + ': \n')
+                for k1, v1 in v.items():
+                    if isinstance(v1, dict):
+                        f.write('    ' + str(k1) + ': \n')
+                        for k2, v2 in v1.items():
+                            f.write('        ' + str(k2) + ': ' + str(v2) + '\n')
+                    else:
+                        f.write('    ' + str(k1) + ': ' + str(v1) + '\n')
+            else:
+                f.write(str(k) + ': '  + str(v) + '\n')
+
+        f.write('\n \n')
+        f.write('========================================================== \n')
+        f.write('Model Configuration \n')
+        f.write('========================================================== \n')
+        for k, v in m_config.items():
             if isinstance(v, dict):
                 f.write(str(k) + ': \n')
                 for k1, v1 in v.items():
@@ -120,41 +138,35 @@ def debug_sample(model):
         os.makedirs(save_dir, exist_ok = True)
 
     ## what to save
-    targs_idx = model.data.targs_idx
-    samps_idx = model.data.samps_idx
-    counts    = model.data.counts
-    x_arr = model.data.x_arr
-    z_arr = model.data.z_arr
+    # targs_idx = model.data.targ_idx
+    # samps_idx = model.data.samp_idx
+    # counts    = model.data.counts
+    # x_arr = model.data.x_arr
+    # z_arr = model.data.z_arr
 
-    fx_effs_arr = model.data.fx_effs_arr
-    rd_effs_arr = model.data.rd_effs_arr
-    gamma       = model.data.gamma
+    # fx_effs_arr = model.data.fx_effs_arr
+    # rd_effs_arr = model.data.rd_effs_arr
+    # gamma       = model.data.gamma
 
-    fx_effs_est = model.fx_effs_arr
-    gamma_est   = model.gamma
-    jnp.savez(
-        os.path.join(save_dir, 'data.npz'),
-        targs_idx     = targs_idx,
-        samps_idx     = samps_idx,
-        counts        = counts,
-        x_arr         = x_arr,
-        z_arr         = z_arr,
-        fx_effs_arr   = fx_effs_arr,
-        rd_effs_arr   = rd_effs_arr,
-        gamma         = gamma,
-        fx_effs_est   = fx_effs_est,
-        gamma_est     = gamma_est
-    )
+    # fx_effs_est = model.fx_effs_arr
+    # gamma_est   = model.gamma
 
+    # jnp.savez(
+    #     os.path.join(save_dir, 'data.npz'),
+    #     targs_idx     = targs_idx,
+    #     samps_idx     = samps_idx,
+    #     counts        = counts,
+    #     x_arr         = x_arr,
+    #     z_arr         = z_arr,
+    #     fx_effs_arr   = fx_effs_arr,
+    #     rd_effs_arr   = rd_effs_arr,
+    #     gamma         = gamma,
+    #     fx_effs_est   = fx_effs_est,
+    #     gamma_est     = gamma_est
+    # )
 
-
-
-
-
-
-
-
-
+    with open( os.path.join(save_dir, 'model.pickle'), "wb") as f:
+        pickle.dump(model, f)
 
 
 

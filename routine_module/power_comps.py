@@ -224,8 +224,8 @@ def plot_power_by_tau_sqr(d_config, m_config):
         x_axis_vals = np.logspace(start = 5, stop = 0.3, base = 0.1, num = 25),
         log_x_axis  = True, 
         routine     = 'power_by_var_comp', 
-        x_lab       = f'$\tau^2$', 
-        title       = f'Power by $\tau^2$'
+        x_lab       = r'$\tau^2$', 
+        title       = r'Power by $\tau^2$'
     )
 
 def plot_power_by_n_samps(d_config, m_config):
@@ -273,20 +273,23 @@ def one_two_sided_lines(
     ## read all results from output directory
     out_dir = doc.output_directory_path(d_config, m_config)
     all_iters = glob.glob(os.path.join(out_dir, routine, 'results_iter*.npz'))
-    one_p_vals = jnp.zeros((len(x_axis_vals), len(all_iters)))
-    two_p_vals = jnp.zeros((len(x_axis_vals), len(all_iters)))
+    one_p_vals = []
+    two_p_vals = []
     for j in range(len(all_iters)):
         iter_res = jnp.load(all_iters[j])
         one_sided_ps = iter_res['one_sided_p_vals']
         two_sided_ps = iter_res['two_sided_p_vals']
-        one_p_vals = one_p_vals.at[:, j].set(one_sided_ps)
-        two_p_vals = two_p_vals.at[:, j].set(two_sided_ps)
+        one_p_vals.append(one_sided_ps)
+        two_p_vals.append(two_sided_ps)
 
     ## compute power
+    one_p_vals = jnp.concatenate(one_p_vals, axis = 0)
+    two_p_vals = jnp.concatenate(two_p_vals, axis = 0)
     one_sigs = one_p_vals <= 0.05
     two_sigs = two_p_vals <= 0.05
-    one_power = jnp.sum(one_sigs, axis = 1) / len(all_iters)
-    two_power = jnp.sum(two_sigs, axis = 1) / len(all_iters)
+    ## sum over iterations
+    one_power = jnp.sum(one_sigs, axis = 0) / len(all_iters)
+    two_power = jnp.sum(two_sigs, axis = 0) / len(all_iters)
 
     ## get necessary quantities/names
     plt_name = os.path.join(out_dir, routine, f'{routine}.pdf')

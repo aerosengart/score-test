@@ -22,11 +22,16 @@ class Model():
         ## save data
         self.data = data
         ## model housekeeping
-        self.outcome     = config['outcome']
-        self.scale       = config['scale']
-        self.use_true    = config['use_true']
-        self.debug       = config['debug']
-        self.global_disp = config['global_disp']
+        self.outcome      = config['outcome']
+        self.scale        = config['scale']
+        self.use_true     = config['use_true']
+        self.debug        = config['debug']
+        self.size_factors = config['size_factors']
+        ## set whether dispersion is allowed to be target-specific`
+        if config['global_disp']:
+            self.estim_disp = 'global'
+        else:
+            self.estim_disp = True
         self.estim_mu    = config['estim_mu']
         ## !! these are not the MLEs --- they are the values under H0 !!
         self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, self.data.q)))

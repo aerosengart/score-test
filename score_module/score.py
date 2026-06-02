@@ -6,6 +6,7 @@ import jax.numpy    as jnp
 
 from score_module import info, intermed, helpers
 
+from routine_module import doc
 
 
 def compute_score_var_comp(
@@ -57,6 +58,7 @@ def compute_score_var_comp(
     wrt_tau_sqr = jnp.squeeze(scores / scale_val)
     
     if math.isnan(wrt_tau_sqr):
+        doc.debug_sample(model)
         raise Exception
     return wrt_tau_sqr, scale_val
 

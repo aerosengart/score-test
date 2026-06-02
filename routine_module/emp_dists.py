@@ -103,7 +103,7 @@ def score_hist(d_config, m_config):
             figsize = (10, 6)
         )
         axs.hist(scores_arr.tolist(), bins = 100, density = True)    
-        axs.set_title(f'analytical score component of $\tau^2$ under $H_0$')
+        axs.set_title(r'analytical score component of $\tau^2$ under $H_0$')
         axs.set_xlabel('score')
         axs.set_ylabel('density')
 
@@ -115,7 +115,7 @@ def score_hist(d_config, m_config):
         )
         for i in range(dim):
             axs[i].hist(scores_arr[i, :], bins = 100, density = True)    
-            axs[i].set_title(f'analytical score component of $\tau^2_{{{i}}}$ under $H_0$')
+            axs[i].set_title(r'analytical score component of $\tau^2_{{{i}}}$ under $H_0$')
             axs[i].set_xlabel('score')
             axs[i].set_ylabel('density')
     plt.savefig(plt_name)

@@ -4,14 +4,29 @@ Generalized linear model fitting and coefficient extraction. Models are fit unde
 """
 
 import jax.numpy       as jnp
+import pandas          as pd
 import rpy2.robjects   as ro
 
 from rpy2.robjects.packages import importr
+from rpy2.robjects          import pandas2ri
 
 
 def glmgampoi_fit(model):
     """
     Wrapper for glmGamPoi fit in R. Fits separate Gamma-Poisson GLMs to each target's data. Models are constructed under H0 (no random effects).
+
+    Adds an offset term (called a "size factor" in glmGamPoi implementation) that adjusts for uneven sequencing depth (i.e. differences in column sums). The size factors are computed as the column sums of the count table divided by exp() of the mean log column sum like so:
+
+    ```
+        col_sums       = jnp.sum(model.data.construct_y().todense(), axis = 0)
+        scale_col_sums = col_sums / jnp.exp(jnp.mean(jnp.log(col_sums)))    
+    ```
+
+    Means are computed as:
+
+    ```
+        mu_{i,j} = jnp.exp(eta_{i,j} + jnp.log(scale_col_{j}))
+    ```
 
     ARGS:
         model - instance of Model class
@@ -33,26 +48,57 @@ def glmgampoi_fit(model):
         x_targs_dict = {}
         formula   = f'~ 1'
         for i in range(1, model.data.x_arr.shape[1]):
-            x_targs_dict[f'x{i}'] = model.data.x_arr[:, i].tolist()
+            x_i_list = model.data.x_arr[:, i].tolist()
+            x_targs_dict[f'x{i}'] = x_i_list
             formula += f' + x{i}'
-        col_df = ro.DataFrame(x_targs_dict)
-        ## fit model
-        fit = glmgampoi.glm_gp(
-            model_df, 
-            design   = ro.Formula(formula), 
-            col_data = col_df,
-            do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-            overdispersion_shrinkage = False,
-            overdispersion = model.global_disp ## shared gamma or not?
-        ) 
+        x_targs_pd = pd.DataFrame(x_targs_dict)
+        ## to R dataframe
+        with (ro.default_converter + pandas2ri.converter).context():
+            col_df = ro.conversion.get_conversion().py2rpy(x_targs_pd)
+
+        if model.size_factors == 'col_sums':
+            col_sums = jnp.sum(model.data.construct_y().todense(), axis = 0)
+            sfs      = ro.FloatVector(col_sums / jnp.exp(jnp.mean(jnp.log(col_sums))))
+            ## fit model
+            fit = glmgampoi.glm_gp(
+                model_df, 
+                design   = ro.Formula(formula), 
+                col_data = col_df,
+                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+                overdispersion_shrinkage = False,
+                size_factors = sfs,
+                overdispersion = model.estim_disp ## shared gamma or not?
+            ) 
+        else:
+            ## fit model
+            fit = glmgampoi.glm_gp(
+                model_df, 
+                design   = ro.Formula(formula), 
+                col_data = col_df,
+                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+                overdispersion_shrinkage = False,
+                overdispersion = model.estim_disp ## shared gamma or not?
+            ) 
     else:
-        ## fit model
-        fit = glmgampoi.glm_gp(
-            model_df,
-            do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-            overdispersion_shrinkage = False,
-            overdispersion = model.global_disp ## shared gamma or not?
-        ) 
+        if model.size_factors == 'col_sums':
+            col_sums = jnp.sum(model.data.construct_y().todense(), axis = 0)
+            sfs      = ro.FloatVector(col_sums / jnp.exp(jnp.mean(jnp.log(col_sums))))
+             ## fit model
+            fit = glmgampoi.glm_gp(
+                model_df,
+                size_factors = sfs,
+                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+                overdispersion_shrinkage = False,
+                overdispersion = model.estim_disp ## shared gamma or not?
+            ) 
+        else:
+             ## fit model
+            fit = glmgampoi.glm_gp(
+                model_df,
+                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+                overdispersion_shrinkage = False,
+                overdispersion = model.estim_disp ## shared gamma or not?
+            ) 
     mu_arr = jnp.array(fit.rx2['Mu'])
     fx_effs, disp = extract_estims(fit)
     return fx_effs, disp, mu_arr

@@ -46,6 +46,10 @@ class Data(data.Data):
         ## mean and standard deviation for random effects covariates
         self.z_mu    = float(config['z']['mu'])
         self.z_sigma = float(config['z']['sigma'])
+        ## mean and standard deviation for dispersion
+        if 'disp' in config.keys():
+            self.disp_mu    = float(config['disp']['mu'])
+            self.disp_sigma = float(config['disp']['sigma'])
         ## set tau_sqr
         self.tau_sqr = jnp.array(config['tau_sqr'])
 
@@ -53,21 +57,18 @@ class Data(data.Data):
         self.p_star = self.n_targs + self.fx_slopes * self.n_targs
 
         ## set covariates: (n_samps, p), (n_samps, q)
-        x_arr, z_arr = self.get_covars()
+        x_arr, z_arr = self.draw_covars()
         self.set_covars(x_arr, z_arr)
 
         ## set coefficients: (n_targs, p), (n_targs, q)
         fx_effs_arr, rd_effs_arr = self.draw_effs()
         self.set_coefs(fx_effs_arr, rd_effs_arr)
 
-        # compute linear predictor
-        self.eta_arr = self.compute_eta()
-
         ## draw responses
-        self.set_dist_attrs(disp_param = config['disp_param'])
+        self.set_dist_attrs()
         targ_idx, samp_idx, counts = self.get_tab_vals()
         self.set_tab_vals(targ_idx, samp_idx, counts)
-
+        
         ## debugging dictionary
         self.debug = {
             'iter':    'default',
@@ -83,7 +84,6 @@ class Data(data.Data):
         targ_idx, samp_idx, counts = self.get_tab_vals()
         self.set_tab_vals(targ_idx, samp_idx, counts)
         
-    
     def set_coefs(self, fx_effs_arr, rd_effs_arr):
         """Set coefficient arrays."""
         self.fx_effs_arr = fx_effs_arr
@@ -97,7 +97,7 @@ class Data(data.Data):
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
-    def get_covars(self)-> jnp.array:
+    def draw_covars(self):
         """
         Draw x_share_arr, x_targs_arr, and z_arr.
 
@@ -119,7 +119,6 @@ class Data(data.Data):
             sigma = self.z_sigma
         )
         return x_arr, z_arr
-    
 
     def draw_effs(self) -> jnp.array:
         """Draw coefficients.
@@ -141,6 +140,26 @@ class Data(data.Data):
             sigma = self.tau_sqr
         )
         return fx_effs, rd_effs
+
+    def draw_column_sums(self):
+        """
+        Draw random column (sample counts) sums.
+
+        ARGS:    None
+        RAISES:  None
+        RETURNS: jnp.array; (n_samps,)
+        """
+        rng   = np.random.default_rng(None)
+        ## sample column sums
+        col_sums = jnp.array(
+            rng.integers(
+                low  = self.config['col_sums']['low'],
+                high = self.config['col_sums']['high'],
+                size = self.n_samps
+            )
+        )
+        return col_sums
+
 
     def get_tab_vals(self):
         """Get row index, column index, and count lists for sparse representation of anchor table."""
@@ -196,10 +215,7 @@ class Data(data.Data):
     def sample(self):
         raise NotImplementedError("Subclasses must implement this method.")
     
-    def set_dist_attrs(self, disp_param):
-        raise NotImplementedError("Subclasses must implement this method.")
-
-    def set_disp_param(self, disp_param):
+    def set_dist_attrs(self):
         raise NotImplementedError("Subclasses must implement this method.")
 
     # def load_from_file(self, path):

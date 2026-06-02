@@ -14,10 +14,10 @@ routine_types = {
 }
 
 plot_types = {
-    'score_var_comp': emp_dists.score_hist,
-    'one_two_sided':  test_stat_comps.one_two_sided_qq,
-    'fx_effs_sens': test_stat_sens.fx_effs_jitter,
+    'score_var_comp':    emp_dists.score_hist,
+    'one_two_sided':     test_stat_comps.one_two_sided_qq,
+    'fx_effs_sens':      test_stat_sens.fx_effs_jitter,
     'power_by_var_comp': power_comps.plot_power_by_tau_sqr,
-    'power_by_n_samps': power_comps.plot_power_by_n_samps,
-    'power_by_n_targs': power_comps.plot_power_by_n_targs,
+    'power_by_n_samps':  power_comps.plot_power_by_n_samps,
+    'power_by_n_targs':  power_comps.plot_power_by_n_targs,
 }

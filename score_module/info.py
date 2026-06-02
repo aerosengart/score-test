@@ -70,7 +70,10 @@ def info_fx_effs_tau_sqr_j(
     vmap_func = jax.vmap(wrap_func, in_axes = [0])
     ## (n_targs, n_samps, p)
     vals = vmap_func(c_vals)
-    return jnp.squeeze(jnp.sum(vals, 1))
+    sum_vals = jnp.sum(vals, 1)
+    ## unravel Fortran style --- column-major because we want to do the value
+    ## for the first covariate, then the second covariate, etc.
+    return jnp.ravel(sum_vals, order = 'F') #jnp.squeeze(jnp.sum(vals, 1))
 
 
 

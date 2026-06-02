@@ -3,12 +3,12 @@ Code for conducting a score test of variance components in GLMMs.
 
 ---
 
-Currently, only negative binomial data and a negative binomial model are supported.
+Currently, only a negative binomial model is supported.
 
 ## Data Class
 
 ### Simulated Data
-Simulated data are organized in the `simul_data` class. Instantiation is done via a configuration dictionary passed as a .yaml file. Here is an example:
+Simulated data are organized in the `simul_data` class. Instantiation is done via a configuration dictionary passed as a .yaml file. Here is an example for negative binomial data.
 
 ```
 outcome: 'neg_bin'
@@ -25,11 +25,20 @@ x:
 z:
   mu: 0.0
   sigma: 1.0
+disp:
+  mu: 1.o
+  sigma: 0.0
 tau_sqr: [0.0]
 disp_param: 1.0   
 ```
 
-The actual data that is drawn will depend upon what `outcome` is set to. Currently, only `neg_bin` is supported (for negative binomial samples).
+The actual data that is drawn will depend upon what `outcome` is set to (must be one of `neg_bin` or `multinom`). If outcome is set to multinomial, then an additional argument must be passed to specify the limits of the column totals.
+
+```
+col_sums:
+  low: 10
+  high: 100
+```
 
 ### Real Data
 Real data is also supported, but the configuration file has a different structure because we need to specify the paths to the files containing the necessary metadata.
@@ -51,11 +60,14 @@ clean_up: False                                                               ##
 The Model class is used to organize the estimated parameters as well as the data for conducting the score test. Instantiation is also done via a configuration .yaml. An example is:
 
 ```
-outcome:  'neg_bin'     ## outcome distribution
-use_true: False         ## use true values of nuisance parameters?
-scale:    True          ## scale score to have unit norm (and also scale information)?
-debug:    'off'         ## debugging flag
-out_dir:  'test_plots'  ## super-directory for outputs
+outcome:  'neg_bin'      ## outcome distribution
+use_true: False          ## use true values of nuisance parameters?
+scale:    True           ## scale score to have unit norm (and also scale information)?
+debug:    'off'          ## debugging flag
+global_disp: False       ## allow dispersion parameter to be target-specific in estimation
+estim_mu:    True        ## whether to extract the estimated mean array from glmGamPoi or compute it (without accounting for size factors)
+size_factors: 'col_sums' ## what to set the size factors to (one of ['col_sums'])
+out_dir:  'test_plots'   ## super-directory for outputs
 ```
 
 

@@ -40,7 +40,6 @@ class Model(model.Model):
         self.set_disp_param(disp)
         ## compute mu by hand? or use estimate from glmGamPoi?
         if self.estim_mu:
-            ## if using estimate, random effects covariates will not be used!
             self.set_mu_arr(mu_arr)
         else:
             self.set_mu_arr(self.compute_mu())
@@ -50,7 +49,7 @@ class Model(model.Model):
     ## ---------------------------------------------------------------------- ##
     def compute_eta(self) -> jnp.array:
         """
-        Compute linear predictor array with parameter estimates/values under H0. 
+        Compute linear predictor array with parameter estimates/values under H0.
 
         ARGS:    None
         RAISES:  None
@@ -59,7 +58,9 @@ class Model(model.Model):
         ## linear predictor
         fx_part = self.fx_effs_arr @ self.data.x_arr.T
         rd_part = self.rd_effs_arr @ self.data.z_arr.T
-        return fx_part + rd_part
+        # col_sums       = jnp.sum(self.data.construct_y().todense(), axis = 0)
+        # scale_col_sums = col_sums / jnp.exp(jnp.mean(jnp.log(col_sums)))    
+        return fx_part + rd_part #+ jnp.log(scale_col_sums)
 
 
     def compute_mu(self) -> jnp.array:
@@ -99,7 +100,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return jnp.exp(self.mu_arr) #self.compute_eta()
+        return jnp.exp(self.mu_arr) 
 
 
     def compute_g_prime(self) -> jnp.array:
@@ -112,7 +113,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return 1 / self.mu_arr #self.compute_mu()
+        return 1 / self.mu_arr 
 
 
     def compute_g_prime_2(self) -> jnp.array:
@@ -125,8 +126,8 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return -1 / self.mu_arr**2 #self.compute_mu()**2
-
+        return -1 / self.mu_arr**2 
+    
 
     def compute_v(self) -> jnp.array:
         """
@@ -138,7 +139,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array; diagonal array (n, k, 1)
         """
-        mu_arr = self.mu_arr #self.compute_mu()
+        mu_arr = self.mu_arr
         prod = (1 / self.gamma) * mu_arr**2
         return mu_arr + prod
 
@@ -153,7 +154,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array; diagonal array (n, k, 1)
         """        
-        mu_arr = self.mu_arr #self.compute_mu()
+        mu_arr = self.mu_arr
         prod = (2 / self.gamma) * mu_arr
         return 1 + prod
 

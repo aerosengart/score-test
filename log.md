@@ -95,9 +95,6 @@ Ran analysis of test statistic sensitivity to fixed effects values with $\gamma$
 
 ## 2026 June 01
 
-#### Analyses
-Ran power analyses over different values of $\tau^2$ (for fixed sample size and number of targets) with fixed effects held constant over iterations (so the iterations are basically replicates). 
-
 #### Updates
 I edited the modules to use the estimated mean (under $H_0$) array returned by `glmGamPoi` rather than manual computation of the asqrray by first computing the linear predictor with the fixed effects MLEs. This may result in something different because there is a `size_factor` term in the implementation of `glmGamPoi` that accounts for differences in sequencing depth between samples (e.g. differences in column sums). I re-ran the one-/two-sided score test comparison to check the effect.
 
@@ -105,7 +102,18 @@ NOTE: This overwrote the previous results in `/home/arosenga/score-test/test_rou
 
 I added `estim_mu` and `global_disp` to the model configuration .yaml files. The first is a flag to use the estimated `Mu` from `glmGamPoi`, which is the estimated mean array under $H_0$. The latter is a flag to estimate a shared dispersion parameter ($\gamma$ for negative binomial) for all targets. 
 
+I updated the routine documentation function to also record the model configuration .yaml. 
+
 #### File Management
 I deleted the sub-directory `/home/arosenga/score-test/analyses/viana/2026_05_19` because the results were computed using an outdated version of SPLASH.
 
+I deleted the sub-directory `/home/arosenga/score-test/test_routine` because I have updated many of the routine functions.
 
+#### Analyses
+I ran the one-/two-sided QQ plot comparison with the following settings:
+
+- target-specific $\gamma$, estimated $\mu$ (extracted from `glmGamPoi`)
+- target-specific $\gamma$, constructed $\mu$ (by computing linear predictor, $\eta$)
+- global $\gamma$, constructed $\mu$
+
+I ran the power analysis over values of $\tau^2$ for fixed sample size and number of targets. 
