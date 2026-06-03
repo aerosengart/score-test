@@ -50,6 +50,10 @@ class Data(data.Data):
         if 'disp' in config.keys():
             self.disp_mu    = float(config['disp']['mu'])
             self.disp_sigma = float(config['disp']['sigma'])
+        ## lower and upper bounds for column sums
+        if 'col_sums' in config.keys():
+            self.col_sums_low = int(config['col_sums']['low'])
+            self.col_sums_high = int(config['col_sums']['high'])
         ## set tau_sqr
         self.tau_sqr = jnp.array(config['tau_sqr'])
 
