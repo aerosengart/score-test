@@ -272,8 +272,6 @@ $$
 
 where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samps`), respectively. Note that, when run on simulated data, the data-generating mechanism does not include this offset term in the linear predictor (see [here](#simulated-data)). (_include why this is okay?_)
 
-
-
 The class attributes for the negative binomial model include:
 
 | Name        | Description     | Notation | 
@@ -296,3 +294,15 @@ There are a few extra functions used to help construct the `Data` and `Model` in
 | `draw_gaussian_arr()` | Draw i.i.d. Gaussian random variables with the provided mean and standard deviation and arrange into an array of the specified dimensions. |
 | `satc_to_sparse_rep()` | Convert `targ_idx`, `samp_idx`, `counts`, `targ_dict`, and `samp_dict` for `splash_data` class. Reads an anchor-specific S(A)TC table line-by-line and records the observations. |
 | `construct_metadata()` | Extracts the relevant metadata from file for `splash_data` class. Filters the columns down those specified in the data configuration file as well as the `SRR` and `SPLASH` IDs for easy joining later. |
+
+
+---
+
+# References
+
+Ahlmann-Eltze, C., & Huber, W. (04 2021). glmGamPoi: fitting Gamma-Poisson generalized linear models on single cell count data. Bioinformatics, 36(24), 5701–5702. doi:10.1093/bioinformatics/btaa1009
+
+Baharav, T. Z., Tse, D., & Salzman, J. (2024). OASIS: An interpretable, finite-sample valid alternative to Pearson’s \textitX$^\textrm2$ for scientific discovery. Proceedings of the National Academy of Sciences, 121(15), e2304671121. doi:10.1073/pnas.2304671121
+
+Chaung, K., Baharav, T. Z., Henderson, G., Zheludev, I. N., Wang, P. L., & Salzman, J. (2023). SPLASH: A statistical, reference-free genomic algorithm unifies biological discovery. Cell, 186(25), 5440-5456.e26. doi:10.1016/j.cell.2023.10.028
+
