@@ -1,11 +1,4 @@
-"""
-Subclass of `Model` object for negative binomial-like variance function. The overdispersion parameter (phi) for the quasi-likelihood is assumed to be fixed at 1. Random effects are assumed to be independent (diagonal covariance).
-
-The likelihood functions are based upon the negative binomial distribution, which is NOT the same as the quasi-likelihood methods used in the test derivations.
-
-NEGATIVE BINOMIAL ATTRIBUTES:
-    gamma_mle       - jnp.array; negative binomial dispersion/scale parameter (n, k, 1) --- permitted to be cluster-specific 
-"""
+"""Child class of `Model` for negative binomial responses."""
 
 import jax.numpy       as jnp
 import scipy.sparse    as sps
@@ -38,42 +31,12 @@ class Model(model.Model):
         fx_effs, disp, mu_arr = glm_fit.glmgampoi_fit(model = self)
         self.set_fx_effs_arr(fx_effs)
         self.set_disp_param(disp)
-        ## compute mu by hand? or use estimate from glmGamPoi?
-        if self.estim_mu:
-            self.set_mu_arr(mu_arr)
-        else:
-            self.set_mu_arr(self.compute_mu())
+        ## EDIT: 04 June 2026 --- ALWAYS estimate from glmGamPoi
+        self.set_mu_arr(mu_arr)
 
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##
     ## ---------------------------------------------------------------------- ##
-    def compute_eta(self) -> jnp.array:
-        """
-        Compute linear predictor array with parameter estimates/values under H0.
-
-        ARGS:    None
-        RAISES:  None
-        RETURNS: jnp.array (n_samps)
-        """
-        ## linear predictor
-        fx_part = self.fx_effs_arr @ self.data.x_arr.T
-        rd_part = self.rd_effs_arr @ self.data.z_arr.T
-        # col_sums       = jnp.sum(self.data.construct_y().todense(), axis = 0)
-        # scale_col_sums = col_sums / jnp.exp(jnp.mean(jnp.log(col_sums)))    
-        return fx_part + rd_part #+ jnp.log(scale_col_sums)
-
-
-    def compute_mu(self) -> jnp.array:
-        """
-        Compute mean array with parameter estimates/values under H0. 
-
-        ARGS:    None
-        RAISES:  None
-        RETURNS: jnp.array (n_targs, n_samps)
-        """
-        return jnp.exp(self.compute_eta())
-
-
     def compute_resid(self) -> jnp.array:
         """
         Compute and return residual vector (y - mu) under H0.
@@ -157,6 +120,7 @@ class Model(model.Model):
         mu_arr = self.mu_arr
         prod = (2 / self.gamma) * mu_arr
         return 1 + prod
+
 
     def compute_v_prime_2(self) -> jnp.array:
         """

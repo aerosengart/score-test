@@ -93,7 +93,7 @@ def info_fx_effs_fx_effs(
     n_targs = model.data.n_targs
     n_samps = model.data.n_samps
     targs_samps = n_targs * n_samps
-    ## omega values to sparse diagonal matrix
+    ## omega values to diagonal matrix (n_targs * n_samps, n_targs * n_samps)
     omega_vals = intermed.compute_omega(model)
     omega_crc  = sps.coo_array(
         (jnp.ravel(omega_vals), (range(targs_samps), range(targs_samps))), 
@@ -101,7 +101,7 @@ def info_fx_effs_fx_effs(
     ).tocsc()
     ## (n_samps, p)
     x_arr = model.data.x_arr
-    ## x_arr values to sparse matrix
+    ## x_arr values to sparse matrix (n_targs * n_samps, n_targs * p)
     vals = []
     row_idx = []
     col_idx = []
@@ -110,8 +110,11 @@ def info_fx_effs_fx_effs(
         x_arr_i = x_arr[:, i]
         vals += list(itertools.chain.from_iterable(itertools.repeat(x_arr_i, n_targs)))
         row_idx += list(range(targs_samps))
-        col_idx += list(np.repeat(range(n_targs), n_samps))
-
+        col_idx += list(np.repeat(range(n_targs), n_samps) + n_targs * i)
+    ## each column is (targs_samps,) long but only n_targs coordinates are non-zero
+    ## repeats each column of x_arr n_targs times to account for the fact that
+    ## the first n_targs entries on the diagonal of omega_vals come from sample 1
+    ## the second come from sample 2, etc.
     x_arr_crc = sps.coo_array(
         (list(vals), (list(row_idx), list(col_idx))),
         (targs_samps, n_targs * x_arr.shape[-1])

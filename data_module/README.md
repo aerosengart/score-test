@@ -2,7 +2,7 @@ This module contains all of the methods and classes related to representing the 
 
 ---
 
-# Data
+# Data (`data.py`)
 The parent class is implemented in `data.py` as `Data`. It has two child classes: one for simulated data and one for real data output by `SPLASH`. These are implemented in `simul_data.py` and `splash_data.py`, respectively. The following attributes are required for all instances of `Data` and are set prior to any sampling or data loading:
 
 | Name      | Type         | Description     | Source | 
@@ -15,7 +15,7 @@ The parent class is implemented in `data.py` as `Data`. It has two child classes
 | `rd_slopes` | non-negative `int` | Number of random slopes. | Configuration file. |
 
 
-## Simulated Data
+## Simulated Data (`simul_data.py`)
 The simulated data child class is implemented in `simul_data.py`. It has three child classes: one for negative binomial data, one for multinomial data, and one for poisson data. 
 
 Regardless of child class, simulated datasets have the following attributes:
@@ -46,14 +46,14 @@ Regardless of child class, simulated datasets have the following attributes:
 The actual count tables are stored as three lists to account for sparsity. These lists (`targ_idx`, `samp_idx`, and `counts`) record the indices and values of non-zero cells within the count tables. The full table can be constructed with the `simul_data.Data` method `construct_y()`; however, its use is discouraged for very high-dimensional tables. 
 
 
-### Negative Binomial
+### Negative Binomial (`neg_bin_data.py`)
 This class samples data according to a negative binomial generalized linear mixed model. The negative binomial setting has the following additional attributes.
 
 | Name      | Type         | Description     | Source | Notation |
 | :---      |    :---     | :---     | :--- | :--- |
 | `disp_mu` | positive `float` | Mean for scale/dispersion parameter(s). | Configuration file. | $$\gamma_\mu$$ |
 | `disp_sigma` | non-negative `float` | Standard deviation for scale/dispersion parameter(s). | Configuration file. | $$\gamma_\sigma$$ |
-| `gamma` | `jax.numpy.array` | Array of scale/dispersion parameters. This is permitted to be target-specific if `disp_sigma` is set to be non-zero. The array will have dimensions (`n_targs`,). | Sampled. | $$\boldsymbol{\gamma}$$ ||
+| `gamma` | `jax.numpy.array` | Array of scale/dispersion parameters. This is permitted to be target-specific if `disp_sigma` is set to be non-zero. The array will have dimensions (`n_targs`,). | Sampled. | $$\boldsymbol{\gamma}$$ |
 | `probs` | `jax.numpy.array` | Success probability for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | $$\boldsymbol{\pi}$$ |
 | `succs` | `jax.numpy.array` | Number of successes for each negative binomial draw. This is equal to `gamma`, so the array will have dimensions (`n_targs`,). | Computed. | $$\mathbf{s}$$ |
 
@@ -102,8 +102,31 @@ $$
 \end{aligned}
 $$
 
-### Multinomial
-This class samples data for an assumed multinomial logistic mixed model with the following additional attributes.
+
+### Poisson Data (`poi_data.py`)
+This class samples data for an assumed Poisson generalized linear mixed model (i.e. $\gamma = \infty$ in an negative binomial model). Because the mean and variance are both equal to the transformed linear predictor, there are no additional attributes specific to this response distribution. Below is an example `.yaml` configuration file. 
+
+```
+outcome: 'poi'
+n_samps: 100
+n_targs: 100
+fx_slopes: 0
+rd_slopes: 1
+fx_effs: 
+  mu: 0.0
+  sigma: 1.0
+x: 
+  mu: 0.5
+  sigma: 1.0
+z: 
+  mu: 0.0
+  sigma: 1.0
+tau_sqr: [0.0]
+```
+
+
+### Multinomial (`multinom_data.py`)
+This class samples data for an assumed multinomial logistic mixed model with the following additional attributes:
 
 | Name      | Type         | Description     | Source | Notation |
 | :---      |    :---     | :---     | :--- | :--- |
@@ -155,15 +178,10 @@ col_sums:
 tau_sqr: [0.0]
 ```
 
-
-### Poisson Data
-TODO
-
 ---
 
-### Real Data
+## Real Data (`splash_Data.py`)
 The real data child class is implemented in `splash_data.py`. Data are read in from specified files containing the counts for the table and any necessary metadata as output by `SPLASH`. The following additional attributes are set upon initialization.
-
 
 | Name      | Type         | Description     | Source | Notation |
 | :---      |    :---     | :---     | :--- | :--- |
@@ -208,7 +226,7 @@ clean_up: False
 
 ----
 
-# Model
+# Model (`model.py`)
 The parent class is implemented in `model.py` as `Model`. It has the following child classes: `neg_bin_model.py`. Instances of `Model` are built upon a configuration file and an instance of a `Data` child class. The configuration file dictates how the model will be fit, while the `Data` instance provides the necessary data for actually fitting said model. The following attributes are found in all instances of `Model`:
 
 | Name      | Type         | Description     | Source |  Notation |
@@ -220,7 +238,6 @@ The parent class is implemented in `model.py` as `Model`. It has the following c
 | `use_true` | `bool`       | Whether to use the true values of the model parameters (taken from `data`). This can only be `True` for instances of `simul_data` and will result in _no estimation_ in such a case. | Configuration file. | — | 
 | `debug` | `str` | Debugging settings (one of `off`, `error`, `full`). If `off`, no debugging logs will be saved to file. If `full`, all possible debugging logs (e.g. `data` instances, optimization results, etc.) will be saved to file. If `error`, debugging logs will only be saved upon error in model fitting or optimization. | Configuration file. | — | 
 | `size_factors` | `str` | What adjustment to use for the `size_factors` argument in `glmGamPoi` (one of `col_sums` or `default`). If `col_sums`, then the natural logarithm of the column sums is added as a term to the model during fitting. If `default`, the default setting of `glmGamPoi` is used (a normalized version of `col_sums`). | Configuration file. | — | 
-| `estim_mu` | `bool`       | Whether to use the estimated mean array output by `glmGamPoi`. If `False`, then the mean array (`mu_arr`) is computed manually as the inverse link of the linear predictor (`eta_arr`). If `True`, then the version estimated by `glmGamPoi` is used. This version includes the adjustment for variable column sums (`size_factors`) in the mean computations. | Configuration file. | — | 
 | `fx_effs_arr` | `jax.numpy.array`       | Maximum likelihood estimates of fixed effects coefficients. The dimensions of the array are (`n_samps`, `p`) for a model with $p$ fixed effects. | Configuration file. | $\boldsymbol{\alpha}$ | 
 | `rd_effs_arr` | `jax.numpy.array`       | Value of random effects coefficients under $H_0$ (all zeros). The dimensions of the array are (`n_samps`, `q`) for a model with $q$ random effects. | Computed. | $\boldsymbol{\beta}$ | 
 | `tau_sqr` | `jax.numpy.array`       | Random effects variance components under $H_0$ (all zeros). The dimensions of the array are (`q`,) for a model with $q$ random effects. | Computed. | $\boldsymbol{\tau}^2$ | 
@@ -229,7 +246,7 @@ The parent class is implemented in `model.py` as `Model`. It has the following c
 To conduct the score test, several model-specific quantities must be computed and are implemented as child class methods. They are explained in more detail for each child class.
 
 
-## Negative Binomial Model
+## Negative Binomial Model (`neg_bin_model.py`)
 The negative binomial model is implemented in `neg_bin_model.py`. The following attributes are distribution-specific and included for this child class:
 
 | Name      | Type         | Description     | Source | 
@@ -240,25 +257,27 @@ The fixed effects coefficients (`fx_effs_arr`) and the dispersion parameters (`g
 
 $$
 \begin{aligned}
-\mu_{i,j} &= \exp\left( \eta_{i,j} + \xi_{j} \right)
+\mu_{i,j} &= \exp\left( \eta_{i,j} + o_{j} \right)
 \end{aligned}
 $$
 
-where $\eta_{i,j}$ is the standard linear predictor (e.g. $\boldsymbol{\alpha}_i^\top \mathbf{x}_{j}$ for target-specific fixed effects vector, $\boldsymbol{\alpha}_i$, and sample $j$ covariate vector, $\mathbf{x}_j$), and $\xi_j$ is some adjustment made for uneven column sums (sequencing depth in genomics). Currently, $\xi_j$ is computed in one of the following ways:
+where $\eta_{i,j}$ is the standard linear predictor (e.g. $\boldsymbol{\alpha}_i^\top \mathbf{x}_{j}$ for target-specific fixed effects vector, $\boldsymbol{\alpha}_i$, and sample $j$ covariate vector, $\mathbf{x}_j$), and $\xi_j$ is some adjustment made for uneven column sums (sequencing depth in genomics). Currently, $o_j$ (the $\log$ offset for sample $j$) is computed in one of the following ways:
 
 $$
 \begin{aligned}
-\xi_j &= \log\left( \sum_{i = 1}^{N_t} y_{i,j} \right) & \left(\text{col sums}\right)\\
-\xi_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N_s} \log\left( \sum_{i = 1}^{N_t} y_{i,j}  \right) \right)} & \left(\text{default}\right)
+o_j &= \log\left( \sum_{i = 1}^{N_t} y_{i,j} \right) & \left(\text{col sums}\right)\\
+o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N_s} \log\left( \sum_{i = 1}^{N_t} y_{i,j}  \right) \right)} & \left(\text{default}\right)
 \end{aligned}
 $$
 
-where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samps`), respectively. The score test quantities include:
+where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samps`), respectively. Note that, when run on simulated data, the data-generating mechanism does not include this offset term in the linear predictor (see [here](#simulated-data)). (_include why this is okay?_)
+
+
+
+The class attributes for the negative binomial model include:
 
 | Name        | Description     | Notation | 
 | :---        | :---     | :---   |
-| `compute_eta()` | Computes the linear predictor under $H_0$ _without_ accounting for `size_factors`. Linear predictors are computed as $\boldsymbol{\alpha}_i^\top \mathbf{x}_j$. | $$\boldsymbol{\eta}$$ | 
-| `compute_mu()` | Computes the mean array under $H_0$ as $\exp(\eta_{i,j})$ | $$\boldsymbol{\mu}$$ |
 | `compute_resid()` | Computes the residuals under $H_0$ as $y_{i,j} - \mu_{i,j}$. | $$y_{i,j} - \mu_{i,j}$$ |
 | `compute_g()` | Computes the link function applied to the means under $H_0$ as $\eta_{i,j}$. | $$g(\mu_{i,j})$$ |
 | `compute_g_prime()` | Computes the first derivative of each $g(\mu_{i,j})$ with respect to $\mu_{i,j}$ under $H_0$ as $\frac{1}{\mu_{i,j}}$. | $$g'(\mu_{i,j})$$ |
@@ -266,3 +285,14 @@ where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samp
 | `compute_v()` | Computes the variance of each observation as $\mu_{i,j} + \frac{1}{\gamma_i} \mu_{i,j}^2$. | $$v(\mu_{i,j})$$ |
 | `compute_v_prime()` | Computes the first derivative of each $v(\mu_{i,j})$ with respect to $\mu_{i,j}$ under $H_0$ as $1 + \frac{2}{\gamma} \mu_{i,j}$. | $$v'(\mu_{i,j})$$ |
 | `compute_v_prime_2()` | Computes the second derivative of each $v(\mu_{i,j})$ with respect to $\mu_{i,j}$ under $H_0$ as $\frac{2}{\gamma}$. | $$v''(\mu_{i,j})$$ |
+
+---
+
+# Functions (`helpers.py`)
+There are a few extra functions used to help construct the `Data` and `Model` instances. They are found in `helpers.py`.
+
+| Name        | Description     | 
+| :---        | :---     | 
+| `draw_gaussian_arr()` | Draw i.i.d. Gaussian random variables with the provided mean and standard deviation and arrange into an array of the specified dimensions. |
+| `satc_to_sparse_rep()` | Convert `targ_idx`, `samp_idx`, `counts`, `targ_dict`, and `samp_dict` for `splash_data` class. Reads an anchor-specific S(A)TC table line-by-line and records the observations. |
+| `construct_metadata()` | Extracts the relevant metadata from file for `splash_data` class. Filters the columns down those specified in the data configuration file as well as the `SRR` and `SPLASH` IDs for easy joining later. |

@@ -32,7 +32,7 @@ class Model():
             self.estim_disp = 'global'
         else:
             self.estim_disp = True
-        self.estim_mu    = config['estim_mu']
+
         ## !! these are not the MLEs --- they are the values under H0 !!
         self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, self.data.q)))
         self.set_tau_sqr(jnp.zeros((self.data.q)))

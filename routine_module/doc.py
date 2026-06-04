@@ -24,26 +24,26 @@ def output_directory_path(d_config, m_config):
     data_dist = 'd{}_'.format(d_config['outcome'])
 
     ## model outcome distribution
-    if d_config['outcome'] == 'quasi_poi':
-        if m_config['est_disp']:
-            model_dist = 'mquasi_poi_'
-        else:
-            model_dist = 'mpoi_'
-    else:
-        model_dist = 'm' + m_config['outcome'] + '_'
+    model_dist = 'm' + m_config['outcome'] + '_'
 
     ## fixed part
     fx_part = f'fx_p{p}_'
     ## random part
     rd_part = f'rd_q{q}_'
     ## dimension part
-    dim_part = f'samps{n}_targs{k}'
+    dim_part = f'samps{n}_targs{k}_'
+    # estim mu part
+    if m_config['estim_mu']:
+        mu_part = 'estim_mu_'
+    else:
+        mu_part = 'const_mu_'
+    ## size factors part
+    sf_part = f'sf_{m_config['size_factors']}'
     ## concatenate
-    sub_dir = data_dist + model_dist + fx_part + rd_part + dim_part
-    ## dgamma is data gamma (true gamma) 
-    if d_config['outcome'] == 'neg_bin':
-        sub_dir += '_dgamma{}'.format(str(d_config['disp_param']))
-    return os.path.join(m_config['out_dir'], sub_dir)
+    sub_dir = data_dist + model_dist + fx_part + rd_part + dim_part + mu_part + sf_part
+
+    sub_dir = os.path.join(m_config['out_dir'], sub_dir)
+    return sub_dir
 
 
 def document_routine(d_config, m_config, routine):
@@ -136,34 +136,6 @@ def debug_sample(model):
     ## check if save path exists
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir, exist_ok = True)
-
-    ## what to save
-    # targs_idx = model.data.targ_idx
-    # samps_idx = model.data.samp_idx
-    # counts    = model.data.counts
-    # x_arr = model.data.x_arr
-    # z_arr = model.data.z_arr
-
-    # fx_effs_arr = model.data.fx_effs_arr
-    # rd_effs_arr = model.data.rd_effs_arr
-    # gamma       = model.data.gamma
-
-    # fx_effs_est = model.fx_effs_arr
-    # gamma_est   = model.gamma
-
-    # jnp.savez(
-    #     os.path.join(save_dir, 'data.npz'),
-    #     targs_idx     = targs_idx,
-    #     samps_idx     = samps_idx,
-    #     counts        = counts,
-    #     x_arr         = x_arr,
-    #     z_arr         = z_arr,
-    #     fx_effs_arr   = fx_effs_arr,
-    #     rd_effs_arr   = rd_effs_arr,
-    #     gamma         = gamma,
-    #     fx_effs_est   = fx_effs_est,
-    #     gamma_est     = gamma_est
-    # )
 
     with open( os.path.join(save_dir, 'model.pickle'), "wb") as f:
         pickle.dump(model, f)

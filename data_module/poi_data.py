@@ -1,5 +1,5 @@
 """
-Child class of `simul_data.Data` for approximately multinomial outcomes (via a Poisson approximation).
+Child class of `simul_data.Data` for Poisson outcomes.
 """
 
 import numpy           as np
@@ -26,7 +26,7 @@ class Data(simul_data.Data):
         ## set column sums
         self.col_sums = self.draw_column_sums()
         # compute linear predictor
-        self.eta_arr = self.compute_eta() # + jnp.log(self.col_sums)
+        self.eta_arr = self.compute_eta()
         ## set means
         self.mu_arr = jnp.exp(self.eta_arr)
         ## set variances
@@ -49,4 +49,3 @@ class Data(simul_data.Data):
             rng.poisson(lam = self.mu_arr)
         )
         return y_arr
-

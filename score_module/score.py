@@ -16,10 +16,8 @@ def compute_score_var_comp(
     r"""Compute the first derivative of the (full) marginal log-likelihood with respect to variance component vector evaluated at the provided parameter values. Equation 9 in Lin (1997).
 
     ARGS:
-        model         - instance of Model class
-        fx_effs_arr   - jnp.array; matrix of fixed effects estimates (n, k, p)
-        tau_sqr       - jnp.array; fixed intercept matrix (1,)
-        scale         - boolean; whether to scale by :math:`\frac{1}{\sqrt{k}}`. default: True
+        model - instance of Model class
+        scale - boolean; whether to scale by :math:`\frac{1}{\sqrt{k}}`. default: True
     RETURNS:
         jax.numpy array; the first derivative of the full data's marginal log-likelihood with respect to variance component vector (q,)
         float; scaling value (1 if scale == False)
@@ -113,7 +111,8 @@ def compute_test_stat(model, one_sided = False):
         stat = jnp.matmul(
             jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
         )
-    return(jnp.squeeze(stat - inf_val))
+    test_stat = (jnp.squeeze(stat - inf_val))
+    return test_stat
 
 
 
