@@ -266,7 +266,7 @@ where $\eta_{i,j}$ is the standard linear predictor (e.g. $\boldsymbol{\alpha}_i
 $$
 \begin{aligned}
 o_j &= \log\left( \sum_{i = 1}^{N_t} y_{i,j} \right) & \left(\text{col sums}\right)\\
-o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N_s} \log\left( \sum_{i = 1}^{N_t} y_{i,j}  \right) \right)} & \left(\text{default}\right)
+o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N_s} \sum_{j = 1}^{N_s} \log\left( \sum_{i = 1}^{N_t} y_{i,j}  \right) \right)} & \left(\text{default}\right)
 \end{aligned}
 $$
 
