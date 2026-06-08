@@ -24,6 +24,7 @@ Regardless of child class, simulated datasets have the following attributes:
 | :---      |    :---     | :---     | :--- | :--- |
 | `n_samps` | positive `int` | Number of samples (columns). | Configuration file. | $$N_s$$ |
 | `n_targs` | positive `int` | Number of targets (rows). | Configuration file. | $$N_t$$ |
+| `incl_offsets` | `bool` | Whether to draw column sums and include offsets in computation of linear predictor, `eta_arr`. | Configuration file | — |
 | `p_star` | positive `int` | Total number of fixed effects when accounting for the fact that they are target-specific. `p_star` should equal $p$ multiplied by `n_targs`. | Computed. | $$p^*$$ |
 | `tau_sqr` | `list` of non-negative `float` | Random effects variance components. The length of the list should be equal to $q$ and therefore also equal to `rd_slopes`. | Configuration file. | $$\boldsymbol{\tau}^2$$ | 
 | `fx_effs_mu` | `float` | Mean for fixed effects coefficients (`fx_effs_arr`). | Configuration file. | $$\alpha_\mu$$ |
@@ -44,6 +45,30 @@ Regardless of child class, simulated datasets have the following attributes:
 | `var_arr` | `jax.numpy.array` | Array of variances for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | v(\boldsymbol{\mu}) |
 
 The actual count tables are stored as three lists to account for sparsity. These lists (`targ_idx`, `samp_idx`, and `counts`) record the indices and values of non-zero cells within the count tables. The full table can be constructed with the `simul_data.Data` method `construct_y()`; however, its use is discouraged for very high-dimensional tables. 
+
+Optionally, offset terms can be added to the linear predictor to account for uneven column sums across samples by including `col_sums` in the configuration file. In this case, the following attributes will also be set.
+
+| Name      | Type         | Description     | Source | Notation |
+| :---      |    :---     | :---     | :--- | :--- |
+| `col_sums_low` | non-negative `int` | Lower bound for column sums. | Configuration file. |  — |
+| `col_sums_high` | positive `int` | Upper bound for column sums. | Configuration file. |  — |
+| `offsets` | `jax.numpy.array` | Array of offsets (see below for form) if `incl_offsets` is `True` | Computed. | $$\mathbf{o}$$ |
+
+Column sums are first sampled uniformly over the interval [`col_sums_low`, `col_sums_high`). The offsets are computed as:
+
+$$
+\begin{aligned}
+o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N_s} \sum_{j = 1}^{N_s} \log\left( \sum_{i = 1}^{N_t} y_{i,j}  \right) \right)} & \left(\text{default in glmGamPoi}\right)
+\end{aligned}
+$$
+
+The linear predictor is then computed as:
+
+$$
+\eta_{i,j}= \boldsymbol{\alpha}_i^\top \mathbf{x}_j + \boldsymbol{\beta}_i^\top \mathbf{z}_{j} + o_j\\
+$$
+
+Note: the column sums that are sampled are _NOT_ the true column sums, as these values depend upon the random sampling of $y_{i,j}$ later on. 
 
 
 ### Negative Binomial (`neg_bin_data.py`)
@@ -96,7 +121,7 @@ That is, we sample i.i.d. negative binomial observations with the linear predict
 
 $$
 \begin{aligned}
-\eta_{i,j} &=\boldsymbol{\alpha}_i^\top \mathbf{x}_j + \boldsymbol{\beta}_i^\top \mathbf{z}_{j} \\
+\eta_{i,j} &= \boldsymbol{\alpha}_i^\top \mathbf{x}_j + \boldsymbol{\beta}_i^\top \mathbf{z}_{j} \\
 \mu_{i,j} &= \exp(\eta_{i,j}) \\
 \boldsymbol{\beta}_i &\overset{iid}{\sim} \mathcal{N}(\mathbf{0}_q, \text{diag}(\boldsymbol{\tau}^2))
 \end{aligned}
@@ -238,10 +263,11 @@ The parent class is implemented in `model.py` as `Model`. It has the following c
 | `use_true` | `bool`       | Whether to use the true values of the model parameters (taken from `data`). This can only be `True` for instances of `simul_data` and will result in _no estimation_ in such a case. | Configuration file. | — | 
 | `debug` | `str` | Debugging settings (one of `off`, `error`, `full`). If `off`, no debugging logs will be saved to file. If `full`, all possible debugging logs (e.g. `data` instances, optimization results, etc.) will be saved to file. If `error`, debugging logs will only be saved upon error in model fitting or optimization. | Configuration file. | — | 
 | `size_factors` | `str` | What adjustment to use for the `size_factors` argument in `glmGamPoi` (one of `col_sums` or `default`). If `col_sums`, then the natural logarithm of the column sums is added as a term to the model during fitting. If `default`, the default setting of `glmGamPoi` is used (a normalized version of `col_sums`). | Configuration file. | — | 
-| `fx_effs_arr` | `jax.numpy.array`       | Maximum likelihood estimates of fixed effects coefficients. The dimensions of the array are (`n_samps`, `p`) for a model with $p$ fixed effects. | Configuration file. | $\boldsymbol{\alpha}$ | 
-| `rd_effs_arr` | `jax.numpy.array`       | Value of random effects coefficients under $H_0$ (all zeros). The dimensions of the array are (`n_samps`, `q`) for a model with $q$ random effects. | Computed. | $\boldsymbol{\beta}$ | 
+| `fx_effs_arr` | `jax.numpy.array`       | Maximum likelihood estimates of fixed effects coefficients. The dimensions of the array are (`n_samps`, `p`) for a model with $p$ fixed effects. | Configuration file. | $$\boldsymbol{\alpha}$$ | 
+| `rd_effs_arr` | `jax.numpy.array`       | Value of random effects coefficients under $H_0$ (all zeros). The dimensions of the array are (`n_samps`, `q`) for a model with $q$ random effects. | Computed. | $$\boldsymbol{\beta}$$ | 
 | `tau_sqr` | `jax.numpy.array`       | Random effects variance components under $H_0$ (all zeros). The dimensions of the array are (`q`,) for a model with $q$ random effects. | Computed. | $\boldsymbol{\tau}^2$ | 
-| `mu_arr` | `jax.numpy.array` | Estimated mean array under $H_0$. The array dimensions are (`n_targs`, `n_samps`). | Computed. | $\boldsymbol{\mu}$ |
+| `mu_arr` | `jax.numpy.array` | Estimated mean array under $H_0$. The array dimensions are (`n_targs`, `n_samps`). | Computed. | $$\boldsymbol{\mu}$$ |
+| `offsets` | `jax.numpy.array` | Estimated offsets (`size_factor` in `glmGamPoi`) array under $H_0$. The array dimensions are (`n_samps`,). | Computed. | $$\mathbf{o}$$ | 
 
 To conduct the score test, several model-specific quantities must be computed and are implemented as child class methods. They are explained in more detail for each child class.
 
@@ -251,7 +277,7 @@ The negative binomial model is implemented in `neg_bin_model.py`. The following 
 
 | Name      | Type         | Description     | Source | 
 | :---        |    :---     | :---     | :--- |
-| `gamma` | `jax.numpy.array` | Negative binomial dispersion/scale parameter. The array dimensions are (`n_samps`,). If `global_disp` is `True`, then all values are identical. | Computed (estimated or extracted from `data`). |
+| `gamma` | `jax.numpy.array` | Negative binomial dispersion/scale parameter. The array dimensions are (`n_samps`,). If `global_disp` is `True`, then all values are identical. If `global_disp` is set to some particular value, then all values are fixed at the specific value. Otherwise, `gamma` is estimated for each target. | Computed (estimated or extracted from `data`). |
 
 The fixed effects coefficients (`fx_effs_arr`) and the dispersion parameters (`gamma`) are estimated with `glmGamPoi`, which fits a separate Gamma-Poisson (i.e. negative binomial) GLM to each target's data. The mean for target $i$ in sample $j$ is:
 
@@ -265,12 +291,11 @@ where $\eta_{i,j}$ is the standard linear predictor (e.g. $\boldsymbol{\alpha}_i
 
 $$
 \begin{aligned}
-o_j &= \log\left( \sum_{i = 1}^{N_t} y_{i,j} \right) & \left(\text{col sums}\right)\\
-o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N_s} \sum_{j = 1}^{N_s} \log\left( \sum_{i = 1}^{N_t} y_{i,j}  \right) \right)} & \left(\text{default}\right)
+o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N_s} \sum_{j = 1}^{N_s} \log\left( \sum_{i = 1}^{N_t} y_{i,j}  \right) \right)} & \left(\text{default in glmGamPoi}\right)
 \end{aligned}
 $$
 
-where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samps`), respectively. Note that, when run on simulated data, the data-generating mechanism does not include this offset term in the linear predictor (see [here](#simulated-data)). (_include why this is okay?_)
+where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samps`), respectively. Note that, when run on simulated data, the data-generating mechanism may or may not include this offset term in the linear predictor (see [here](#simulated-data)). (_include why this is okay?_)
 
 The class attributes for the negative binomial model include:
 

@@ -1,4 +1,4 @@
-This module contains all of the methods related to the score test computations. It is divided into files for organization. 
+This module contains all of the methods related to the score test computations.
 
 ---
 
@@ -74,3 +74,10 @@ TODO
 
 
 ----
+
+# References
+
+
+Lin, X. (1997). Variance component testing in generalised linear models with random effects. Biometrika, 84(2), 309–326. doi:10.1093/biomet/84.2.309
+
+Silvapulle, M. J., & Silvapulle, P. (1995). A Score Test Against One-Sided Alternatives. Journal of the American Statistical Association, 90(429), 342–349. doi:10.2307/2291159

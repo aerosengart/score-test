@@ -26,12 +26,16 @@ class Model():
         self.scale        = config['scale']
         self.use_true     = config['use_true']
         self.debug        = config['debug']
-        self.size_factors = config['size_factors']
-        ## set whether dispersion is allowed to be target-specific`
-        if config['global_disp']:
-            self.estim_disp = 'global'
+        ## set whether dispersion is allowed to be target-specific and/or fixed
+        if isinstance(config['global_disp'], bool):
+            if config['global_disp'] == True:
+                self.estim_disp = 'global'
+            else:
+                self.estim_disp = True
         else:
-            self.estim_disp = True
+            ## set dispersion to be some fixed value specific in config file
+            ## reciprocal because of parametrization in glmGamPoi
+            self.estim_disp = [1 / x for x in config['global_disp']]
 
         ## !! these are not the MLEs --- they are the values under H0 !!
         self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, self.data.q)))
@@ -50,6 +54,9 @@ class Model():
 
     def set_tau_sqr(self, tau_sqr):
         self.tau_sqr = tau_sqr
+
+    def set_offsets(self, offsets):
+        self.offsets = offsets
 
     def set_mu_arr(self, mu_arr):
         self.mu_arr = mu_arr

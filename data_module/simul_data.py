@@ -32,10 +32,15 @@ class Data(data.Data):
         ## initialize parent class
         super().__init__(config)
 
+        ## include offset in linear predictor computation?
+        if 'col_sums' in config.keys():
+            self.incl_offset = True
+        else:
+            self.incl_offset = False
         ## number of samples
-        self.n_samps     = int(config['n_samps'])
+        self.n_samps = int(config['n_samps'])
         ## number of targets
-        self.n_targs     = int(config['n_targs'])
+        self.n_targs = int(config['n_targs'])
 
         ## mean and standard deviation for fixed effects
         self.fx_effs_mu      = float(config['fx_effs']['mu'])
@@ -196,6 +201,10 @@ class Data(data.Data):
         fx_part = self.fx_effs_arr @ self.x_arr.T
         rd_part = self.rd_effs_arr @ self.z_arr.T
         lin_pred = fx_part + rd_part
+        if self.incl_offset:
+            col_sums = self.draw_column_sums()
+            self.offsets = jnp.log(col_sums) / jnp.exp(jnp.mean(jnp.log(col_sums)))
+            lin_pred += jnp.tile(self.offsets, (self.n_targs, 1))
         return lin_pred
 
     def construct_y(self):

@@ -28,10 +28,16 @@ class Model(model.Model):
         RAISES:
             None
         """
-        fx_effs, disp, mu_arr = glm_fit.glmgampoi_fit(model = self)
+        if self.use_true:
+            fx_effs = self.data.fx_effs_arr
+            disp    = self.data.gamma
+            mu_arr  = self.data.mu_arr
+            offsets = self.data.offsets
+        else:
+            fx_effs, disp, offsets, mu_arr = glm_fit.glmgampoi_fit(model = self)
         self.set_fx_effs_arr(fx_effs)
         self.set_disp_param(disp)
-        ## EDIT: 04 June 2026 --- ALWAYS estimate from glmGamPoi
+        self.set_offsets(offsets)
         self.set_mu_arr(mu_arr)
 
     ## ---------------------------------------------------------------------- ##

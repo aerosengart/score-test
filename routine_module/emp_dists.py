@@ -66,6 +66,54 @@ def score_var_comp_emp_dist(
     )
 
 
+def score_var_comp_by_gamma_emp_dist(
+        d_config,
+        m_config,
+        iter_id: int,
+        reps:    int = 100
+    ):
+    """Plot score function for each component of :math:`\tau^2` to check approximate Gaussianity and zero expectation under the null hypothesis over a grid of jitter values for the negative binomial dispersion parameter.
+
+    ARGS:
+        d_config - str; path to data configuration .yaml
+        m_config - str; path to model configuration .yaml
+        iter_id  - int; iteration ID (for labelling)
+        reps     - int; number of replicates 
+    RAISES:  None
+    RETURNS: None
+    """
+    ## instantiate data
+    data = data_types[d_config['outcome']](d_config)
+    ## initialize
+    gamma_vals = [-0.5, -0.25, -0.1, -0.05, 0.0, \
+                  0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
+    scores_arr = jnp.zeros((data.q, len(gamma_vals), reps)) 
+    routine = 'score_var_comp_by_gamma_emp_dist'
+    ## get plot name and document routine
+    out_dir = doc.document_routine(d_config, m_config, routine)
+    ## copy model config
+    m_config_alt = m_config
+    for i in tqdm(range(reps)):
+        data.resample()
+        data.set_debug(iter = '', rep = str(i), routine = routine)
+        for j in range(len(gamma_vals)):
+            ## draw observations and build model
+            m_config_alt['global_disp'] = data.gamma + gamma_vals[j]
+            model = model_types[m_config_alt['outcome']](m_config_alt, data)
+            ## update debugging dictionary
+            if m_config['debug'] == 'full':
+                doc.debug_sample(model = model)
+            ## compute score
+            gradient, _ = score.compute_score_var_comp(model, scale = False)
+            scores_arr = scores_arr.at[:, i].set(gradient)
+
+    ## save full results
+    jnp.savez(
+        os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
+        scores = scores_arr
+    )
+
+
 ##----------------------------------------------------------------------------##
 ## Plotting                                                                   ##
 ##----------------------------------------------------------------------------##

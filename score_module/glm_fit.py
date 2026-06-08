@@ -43,6 +43,11 @@ def glmgampoi_fit(model):
         j = ro.IntVector(model.data.samp_idx),
         x = ro.IntVector(model.data.counts),
     ) 
+    if isinstance(model.estim_disp, list):
+        disps = ro.FloatVector(model.estim_disp)
+    else:
+        disps = model.estim_disp
+
     if model.data.fx_slopes > 0:
         ## there are slopes in model, so need to create col_data object
         x_targs_dict = {}
@@ -55,53 +60,25 @@ def glmgampoi_fit(model):
         ## to R dataframe
         with (ro.default_converter + pandas2ri.converter).context():
             col_df = ro.conversion.get_conversion().py2rpy(x_targs_pd)
-
-        if model.size_factors == 'col_sums':
-            col_sums = jnp.sum(model.data.construct_y().todense(), axis = 0)
-            sfs      = ro.FloatVector(col_sums / jnp.exp(jnp.mean(jnp.log(col_sums))))
-            ## fit model
-            fit = glmgampoi.glm_gp(
-                model_df, 
-                design   = ro.Formula(formula), 
-                col_data = col_df,
-                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-                overdispersion_shrinkage = False,
-                size_factors = sfs,
-                overdispersion = model.estim_disp ## shared gamma or not?
-            ) 
-        else:
-            ## fit model
-            fit = glmgampoi.glm_gp(
-                model_df, 
-                design   = ro.Formula(formula), 
-                col_data = col_df,
-                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-                overdispersion_shrinkage = False,
-                overdispersion = model.estim_disp ## shared gamma or not?
-            ) 
+        ## fit model
+        fit = glmgampoi.glm_gp(
+            model_df, 
+            design   = ro.Formula(formula), 
+            col_data = col_df,
+            # do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+            overdispersion_shrinkage = False,
+            overdispersion = disps
+        ) 
     else:
-        if model.size_factors == 'col_sums':
-            col_sums = jnp.sum(model.data.construct_y().todense(), axis = 0)
-            sfs      = ro.FloatVector(col_sums / jnp.exp(jnp.mean(jnp.log(col_sums))))
-             ## fit model
-            fit = glmgampoi.glm_gp(
-                model_df,
-                size_factors = sfs,
-                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-                overdispersion_shrinkage = False,
-                overdispersion = model.estim_disp ## shared gamma or not?
-            ) 
-        else:
-             ## fit model
-            fit = glmgampoi.glm_gp(
-                model_df,
-                do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-                overdispersion_shrinkage = False,
-                overdispersion = model.estim_disp ## shared gamma or not?
-            ) 
+        fit = glmgampoi.glm_gp(
+            model_df,
+            # do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
+            overdispersion_shrinkage = False,
+            overdispersion = disps
+        ) 
     mu_arr = jnp.array(fit.rx2['Mu'])
-    fx_effs, disp = extract_estims(fit)
-    return fx_effs, disp, mu_arr
+    fx_effs, disp, offsets = extract_estims(fit)
+    return fx_effs, disp, offsets, mu_arr
 
 
 def extract_estims(fit):
@@ -110,7 +87,7 @@ def extract_estims(fit):
 
     ARGS: fit - glmGamPoi fitted object
     RAISES: None
-    RETURNS: two jnp.arrays - (n_targs, p) and (n_targs, 1)
+    RETURNS: three jnp.arrays - (n_targs, p) and (n_targs, 1) and (n_samps, 1)
     """
     base    = importr('base')
     ## extract fixed effects
@@ -118,7 +95,9 @@ def extract_estims(fit):
     ## overdispersion is inverse of how we specify it (1 / gamma)
     gammas  = 1 / jnp.array(base.summary(fit).rx2('overdispersions'))
     gammas = jnp.expand_dims(gammas, 1)
-    return fx_effs, gammas
+    ## size factors (offsets)
+    offsets = jnp.array(base.summary(fit).rx2('size_factors'))
+    return fx_effs, gammas, offsets
 
 
 

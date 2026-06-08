@@ -65,24 +65,20 @@ def test_stat_fx_eff_sensitivity(
     data = data_types[d_config['outcome']](d_config)
 
     ## initialize
-    x_axis_ticks = [-0.1, -0.05, -0.025, -0.01, 0.0, \
-                    0.01, 0.025, 0.05, 0.1]
+    x_axis_ticks = [-1, -0.1, -0.05, -0.01, 0.0, \
+                    0.01, 0.05, 0.1, 1]
     one_sided = jnp.zeros((reps, len(x_axis_ticks)))
     two_sided = jnp.zeros((reps, len(x_axis_ticks)))
 
-
     for r in tqdm(range(reps)):
-        ## draw data and build model
+        ## draw data
         data.resample()
         data.set_debug(iter = str(iter_id), rep = str(r), routine = routine)
-        model = model_types[m_config['outcome']](m_config, data)
         ## set dispersion parameter
         if disp_known:
-            if m_config['outcome'] == 'neg_bin':
-                model.set_disp_param(data.gamma)
-            else:
-                model.set_disp_param(data.phi)
-
+            m_config['global_disp'] = data.gamma.ravel().tolist()
+        ## build model
+        model = model_types[m_config['outcome']](m_config, data)
         ## update debugging dictionary
         if m_config['debug'] == 'full':
             doc.debug_sample(model = model)
@@ -257,6 +253,7 @@ def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
 
     ## compute theoretical quantiles
     quantiles = np.linspace(0.01, 0.99, 100)
+    chisqr_qs = np.vectorize(helpers.chi_sqr_m_quantiles)(quantiles, q)
     ## sample chi bar squared distribution for qq plot since CDF not invertible
     if q > 1:
         chi_bar_sqrs = helpers.chi_bar_sqr_sample(q, k)
@@ -269,23 +266,23 @@ def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
         ## loop over x-axis ticks
         for l in range(len(jitter_vals)):
             ## compute quantiles
-            lrt_qs   = np.quantile(one_sided_stats[:, i, l], quantiles)
-            score_qs = np.quantile(two_sided_stats[:, i, l], quantiles)
+            one_sided_qs   = np.quantile(one_sided_stats[:, i, l], quantiles)
+            two_sided_qs = np.quantile(two_sided_stats[:, i, l], quantiles)
             
             ## plot two-sided stats
             axs[l, 0].axline((0, 0), slope = 1, color = 'black', linestyle = 'dotted')
-            axs[l, 0].plot(chisqr_mix_qs, lrt_qs, color = 'red', alpha = 0.3)
+            axs[l, 0].plot(chisqr_qs, two_sided_qs, color = 'red', alpha = 0.3)
             axs[l, 0].set_ylabel(f'Jitter = {jitter_vals[l]}')
 
             ## plot one-sided stats
             axs[l, 1].axline((0, 0), slope = 1, color = 'black', linestyle = 'dotted')
-            axs[l, 1].plot(chisqr_mix_qs, score_qs, color = 'blue', alpha = 0.3)
+            axs[l, 1].plot(chisqr_mix_qs, one_sided_qs, color = 'blue', alpha = 0.3)
 
-    axs[0, 0].set_title('Likelihood Ratio Test')
-    axs[0, 1].set_title('Score Test')
-    axs[len(jitter_vals) - 1, 0].set_xlabel(r'$\bar{\chi}^2$ theoretical quantiles')
+    axs[0, 0].set_title('Two-Sided Score Test')
+    axs[0, 1].set_title('One-Sided Score Test')
+    axs[len(jitter_vals) - 1, 0].set_xlabel(r'$\chi^2$ theoretical quantiles')
     axs[len(jitter_vals) - 1, 1].set_xlabel(r'$\bar{\chi}^2$ theoretical quantiles')
-    plt.suptitle('QQ Plots of One-Sided Test Statistics with Jitter')
+    plt.suptitle('QQ Plots of Test Statistics with Jitter')
     plt.tight_layout(rect=[0, 0.03, 1, 0.98])
     plt.savefig(plt_name)
     plt.close()

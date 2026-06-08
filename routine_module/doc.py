@@ -31,16 +31,9 @@ def output_directory_path(d_config, m_config):
     ## random part
     rd_part = f'rd_q{q}_'
     ## dimension part
-    dim_part = f'samps{n}_targs{k}_'
-    # estim mu part
-    if m_config['estim_mu']:
-        mu_part = 'estim_mu_'
-    else:
-        mu_part = 'const_mu_'
-    ## size factors part
-    sf_part = f'sf_{m_config['size_factors']}'
+    dim_part = f'samps{n}_targs{k}'
     ## concatenate
-    sub_dir = data_dist + model_dist + fx_part + rd_part + dim_part + mu_part + sf_part
+    sub_dir = data_dist + model_dist + fx_part + rd_part + dim_part
 
     sub_dir = os.path.join(m_config['out_dir'], sub_dir)
     return sub_dir
@@ -106,6 +99,40 @@ def document_routine(d_config, m_config, routine):
 
 ################################################################################## DEBUGGING
 ################################################################################
+def save_data(data, m_config):
+    """Document the sampled data (helpful for diagnosing convergence/optimization problems).
+    
+    ARGS:
+        model - an instance of Model class
+    RAISES:
+        None
+    RETURNS:
+        None
+    """
+    debug_dict = data.debug
+    d_config = data.config
+
+    ## get output directory path
+    out_dir = output_directory_path(d_config, m_config)
+    save_dir = os.path.join(
+        out_dir,
+        debug_dict['routine']
+    )
+    ## add subdirectories for iteration
+    save_dir = os.path.join(
+        save_dir,
+        f'iter{debug_dict['iter']}'
+    )
+
+    ## check if save path exists
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir, exist_ok = True)
+
+    with open(os.path.join(save_dir, 
+        f'rep{debug_dict['rep']}_data.pickle'), "wb") as f:
+        pickle.dump(data, f)
+
+
 def debug_sample(model):
     """Document the sampled data (helpful for diagnosing convergence/optimization problems).
     
@@ -126,18 +153,18 @@ def debug_sample(model):
         out_dir,
         debug_dict['routine']
     )
-    ## add subdirectories for iteration/replicate
+    ## add subdirectories for iteration
     save_dir = os.path.join(
         save_dir,
-        f'iter{debug_dict['iter']}',
-        f'rep{debug_dict['rep']}'
+        f'iter{debug_dict['iter']}'
     )
 
     ## check if save path exists
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir, exist_ok = True)
 
-    with open( os.path.join(save_dir, 'model.pickle'), "wb") as f:
+    with open(os.path.join(save_dir, 
+        f'rep{debug_dict['rep']}_model.pickle'), "wb") as f:
         pickle.dump(model, f)
 
 
