@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 """
-Repeatedly resample cell counts for a Data instance and compute the component(s) of the score vector corresponding to the random effect(s) variance component(s) to obtain its empirical distribution. 
+Run the specified routine from configuration file and save results to file.
 """
 
-import argparse
+import jsonargparse
 import yaml
 import sys
 
@@ -13,39 +13,33 @@ from routine_module import dispatch
 
 def main(): 
     ## create an argument parser and add options
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-d',
-                        '--d_config', 
+    parser = jsonargparse.ArgumentParser()
+    parser.add_argument('--cfg', action = jsonargparse.ActionConfigFile)
+    parser.add_argument('--d_config', 
                         help = 'Path to data config file.', 
-                        type = str, 
-                        dest = 'd_config')
-    parser.add_argument('-m',
-                        '--m_config', 
+                        dest = 'd_config',
+                        type = jsonargparse.typing.Path)
+    parser.add_argument('--m_config', 
                         help = 'Path to model config file.', 
-                        type = str, 
-                        dest = 'm_config')
-    parser.add_argument('-r',
-                        '--routine', 
+                        dest = 'm_config',
+                        type = jsonargparse.typing.Path)
+    parser.add_argument('--routine', 
                         help = 'Name of routine to run.', 
                         type = str, 
                         dest = 'routine')
-    parser.add_argument('-n',
-                        '--reps',
+    parser.add_argument('--reps',
                         help    = 'Number of replicates.',
                         type    = int,
                         dest    = 'reps',
                         default = 100)
-    parser.add_argument('-i',
-                        '--iter_id',
-                        help    = 'Iteration ID.',
-                        type    = int,
-                        dest    = 'iter_id',
-                        default = 1)
-    parser.add_argument('-f',
-                        '--flag',
+    parser.add_argument('--flag',
                         help    = 'Optional boolean flag specific to routine.',
                         type    = int,
                         dest    = 'flag')
+    parser.add_argument('--iter_id',
+                        help    = 'Iteration ID for logging.',
+                        type    = int,
+                        dest    = 'iter_id')
 
     ## parse the arguments and config file
     args = parser.parse_args()

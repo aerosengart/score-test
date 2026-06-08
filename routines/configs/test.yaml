@@ -1,0 +1,4 @@
+d_config: '/home/arosenga/score-test/data/configs/d_test.yaml'
+m_config: '/home/arosenga/score-test/data/configs/m_test.yaml'
+routine: 'score_var_comp'
+reps: 100

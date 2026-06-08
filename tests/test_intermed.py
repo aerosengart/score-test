@@ -3,7 +3,7 @@ from score_module import intermed
 
 
 def test_quantities(simul_data, nb_model):
-    data = simul_data('tests/data/simul_data.yaml')
+    data = simul_data('tests/data/nb_data.yaml')
     model = nb_model('tests/data/nb_model.yaml', data)
 
     n_targs = data.n_targs

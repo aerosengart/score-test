@@ -17,7 +17,7 @@ Run (one- AND two-sided) score test based on a negative binomial GLMM on a singl
     - gamma: estimated target-specific negative binomial dispersion parameters
 """
 
-import argparse
+import jsonargparse
 import yaml
 import json
 import os
@@ -30,28 +30,25 @@ from score_module import score, info, helpers
 from data_module  import dispatch
 
 def main():
-    ## create an argument parser, add options, parse arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-d',
-                        '--d_config', 
+    ## create an argument parser and add options
+    parser = jsonargparse.ArgumentParser()
+    parser.add_argument('--cfg', action = jsonargparse.ActionConfigFile)
+    parser.add_argument('--d_config', 
                         help = 'Path to data config file.', 
-                        type = str, 
-                        dest = 'd_config')
-    parser.add_argument('-m',
-                        '--m_config', 
+                        dest = 'd_config',
+                        type = jsonargparse.typing.Path)
+    parser.add_argument('--m_config', 
                         help = 'Path to model config file.', 
-                        type = str, 
-                        dest = 'm_config')
-    parser.add_argument('-a',
-                        '--anchor', 
-                        help = 'Anchor sequence.', 
-                        type = str, 
-                        dest = 'anchor')
-    parser.add_argument('-o', 
-                        '--output',
+                        dest = 'm_config',
+                        type = jsonargparse.typing.Path)
+    parser.add_argument('--output',
                         help = 'Output directory.',
                         type = str,
                         dest = 'out_dir')
+    parser.add_argument('--anchor', 
+                        help = 'Anchor sequence.', 
+                        type = str, 
+                        dest = 'anchor')
     args = parser.parse_args()
 
     with open(args.d_config, 'r') as file:
