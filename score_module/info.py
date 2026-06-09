@@ -10,20 +10,20 @@ import scipy.sparse as sps
 from score_module import intermed
 
 
-def info_tau_sqr_j_tau_sqr_l(
+def info_var_comp_j_var_comp_l(
         model,
         j: int = 0,
         l: int = 0
     ) -> jnp.array:
     """
-    Compute variance of score for tau_sqr. 
+    Compute variance of score for var_comp. 
 
     ARGS:
         model - an instance of class Model
         j     - int; first index of tau sqr score
         l     - int; second index of tau sqr score
     RETURNS:
-        jnp.array - the covariance of the score component corresponding to the j-th and l-th coordinates of tau_sqr (1, 1)
+        jnp.array - the covariance of the score component corresponding to the j-th and l-th coordinates of var_comp (1, 1)
     RAISES:
         None
     """
@@ -41,18 +41,18 @@ def info_tau_sqr_j_tau_sqr_l(
     return jnp.sum(vals) / 4
 
 
-def info_fx_effs_tau_sqr_j(
+def info_fx_effs_var_comp_j(
         model,
         j: int
     ) -> jnp.array:
     """
-    Compute covariance of score for fixed effects vector and j-th coordinate of tau_sqr. Eq. (14) in Lin (1997).
+    Compute covariance of score for fixed effects vector and j-th coordinate of var_comp. Eq. (14) in Lin (1997).
 
     ARGS:
         model       - an instance of class Model
         j           - int; first index of tau sqr score
     RETURNS:
-        jnp.array - the covariance of score for fixed effects vector and j-th coordinate of tau_sqr (p * n_targs,)
+        jnp.array - the covariance of score for fixed effects vector and j-th coordinate of var_comp (p * n_targs,)
     RAISES:
         None
     """
@@ -148,12 +148,12 @@ def compute_info(
     info_arr = info_arr.at[0:total_p, 0:total_p].set(info_fx_effs.todense())
 
     for idx1 in range(q):
-        info_fx_tau_j = info_fx_effs_tau_sqr_j(model, j = idx1)
+        info_fx_tau_j = info_fx_effs_var_comp_j(model, j = idx1)
         info_arr = info_arr.at[0:total_p, total_p + idx1].set(info_fx_tau_j.T)
         info_arr = info_arr.at[total_p + idx1, 0:total_p].set(info_fx_tau_j)
 
         for idx2 in range(idx1 + 1):
-            info_tau_tau = info_tau_sqr_j_tau_sqr_l(
+            info_tau_tau = info_var_comp_j_var_comp_l(
                 model,
                 j = idx1,
                 l = idx2

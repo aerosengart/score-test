@@ -51,19 +51,19 @@ def power_by_var_comp(
         raise NotImplementedError('Routine only implemented for q = 1.')
     ## initialize
     routine = 'power_by_var_comp'
-    tau_sqrs = np.logspace(start = 5, stop = 0.3, base = 0.1, num = 25)
+    var_comps = np.logspace(start = 5, stop = 0.3, base = 0.1, num = 25)
 
     ## get plot name and document routine
     out_dir = doc.document_routine(d_config, m_config, routine)
 
-    one_stats  = jnp.zeros((reps, len(tau_sqrs)))
-    two_stats  = jnp.zeros((reps, len(tau_sqrs)))
-    one_p_vals = jnp.zeros((reps, len(tau_sqrs)))
-    two_p_vals = jnp.zeros((reps, len(tau_sqrs)))
+    one_stats  = jnp.zeros((reps, len(var_comps)))
+    two_stats  = jnp.zeros((reps, len(var_comps)))
+    one_p_vals = jnp.zeros((reps, len(var_comps)))
+    two_p_vals = jnp.zeros((reps, len(var_comps)))
 
-    for i in tqdm(range(len(tau_sqrs))):
+    for i in tqdm(range(len(var_comps))):
         ## update random effect(s) variance component(s)
-        d_config['tau_sqr'] = [tau_sqrs[i]]
+        d_config['var_comp'] = [var_comps[i]]
         ## instantiate data
         data = data_types[d_config['outcome']](d_config)
         for r in range(reps):
@@ -88,7 +88,7 @@ def power_by_var_comp(
     ## save full results
     jnp.savez(
         os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
-        tau_sqrs         = tau_sqrs,
+        var_comps         = var_comps,
         one_sided_stats  = one_stats,
         two_sided_stats  = two_stats,
         one_sided_p_vals = one_p_vals,
@@ -113,7 +113,7 @@ def power_by_n_samps(
     RETURNS: None
     """
     ## check set-up
-    if d_config['tau_sqr'][0] == 0.0:
+    if d_config['var_comp'][0] == 0.0:
         raise NotImplementedError('Routine only implemented for non-zero variance components.')
     ## initialize
     routine = 'power_by_n_samps'
@@ -170,7 +170,7 @@ def power_by_n_targs(
     RETURNS: None
     """
     ## check set-up
-    if d_config['tau_sqr'][0] == 0.0:
+    if d_config['var_comp'][0] == 0.0:
         raise NotImplementedError('Routine only implemented for strictly positive variance components.')
     ## initialize
     routine = 'power_by_n_targs'
@@ -214,9 +214,9 @@ def power_by_n_targs(
 ## Plotting                                                                   ##
 ##----------------------------------------------------------------------------##
 
-def plot_power_by_tau_sqr(d_config, m_config):
+def plot_power_by_var_comp(d_config, m_config):
     """
-    Wrapper for one_two_sided_lines() when plotting power analysis over values of tau_sqr (random effects variance components).
+    Wrapper for one_two_sided_lines() when plotting power analysis over values of var_comp (random effects variance components).
     """
     one_two_sided_lines(
         d_config    = d_config,

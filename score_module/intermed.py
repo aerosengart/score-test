@@ -139,7 +139,7 @@ def compute_a_j(
         j:   int = 0
     ) -> jnp.array:
     """
-    Compute and return the A matrices for the j-th component of tau_sqr under the null hypothesis for all clusters.
+    Compute and return the A matrices for the j-th component of var_comp under the null hypothesis for all clusters.
     
     ARGS:
         model - an instance of class Model
@@ -147,14 +147,14 @@ def compute_a_j(
     RETURNS: jnp.array (n_samps, n_samps)
     RAISES: None
     """
-    D_tau_sqr_j = random_covar_wrt_tau_sqr_j(
+    D_var_comp_j = random_covar_wrt_var_comp_j(
         model,
         j = j
     )
     z_j = jnp.expand_dims(model.data.z_arr[:, j], 1)
-    return jnp.matmul(jnp.matmul(z_j, D_tau_sqr_j), jnp.transpose(z_j))
+    return jnp.matmul(jnp.matmul(z_j, D_var_comp_j), jnp.transpose(z_j))
 
-def random_covar_wrt_tau_sqr_j(
+def random_covar_wrt_var_comp_j(
         model,
         j: int
     ) -> jnp.array:

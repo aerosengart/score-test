@@ -22,7 +22,7 @@ ATTRIBUTES:
     fx_effs_arr - jnp.array; target-specific fixed effects coefficients 
     rd_effs_arr - jnp.array; random effects coefficients
 
-    tau_sqr     - jnp.array; random effects variance component(s) (q,)
+    var_comp     - jnp.array; random effects variance component(s) (q,)
     
     p - int; number of different fixed effects
     q - int; total number of random effects

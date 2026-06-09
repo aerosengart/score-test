@@ -53,12 +53,12 @@ def compute_score_var_comp(
         scale_val = jnp.linalg.norm(scores)
     else:
         scale_val = 1
-    wrt_tau_sqr = jnp.squeeze(scores / scale_val)
+    wrt_var_comp = jnp.squeeze(scores / scale_val)
     
-    if math.isnan(wrt_tau_sqr):
+    if math.isnan(wrt_var_comp):
         doc.debug_sample(model)
         raise Exception
-    return wrt_tau_sqr, scale_val
+    return wrt_var_comp, scale_val
 
 
 

@@ -26,8 +26,8 @@ class Data(data.Data):
         self.rd_covars = config['rd_covars']
 
         ## anchor name and variance component (under H0!)
-        self.anchor  = anchor
-        self.tau_sqr = jnp.zeros((self.q,))
+        self.anchor   = anchor
+        self.var_comp = jnp.zeros((self.q,))
 
         ## have to read table first to get dimensions
         targ_idx, samp_idx, counts = self.get_tab_vals()

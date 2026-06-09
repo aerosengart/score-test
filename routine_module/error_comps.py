@@ -45,7 +45,7 @@ def type_i_error_by_n_samps(
     ## initialize
     routine = 'type_i_error_by_n_samps'
     n_samps = [25, 50, 100, 500, 1000]
-    d_config['tau_sqr'] = [0.0] * d_config['rd_slopes']
+    d_config['var_comp'] = [0.0] * d_config['rd_slopes']
 
     ## get plot name and document routine
     out_dir = doc.document_routine(d_config, m_config, routine)

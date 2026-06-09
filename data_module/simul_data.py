@@ -21,7 +21,7 @@ class Data(data.Data):
             x_sigma       - float; fixed effects covariates standard deviation
             z_mu          - float; random effects covariates mean
             z_sigma       - float; random effects covariates standard deviation
-            tau_sqr       - jnp.array; non-negative floats (q,)
+            var_comp       - jnp.array; non-negative floats (q,)
 
         ARGS:
             config: 
@@ -63,8 +63,8 @@ class Data(data.Data):
         if 'col_sums' in config.keys():
             self.col_sums_low = int(config['col_sums']['low'])
             self.col_sums_high = int(config['col_sums']['high'])
-        ## set tau_sqr
-        self.tau_sqr = jnp.array(config['tau_sqr'])
+        ## set var_comp
+        self.var_comp = jnp.array(config['var_comp'])
 
         ## set total number of fixed effects (accounting for target-specific)
         self.p_star = self.n_targs + self.fx_slopes * self.n_targs
@@ -102,10 +102,10 @@ class Data(data.Data):
         self.fx_effs_arr = fx_effs_arr
         self.rd_effs_arr = rd_effs_arr
 
-    def set_var_comps(self, tau_sqr):
+    def set_var_comps(self, var_comp):
         """Set random effect(s) variance component(s)."""
         ## add dimension/non-negative check?
-        self.tau_sqr = tau_sqr
+        self.var_comp = var_comp
         
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
@@ -173,7 +173,7 @@ class Data(data.Data):
             row   = self.n_targs,
             col   = self.q,        ## q = number of random slopes
             mu    = 0.0,
-            sigma = self.tau_sqr
+            sigma = self.var_comp
         )
         return fx_effs, rd_effs
 

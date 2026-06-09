@@ -87,15 +87,15 @@ def compute_infimum(
         test_p:    int,
         q:         int
     ) -> float:
-    """Compute the infimum of the quadratic program under the constraint that tau_sqr is non-negative...
+    """Compute the infimum of the quadratic program under the constraint that var_comp is non-negative...
     
     Uses `cvxopt` package's solvers.qp (quadratic program solver).
 
     ARGS:
-        score     - jax.numpy array; the gradient (first derivative) of the full marginal log-likelihood with respect to tau_sqr evaluated at tau_sqr = 0 (q,)
+        score     - jax.numpy array; the gradient (first derivative) of the full marginal log-likelihood with respect to var_comp evaluated at var_comp = 0 (q,)
         schur_inv - jax.numpy array; the inverse Schur complement of the lower right block of the Fisher information (q + test_p, q + test_p)
         test_p    - int; the number of fixed effects being tested
-        q         - int; dimension of variance component (tau_sqr)
+        q         - int; dimension of variance component (var_comp)
     RETURNS:
         inf_val - jnp.array; the value of the objective function evaluated at the solution found by the solver (q + test_p, 1)
     RAISES:
@@ -109,11 +109,11 @@ def compute_infimum(
     p_arr = np.array(schur_inv, dtype = float)
     q_vec = matrix(q_arr)
     p_arr = matrix(p_arr)
-    ## inequality constraint on tau_sqr
+    ## inequality constraint on var_comp
     # g_arr = matrix(-1.0 * np.eye(q))
-    tau_sqr_const = [-1.0] * q
+    var_comp_const = [-1.0] * q
     fx_effs_const = [0.0] * test_p
-    g_arr = matrix(np.diag(tau_sqr_const + fx_effs_const))
+    g_arr = matrix(np.diag(var_comp_const + fx_effs_const))
     ## not exactly zero to account for feasibility tolerance
     h_vec = matrix([1.0e-7] * dims) 
     ## solve the quadratic form

@@ -116,7 +116,7 @@ def one_two_sided_qq(d_config, m_config):
     two_sided_stats = jnp.concatenate(two_sided, axis = 1)
 
     ## get necessary quantities/names
-    q = len(d_config['tau_sqr'])
+    q = len(d_config['var_comp'])
     k = d_config['n_targs']
     plt_name = os.path.join(out_dir, routine, 'one_two_sided_qq.pdf')
 

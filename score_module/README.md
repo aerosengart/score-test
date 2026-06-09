@@ -29,7 +29,7 @@ Returned quantities include:
 
 | Name      | Type         | Description    | 
 | :---        |    :---     | :---     |
-| `wrt_tau_sqr` | `jax.numpy.array` | Vector of first-order partial derivatives of the full marginal log quasi-likelihood with respect to the coordinates of the random effects variance components evaluated at the parameter values/estimates under $H_0$. Dimensions will be (`q`,) for a model with $q$ random effects. | 
+| `wrt_var_comp` | `jax.numpy.array` | Vector of first-order partial derivatives of the full marginal log quasi-likelihood with respect to the coordinates of the random effects variance components evaluated at the parameter values/estimates under $H_0$. Dimensions will be (`q`,) for a model with $q$ random effects. | 
 | `scale_val` | `float` | Scaling value used on the score vector. Equal to $1$ if `scale` is set to `False`. |
 
 This function computes the first-order partial derivatives of the full data's marginal log quasi-likelihood with respect to the variance components ($\boldsymbol{\tau}^2$) and evaluates the resulting vector at the parameter values specified by `model`. The computation is given by Eq. (9) in Lin and Breslow (1997). Let $\tau^2_k$ denotes the $k$-th coordinate of $\boldsymbol{\tau}^2$, let $\hat{\boldsymbol{\theta}}$ denote all other model parameter values under $H_0$ (e.g. for the fixed effect coefficients, these are the MLEs under $H_0$, and for the random effects coefficients, these are zeros), and let a hat denote a quantity evaluated at $\boldsymbol{\theta} = \hat{\boldsymbol{\theta}}$. The component of the score corresponding to $\tau^2_k$ is given by:

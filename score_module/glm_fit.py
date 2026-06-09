@@ -106,7 +106,7 @@ def extract_estims(fit):
 #         fx_effs_arr: jnp.array = None,
 #         rd_effs_arr: jnp.array = None,
 #         gamma:       jnp.array = None,
-#         tau_sqr:     jnp.array = None
+#         var_comp:     jnp.array = None
 #     ):
 #     """
 #     Fit a generalized linear (mixed) model using glmmTMB.
@@ -154,7 +154,7 @@ def extract_estims(fit):
 #         null_model = null_model
 #     )
 #     return params['fx_effs'], params['rd_effs'], params['disp'], \
-#            params['tau_sqr'], fit
+#            params['var_comp'], fit
     
 # def extract_coefs(model, fit, null_model):
 #     """
@@ -171,7 +171,7 @@ def extract_estims(fit):
 #             fx_effs - jnp.array; fixed effects estimates (n, k, p)
 #             rd_effs - jnp.array; random effects modes (n, k, q)
 #             disp    - jnp.array; auxiliary variable estimate (1,) 
-#             tau_sqr - jnp.array; random effects variance components estimate (q,)
+#             var_comp - jnp.array; random effects variance components estimate (q,)
 #     """
 #     ## importing for rpy2
 #     glmmTMB = importr('glmmTMB')
@@ -198,7 +198,7 @@ def extract_estims(fit):
 #     return {'fx_effs': fx_effs_estims, 
 #             'rd_effs': rd_effs_estims, 
 #             'disp': jnp.array(disp), 
-#             'tau_sqr': jnp.array(rd_sd**2)}
+#             'var_comp': jnp.array(rd_sd**2)}
 
 
 
@@ -444,7 +444,7 @@ def extract_estims(fit):
 #     beta     - fixed effects
 #     b        - random effects modes
 #     betadisp - log of the dispersion parameter (gamma for negative binomial, phi for quasi-Poisson)
-#     theta    - log std dev for random effects (tau_sqr values)
+#     theta    - log std dev for random effects (var_comp values)
 
 #     ARGS:
 #         fx_effs_arr - jnp.array; fixed effects values (n, k, p)

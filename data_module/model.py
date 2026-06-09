@@ -39,7 +39,7 @@ class Model():
 
         ## !! these are not the MLEs --- they are the values under H0 !!
         self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, self.data.q)))
-        self.set_tau_sqr(jnp.zeros((self.data.q)))
+        self.set_var_comp(jnp.zeros((self.data.q)))
         ## estimate the other parameters via maximum likelihood
         self.set_dist_params_estim()
 
@@ -52,8 +52,8 @@ class Model():
     def set_rd_effs_arr(self, rd_effs_arr):
         self.rd_effs_arr = rd_effs_arr
 
-    def set_tau_sqr(self, tau_sqr):
-        self.tau_sqr = tau_sqr
+    def set_var_comp(self, var_comp):
+        self.var_comp = var_comp
 
     def set_offsets(self, offsets):
         self.offsets = offsets
