@@ -15,7 +15,7 @@ routine_types = {
 
 plot_types = {
     'score_var_comp':    emp_dists.score_hist,
-    'score_var_comp_by_gamma': emp_dists.score_var_comp_by_gamma_emp_dist,
+    'score_var_comp_by_disp': emp_dists.score_var_comp_by_disp_emp_dist,
     'one_two_sided':     test_stat_comps.one_two_sided_qq,
     'fx_effs_sens':      test_stat_sens.fx_effs_jitter,
     'power_by_var_comp': power_comps.plot_power_by_tau_sqr,

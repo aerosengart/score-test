@@ -53,8 +53,12 @@ class Data():
         self.outcome = config['outcome']
 
         ## linear predictor construction
-        self.fx_slopes = config['fx_slopes']
-        self.rd_slopes = config['rd_slopes']
+        if self.outcome != 'splash':
+            self.fx_slopes = len(config['x']['types'])
+            self.rd_slopes = len(config['z']['types'])
+        else:
+            self.fx_slopes = config['fx_slopes']
+            self.rd_slopes = config['rd_slopes']
 
         ## number of fixed and random effects
         self.p = 1 + self.fx_slopes

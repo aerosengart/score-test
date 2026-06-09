@@ -57,7 +57,7 @@ def oasis(
     return min(1, num_splits * min_p_val), f_opt, c_opt
 
 
-def oasis_iter(
+def oasis_perp(
         data,
         num_splits:     int   = 5, 
         train_frac:     float = 0.25,
@@ -65,7 +65,7 @@ def oasis_iter(
         num_rand_inits: int  = 10
 ):
     """
-    Run OASIS-iter. Currently only supports finite-sample valid p-value bound-based OASIS results (no asymptotic p-value implemented).
+    Run OASIS-perp for the dataset. Currently only supports finite-sample valid p-value bound-based OASIS results (no asymptotic p-value implemented).
 
     ARGS:
         data       - instance of simul_data.Data class
@@ -77,42 +77,25 @@ def oasis_iter(
     """
     ## get full anchor count table
     anch_arr = data.construct_y().todense()
-    ## initialize list of c vectors
-    c_vec_list = []
-    ## just do a loop because i am lazy right now
-    for j in range(data.x_arr.shape[-1]):
-        ## add each covariate from fixed effects array
-        c_vec = data.x_arr[:, j]
-        c_vec /= np.linalg.norm(c_vec)
-        c_vec_list.append(c_vec)
+    ## construct list of (normalized) c vectors
+    c_vec_list = helpers.construct_c_vec_list(data = data)
+    print(c_vec_list)
     train = helpers.split_counts_colwise(anch_arr, train_frac)
-    ## initialize lists
-    c_vecs = []
-    f_vecs = []
-    p_vals = []
 
-    while True:
-        ## run OASIS with orthogonal constraints to get optimal c and f vectors
-        c_vec, f_vec = optim.generate_alt_max_c_f(
-            anch_arr       = train,
-            rand_seed      = rand_seed,
-            num_rand_inits = num_rand_inits, 
-            c_vec_list     = c_vec_list
-        )
-        ## compute p-value
-        p_val, _ = oasis_finite_p_val(
-            anch_arr = anch_arr - train,
-            c_opt    = c_vec,
-            f_opt    = f_vec
-        )
-        if p_val > 0.05:
-            break
-        else:
-            c_vecs.append(c_vec)
-            f_vecs.append(f_vec)
-            p_vals.append(p_val)
-            c_vec_list.append(c_vec)
-    return p_vals, c_vecs, f_vecs
+    ## run OASIS with orthogonal constraints to get optimal c and f vectors
+    c_vec, f_vec = optim.generate_alt_max_c_f(
+        anch_arr       = train,
+        rand_seed      = rand_seed,
+        num_rand_inits = num_rand_inits, 
+        c_vec_list     = c_vec_list
+    )
+    ## compute p-value
+    p_val, _ = oasis_finite_p_val(
+        anch_arr = anch_arr - train,
+        c_opt    = c_vec,
+        f_opt    = f_vec
+    )
+    return p_val, c_vec, f_vec
 
 
 def oasis_finite_p_val(anch_arr, c_opt, f_opt):

@@ -14,7 +14,7 @@ Run (one- AND two-sided) score test based on a negative binomial GLMM on a singl
     - two_side_p: two-sided score test p-value (based on chi-squared distribution)
 - model (quantities related to the model/data used in the test)
     - fx_effs: estimated fixed effects coefficients
-    - gamma: estimated target-specific negative binomial dispersion parameters
+    - disp: estimated target-specific negative binomial dispersion parameters
 """
 
 import jsonargparse
@@ -96,7 +96,7 @@ def main():
 
     model_info = {
         'fx_effs': model.fx_effs_arr.tolist(),
-        'gamma':   model.gamma.tolist()
+        'disp':   model.disp_arr.tolist()
     }
     test_info = {
         'score_val': float(score_val.tolist()),

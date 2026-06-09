@@ -297,19 +297,7 @@ We analyze the anchor-specific .json output with `json_summary.py`. This reads e
 ---
 
 ## Simulations
-All of the following simulations can be performed with a slurm job array or by manually calling `routines/run_routine.py`. A job array is nice for settings where we want to run many iterations (i.e. many different data-generating mechanisms). The general syntax for such a job array is:
 
-`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] [routine in quotes] [number of replicates per iteration] [OPTION 0/1 FLAG]`
-
-This will create `[number of iterations]` different `.npz` files where each file contains the output of one iteration (which itself has the results of the `[number of replicates per iteration]` replicates drawn). The `.npz` files are saved in a sub-directory named after the routine under a sub-directory named after the configuration specified in the data config file under the output directory specified as `out_dir` in the model config file. The path will have the following form:
-
-`[model out_dir]/d[data outcome]_m[model outcome]_fx_p[number of fixed effects]_rd_q[number of random effects]_samps[number of samples]_targs[number of targets]_[distribution specific parameters]/[routine]`
-
-For negative binomial data, `[distribution specific parameters]` will be `dgamma[data gamma]`. For quasi-Poisson data, it will be `dphi[data phi]`. The results are saved under the name `results_iter[iteration ID].npz` where `iteration ID` is an integer that represents which iteration is being run (i.e. it is arbitrary). A `config.txt` is also created in this sub-directory that records the data config contents (since we re-use the data configuration file across many different simulations and may overwrite things accidentally...). 
-
-To visualize the results, we use `routines/plot_routine.py`. This file combines all of the results (all iterations) into a single array, makes the appropriate plot, and saves it as a PDF in the output directory. The general usage is:
-
-`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r [routine]`
 
 
 ### Empirical Distribution of Score

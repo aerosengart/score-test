@@ -1,6 +1,8 @@
 """
 Child class of `data.Data` for simulated datasets.
 """
+import re
+
 import jax.numpy      as jnp
 import numpy          as np
 import scipy.sparse   as sps
@@ -48,9 +50,11 @@ class Data(data.Data):
         ## mean and standard deviation for fixed effects covariates
         self.x_mu      = float(config['x']['mu'])
         self.x_sigma   = float(config['x']['sigma'])
+        self.x_types   = config['x']['types']
         ## mean and standard deviation for random effects covariates
         self.z_mu    = float(config['z']['mu'])
         self.z_sigma = float(config['z']['sigma'])
+        self.z_types   = config['z']['types']
         ## mean and standard deviation for dispersion
         if 'disp' in config.keys():
             self.disp_mu    = float(config['disp']['mu'])
@@ -114,19 +118,42 @@ class Data(data.Data):
         RAISES: None
         RETURNS: two jnp.arrays --- target-specific fixed effects covariates, random effects covariates
         """
-        x_arr = helpers.draw_gaussian_arr(
-            row   = self.n_samps,
-            col   = self.fx_slopes,
-            mu    = self.x_mu,
-            sigma = self.x_sigma
-        )
-        x_arr = jnp.concatenate([jnp.ones((self.n_samps, 1)), x_arr], axis = 1)
-        z_arr = helpers.draw_gaussian_arr(
-            row   = self.n_samps,
-            col   = self.q,       ## q = number of random slopes
-            mu    = self.z_mu,
-            sigma = self.z_sigma
-        )
+        ## start with intercept
+        x_cols = [jnp.ones((self.n_samps, 1))]
+        for i in range(len(self.x_types)):
+            if self.x_types[i] == 'cont':
+                x_i = helpers.draw_gaussian_arr(
+                    row   = self.n_samps,
+                    col   = 1,
+                    mu    = self.x_mu,
+                    sigma = self.x_sigma
+                )
+            else:
+                x_i = helpers.draw_factor_arr(
+                    row = self.n_samps,
+                    col = 1,
+                    levels = int(re.sub(r"\D", "", self.x_types[i]))
+                )
+            x_cols.append(x_i)
+        ## no random intercept
+        z_cols = []
+        for i in range(len(self.z_types)):
+            if self.z_types[i] == 'cont':
+                z_i = helpers.draw_gaussian_arr(
+                    row   = self.n_samps,
+                    col   = 1,
+                    mu    = self.z_mu,
+                    sigma = self.z_sigma
+                )
+            else:
+                z_i = helpers.draw_factor_arr(
+                    row = self.n_samps,
+                    col = 1,
+                    levels = int(re.sub(r"\D", "", self.z_types[i]))
+                )
+            z_cols.append(z_i)
+        x_arr = jnp.concatenate(x_cols, axis = 1)
+        z_arr = jnp.concatenate(z_cols, axis = 1)
         return x_arr, z_arr
 
     def draw_effs(self) -> jnp.array:
@@ -203,8 +230,11 @@ class Data(data.Data):
         lin_pred = fx_part + rd_part
         if self.incl_offset:
             col_sums = self.draw_column_sums()
-            self.offsets = jnp.log(col_sums) / jnp.exp(jnp.mean(jnp.log(col_sums)))
-            lin_pred += jnp.tile(self.offsets, (self.n_targs, 1))
+        else:
+            ## set to 1 so that offsets equal 0
+            col_sums = jnp.ones((self.n_samps,))
+        self.offsets = jnp.log(col_sums) / jnp.exp(jnp.mean(jnp.log(col_sums)))
+        lin_pred += jnp.tile(self.offsets, (self.n_targs, 1))
         return lin_pred
 
     def construct_y(self):

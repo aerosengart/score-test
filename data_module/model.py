@@ -59,11 +59,31 @@ class Model():
         self.offsets = offsets
 
     def set_mu_arr(self, mu_arr):
+        ## replace exact zeros with small number to avoid divide by zero error
+        if jnp.sum(mu_arr <= 1e-10) > 0:
+            mu_arr = mu_arr.at[mu_arr <= 1e-10].set(1e-6)
         self.mu_arr = mu_arr
 
+    def set_eta_arr(self, eta_arr):
+        self.eta_arr = eta_arr
     ## ---------------------------------------------------------------------- ##
     ## INTERMEDIATE QUANTITIES                                                ##
     ## ---------------------------------------------------------------------- ##
+    def compute_eta(self) -> jnp.array:
+        """
+        Compute linear predictor WITH offsets.
+
+        ARGS:    None
+        RAISES:  None
+        RETURNS: jnp.array; linear predictor (n_targs, n_samps)
+        """
+        fx_part = self.fx_effs_arr @ self.data.x_arr.T
+        rd_part = self.rd_effs_arr @ self.data.z_arr.T
+        lin_pred = fx_part + rd_part
+        lin_pred += jnp.tile(self.offsets, (self.data.n_targs, 1))
+        return lin_pred
+
+
     def compute_kappa(
             self,
             order: int = 2
@@ -99,6 +119,12 @@ class Model():
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
+    def update_params(self):
+        raise NotImplementedError("Subclasses must implement this method.")
+        
+    def compute_mu(self):
+        raise NotImplementedError("Subclasses must implement this method.")
+    
     def set_disp_param(self, disp_param):
         raise NotImplementedError("Subclasses must implement this method.")
 

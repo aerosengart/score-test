@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 
 ### split contingency table into train and test data
@@ -103,6 +105,32 @@ def compute_arr_tilde(arr):
     return (arr - exp_arr) * nj_inv_sqrt
 
 
+def construct_c_vec_list(data):
+    """
+    Construct the list of c vectors for OASIS-iter. c vectors have coordinates taking values in {-1, +1}, so we must map the actual values in x_arr to these. 
+    
+    Note: not currently implemented for batch effects with more than 2 levels.
+    Note: this can be quite slow
+
+    ARGS:    data - instance of simul_data.Data class
+    RAISES:  None
+    RETURNS: list of numpy.ndarrays with values in {-1, +1}
+    """
+    ## initialize list of c vectors
+    c_vec_list = []
+    ## just do a loop because i am lazy right now --- do NOT include intercept
+    for j in range(len(data.x_types)):
+        if data.x_types[j] == 'cont':
+            raise NotImplementedError('OASIS-perp not implemented for continuous covariates yet.')
+        batch_lvls = int(re.sub(r"\D", "", data.x_types[j]))
+        if batch_lvls != 2:
+            raise NotImplementedError('OASIS-perp not implemented batch effects with more than 2 levels.')
+        ## get levels --- +1 to exclude intercept
+        arr_vals = np.sort(np.unique(data.x_arr[:, j + 1]))
+        mapped_vals = {str(arr_vals[0]): -1, str(arr_vals[1]): 1}
+        c_vec = [mapped_vals[str(i)] for i in data.x_arr[:, j + 1].tolist()]
+        c_vec_list.append(np.asarray(c_vec))
+    return c_vec_list
 
 
 

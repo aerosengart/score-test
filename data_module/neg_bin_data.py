@@ -45,32 +45,32 @@ class Data(simul_data.Data):
         RAISES:  None
         RETURNS: None
         """        
-        ## set gamma
-        self.set_gamma(self.draw_gamma())
+        ## set disp_arr
+        self.set_disp_arr(self.draw_disp_arr())
         ## set means
         self.eta_arr = self.compute_eta()
         self.mu_arr = jnp.exp(self.eta_arr)
         ## vars
-        self.var_arr = self.mu_arr + jnp.divide(self.mu_arr**2, self.gamma)
+        self.var_arr = self.mu_arr + jnp.divide(self.mu_arr**2, self.disp_arr)
         ## compute success probability for (r, p) parametrization in numpy
         ## r = # successes; p = success probability
-        ## p = mean / var = mu / (mu + mu^2/gamma) = gamma / (gamma + mu)
-        ## r = mean^2 / (var - mean) = mu^2 / (mu^2/gamma) = gamma
-        self.probs = jnp.divide(self.gamma, jnp.add(self.mu_arr, self.gamma))
-        self.succs = self.gamma
+        ## p = mean / var = mu / (mu + mu^2/disp) = disp / (disp + mu)
+        ## r = mean^2 / (var - mean) = mu^2 / (mu^2/disp) = disp
+        self.probs = jnp.divide(self.disp_arr, jnp.add(self.mu_arr, self.disp_arr))
+        self.succs = self.disp_arr
 
-    def draw_gamma(self):
+    def draw_disp_arr(self):
         """Sample negative binomial dispersion parameter."""
-        gamma = helpers.draw_gaussian_arr(
+        disp_arr = helpers.draw_gaussian_arr(
             row   = self.n_targs,
             col   = 1,
             mu    = self.disp_mu,
             sigma = self.disp_sigma
         )
-        gamma = gamma.at[gamma <= 0.0].set(1e-4) ## avoid zero/negative gamma
-        return gamma
+        disp_arr = disp_arr.at[disp_arr <= 0.0].set(1e-4) ## avoid zero/negative disp
+        return disp_arr
 
-    def set_gamma(self, gamma):
+    def set_disp_arr(self, disp_arr):
         """Setter for negative binomial dispersion parameter."""
-        self.gamma = gamma
+        self.disp_arr = disp_arr
     

@@ -11,8 +11,8 @@ The parent class is implemented in `data.py` as `Data`. It has two child classes
 | `p` | positive `int`       | Number of fixed effects (will _always_ include an intercept).  | Computed. |
 | `q` | positive `int`       | Number of random effects. | Computed. | 
 | `outcome` | `str` | Data distribution (one of `splash`, `neg_bin`, `poi`, or `multinom`). | Configuration file. | 
-| `fx_slopes` | non-negative `int` | Number of fixed slopes. | Configuration file. |
-| `rd_slopes` | non-negative `int` | Number of random slopes. | Configuration file. |
+| `fx_slopes` | non-negative `int` | Number of fixed slopes. | Configuration file (either explicitly or through `x_arr` types). |
+| `rd_slopes` | non-negative `int` | Number of random slopes. | Configuration file (either explicitly or through `z_arr` types). |
 
 
 ## Simulated Data (`simul_data.py`)
@@ -29,8 +29,10 @@ Regardless of child class, simulated datasets have the following attributes:
 | `tau_sqr` | `list` of non-negative `float` | Random effects variance components. The length of the list should be equal to $q$ and therefore also equal to `rd_slopes`. | Configuration file. | $$\boldsymbol{\tau}^2$$ | 
 | `fx_effs_mu` | `float` | Mean for fixed effects coefficients (`fx_effs_arr`). | Configuration file. | $$\alpha_\mu$$ |
 | `fx_effs_sigma` | positive `float` | Standard deviation for fixed effects coefficients (`fx_effs_arr`). | Configuration file. | $$\alpha_\sigma$$ |
+| `x_types` | `list` of `str` | The type of covariate associated with the fixed slopes. Length of list much equal `fx_slopes`. | Configuration file. | — |
 | `x_mu` | `float` | Mean for fixed effects covariates (`x_arr`). | Configuration file. | $$x_{\mu}$$ |
 | `x_sigma` | positive `float` | Standard deviation for fixed effects covariates (`x_arr`). | Configuration file. | $$x_\sigma$$ |
+| `z_types` | `list` of `str` | The type of covariate associated with the random slopes. Length of list much equal `rd_slopes`. | Configuration file. | — |
 | `z_mu` | `float` | Mean for random effects covariates (`z_arr`). | Configuration file. | $$z_\mu$$ |
 | `z_sigma` | positive `float` | Standard deviation for random effects covariates (`z_arr`). | Configuration file. | $$z_\sigma$$ |
 | `x_arr`   | `jax.numpy.array` | Fixed effects covariate array. Because the covariate data is sample-specific, the array will have dimensions (`n_samps`, $p$) for a model with $p$ fixed effects. The first column will be all ones to account for the intercept. | Sampled. | $$\mathbf{X}$$ |
@@ -45,6 +47,8 @@ Regardless of child class, simulated datasets have the following attributes:
 | `var_arr` | `jax.numpy.array` | Array of variances for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | v(\boldsymbol{\mu}) |
 
 The actual count tables are stored as three lists to account for sparsity. These lists (`targ_idx`, `samp_idx`, and `counts`) record the indices and values of non-zero cells within the count tables. The full table can be constructed with the `simul_data.Data` method `construct_y()`; however, its use is discouraged for very high-dimensional tables. 
+
+The covariate types (`x_types` and `z_types`) are lists specifying the structure of the covariates. The entries in these lists can be one of `cont` or `batch_{INT}`, where `cont` indicates a continuous covariate, and `batch_{INT}` indicates a batch effect with `INT` total levels. The values of `x_arr` and `z_arr` will be drawn accordingly.
 
 Optionally, offset terms can be added to the linear predictor to account for uneven column sums across samples by including `col_sums` in the configuration file. In this case, the following attributes will also be set.
 
@@ -76,13 +80,13 @@ This class samples data according to a negative binomial generalized linear mixe
 
 | Name      | Type         | Description     | Source | Notation |
 | :---      |    :---     | :---     | :--- | :--- |
-| `disp_mu` | positive `float` | Mean for scale/dispersion parameter(s). | Configuration file. | $$\gamma_\mu$$ |
+| `disp_mu` | positive `float` | Mean for dispersion parameter(s). | Configuration file. | $$\gamma_\mu$$ |
 | `disp_sigma` | non-negative `float` | Standard deviation for scale/dispersion parameter(s). | Configuration file. | $$\gamma_\sigma$$ |
-| `gamma` | `jax.numpy.array` | Array of scale/dispersion parameters. This is permitted to be target-specific if `disp_sigma` is set to be non-zero. The array will have dimensions (`n_targs`,). | Sampled. | $$\boldsymbol{\gamma}$$ |
+| `disp_arr` | `jax.numpy.array` | Array of dispersion parameters. This is permitted to be target-specific if `disp_sigma` is set to be non-zero. The array will have dimensions (`n_targs`,). | Sampled. | $$\boldsymbol{\gamma}$$ |
 | `probs` | `jax.numpy.array` | Success probability for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | $$\boldsymbol{\pi}$$ |
-| `succs` | `jax.numpy.array` | Number of successes for each negative binomial draw. This is equal to `gamma`, so the array will have dimensions (`n_targs`,). | Computed. | $$\mathbf{s}$$ |
+| `succs` | `jax.numpy.array` | Number of successes for each negative binomial draw. This is equal to `disp_arr`, so the array will have dimensions (`n_targs`,). | Computed. | $$\mathbf{s}$$ |
 
-The link function for a negative binomial GLMM is $\log(\cdot)$, so `mu_arr` is computed as the exponential function of `eta_arr` element-wise. The variance function is $v(\mu_{i,j}) = \mu_{i,j} + \frac{1}{\gamma_i} \mu_{i,j}^2$ where the dispersion paramter(s) ($\gamma_i$ and `gamma`) may or may not be target-specific. 
+The link function for a negative binomial GLMM is $\log(\cdot)$, so `mu_arr` is computed as the exponential function of `eta_arr` element-wise. The variance function is $v(\mu_{i,j}) = \mu_{i,j} + \frac{1}{\gamma_i} \mu_{i,j}^2$ where the dispersion paramter(s) ($\gamma_i$ and `disp_arr`) may or may not be target-specific. 
 
 Because we parametrize the distribution via the mean and variance, we have to work backwards to the probabilities and number of successes needed to sample the data. Letting $r_{i,j}$ be the number of successes (`succs`) and $\pi_{i,j}$ (`probs`) the success probability for observation $i,j$, we have the following relationship:
 
@@ -277,9 +281,9 @@ The negative binomial model is implemented in `neg_bin_model.py`. The following 
 
 | Name      | Type         | Description     | Source | 
 | :---        |    :---     | :---     | :--- |
-| `gamma` | `jax.numpy.array` | Negative binomial dispersion/scale parameter. The array dimensions are (`n_samps`,). If `global_disp` is `True`, then all values are identical. If `global_disp` is set to some particular value, then all values are fixed at the specific value. Otherwise, `gamma` is estimated for each target. | Computed (estimated or extracted from `data`). |
+| `disp_arr` | `jax.numpy.array` | Negative binomial dispersion/scale parameter. The array dimensions are (`n_samps`,). If `global_disp` is `True`, then all values are identical. If `global_disp` is set to some particular value, then all values are fixed at the specific value. Otherwise, `disp_arr` is estimated for each target. | Computed (estimated or extracted from `data`). |
 
-The fixed effects coefficients (`fx_effs_arr`) and the dispersion parameters (`gamma`) are estimated with `glmGamPoi`, which fits a separate Gamma-Poisson (i.e. negative binomial) GLM to each target's data. The mean for target $i$ in sample $j$ is:
+The fixed effects coefficients (`fx_effs_arr`) and the dispersion parameters (`disp_arr`) are estimated with `glmGamPoi`, which fits a separate Gamma-Poisson (i.e. negative binomial) GLM to each target's data. The mean for target $i$ in sample $j$ is:
 
 $$
 \begin{aligned}

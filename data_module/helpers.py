@@ -6,11 +6,11 @@ Functions to:
 
 import os
 import subprocess
+import random
 
 import jax.numpy  as jnp
 import pandas     as pd
 import numpy      as np
-
 
 def draw_gaussian_arr(row, col, mu = 0.0, sigma = 0.0):
     """
@@ -30,6 +30,22 @@ def draw_gaussian_arr(row, col, mu = 0.0, sigma = 0.0):
         scale = sigma,
         size  = (row, col)
     ))
+
+
+def draw_factor_arr(row, col, levels):
+    """
+    Draw an array of factor level indicators of the specified shape. Values of the returned array will be integers sampled from {0, 1, 2, ..., levels - 1}.
+    
+    ARGS:
+        row    - int; number of rows
+        col    - int; number of columns
+        levels - int; number of levels of factor
+    RAISES: None
+    RETURNS: jnp.array (row, col)
+    """
+    level_list = range(levels)
+    x_levels = jnp.asarray(random.choices(level_list, k = row * col))
+    return jnp.reshape(x_levels, (row, col))
 
 
 def satc_to_sparse_rep(

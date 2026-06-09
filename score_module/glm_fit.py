@@ -77,8 +77,8 @@ def glmgampoi_fit(model):
             overdispersion = disps
         ) 
     mu_arr = jnp.array(fit.rx2['Mu'])
-    fx_effs, disp, offsets = extract_estims(fit)
-    return fx_effs, disp, offsets, mu_arr
+    fx_effs, disps, offsets = extract_estims(fit)
+    return fx_effs, disps, offsets, mu_arr
 
 
 def extract_estims(fit):
@@ -92,14 +92,12 @@ def extract_estims(fit):
     base    = importr('base')
     ## extract fixed effects
     fx_effs = jnp.array(base.summary(fit).rx2('Beta'))
-    ## overdispersion is inverse of how we specify it (1 / gamma)
-    gammas  = 1 / jnp.array(base.summary(fit).rx2('overdispersions'))
-    gammas = jnp.expand_dims(gammas, 1)
-    ## size factors (offsets)
-    offsets = jnp.array(base.summary(fit).rx2('size_factors'))
-    return fx_effs, gammas, offsets
-
-
+    ## overdispersion is inverse of how we specify it (1 / disp)
+    disps  = 1 / jnp.array(base.summary(fit).rx2('overdispersions'))
+    disps = jnp.expand_dims(disps, 1)
+    ## size factors = exp(offsets), so take log
+    offsets = jnp.log(jnp.array(base.summary(fit).rx2('size_factors')))
+    return fx_effs, disps, offsets
 
 
 # def fit_model(

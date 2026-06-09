@@ -29,9 +29,8 @@ class Data(simul_data.Data):
         self.eta_arr = self.compute_eta()
         ## set means
         self.mu_arr = jnp.exp(self.eta_arr)
-        ## set variances
-        self.var_arr = self.mu_arr
-
+        ## need to set disp in case we need to 'use_true' in neg_bin_model
+        self.disp_arr = jnp.ones((self.n_targs, 1)) * np.inf
 
     def sample(self):
         """
