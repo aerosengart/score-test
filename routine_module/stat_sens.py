@@ -16,7 +16,8 @@ from tqdm        import tqdm
 from routine_module  import doc
 from score_module import score, helpers
 
-from data_module.dispatch import data_types, model_types
+from data_module.dispatch  import data_types
+from model_module.dispatch import model_types
 
 ## some sort of issue with matplotlib, latex, and the unicode minus sign???
 #plt.rcParams['text.usetex'] = True
@@ -42,10 +43,10 @@ def set_disp_jitter(model, jitter_vals):
 def test_stat_sensitivity(
         d_config,
         m_config,
-        param:       str,
         iter_id:     int,
-        reps:        int = 100,
+        param:       str,
         other_known: bool = True,
+        reps:        int = 100
     ):
     """
     Compute score test statistic for jittered values of the specified parameter. Optionally, hold the other model parameters fixed at their true values.
@@ -53,10 +54,10 @@ def test_stat_sensitivity(
     ARGS:
         d_config    - data configuration dictionary
         m_config    - model configuration dictionary
-        param       - str; parameter to jitter (one of 'fx_effs' or 'disp')
         iter_id     - positive int: iteration number for output name
-        reps        - int; number of replicates to run per iteration
+        param       - str; parameter to jitter (one of 'fx_effs' or 'disp')
         other_known - bool; fix other model parameters at true values
+        reps        - int; number of replicates to run per iteration
     RAISES:  None
     RETURNS: None
     """

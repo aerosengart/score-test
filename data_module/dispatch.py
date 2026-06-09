@@ -1,15 +1,11 @@
 """
 Dispatch dictionaries for construction of Data/Model.
 """
-from data_module import neg_bin_data, splash_data, neg_bin_model, multinom_data, poi_data
+from data_module import neg_bin_data, splash_data, multinom_data, poi_data
 
 data_types = {
-    'neg_bin':  neg_bin_data.Data,
-    'poi':      poi_data.Data,
+    'neg_bin': neg_bin_data.Data,
+    'poi':     poi_data.Data,
     'multinom': multinom_data.Data,
-    'splash':   splash_data.Data,
-}
-
-model_types = {
-    'neg_bin': neg_bin_model.Model,
+    'splash':  splash_data.Data,
 }

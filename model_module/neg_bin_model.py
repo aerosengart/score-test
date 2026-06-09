@@ -3,8 +3,8 @@
 import jax.numpy       as jnp
 import scipy.sparse    as sps
 
-from data_module  import model
-from score_module import glm_fit
+from model_module import model
+from model_module import glmgampoi
 
 class Model(model.Model):
     def __init__(self, config, data):
@@ -34,7 +34,7 @@ class Model(model.Model):
             mu_arr   = self.data.mu_arr
             offsets  = self.data.offsets
         else:
-            fx_effs, disp_arr, offsets, mu_arr = glm_fit.glmgampoi_fit(model = self)
+            fx_effs, disp_arr, offsets, mu_arr = glmgampoi.fit(model = self)
         self.set_fx_effs_arr(fx_effs)
         self.set_disp_arr(disp_arr)
         self.set_offsets(offsets)

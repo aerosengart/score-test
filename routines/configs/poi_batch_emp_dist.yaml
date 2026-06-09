@@ -1,4 +1,0 @@
-d_config: '/home/arosenga/score-test/data/configs/d_poi_batch.yaml'
-m_config: '/home/arosenga/score-test/data/configs/m_simul_poi.yaml'
-routine: 'score_var_comp'
-reps: 100

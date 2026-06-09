@@ -1,14 +1,14 @@
 """
 Dispatch dictionaries for running modules.
 """
-from routine_module import emp_dists, error_comps, power_comps, test_stat_comps, test_stat_sens
+from routine_module import emp_dists, error_comps, power_comps, stat_comps, stat_sens
 import numpy as np
 
 routine_types = {
     'score_var_comp':    emp_dists.score_var_comp_emp_dist,
-    'one_two_sided':     test_stat_comps.one_two_sided_comparison,
-    'fx_effs_sens':      test_stat_sens.test_stat_sensitivity,
-    'disp_sens':         test_stat_sens.test_stat_sensitivity,
+    'one_two_sided':     stat_comps.one_two_sided_comparison,
+    'fx_effs_sens':      stat_sens.test_stat_sensitivity,
+    'disp_sens':         stat_sens.test_stat_sensitivity,
     'power_by_var_comp': power_comps.power_by_var_comp,
     'power_by_n_samps':  power_comps.power_by_n_samps,
     'power_by_n_targs':  power_comps.power_by_n_targs,
@@ -17,9 +17,9 @@ routine_types = {
 plot_types = {
     'score_var_comp':    emp_dists.score_hist,
     'score_var_comp_by_disp': emp_dists.score_var_comp_by_disp_emp_dist,
-    'one_two_sided':     test_stat_comps.one_two_sided_qq,
-    'fx_effs_sens':      test_stat_sens.fx_effs_jitter,
-    'power_by_var_comp': power_comps.plot_power_by_tau_sqr,
+    'one_two_sided':     stat_comps.one_two_sided_qq,
+    'fx_effs_sens':      stat_sens.fx_effs_jitter,
+    'power_by_var_comp': power_comps.plot_power_by_var_comp,
     'power_by_n_samps':  power_comps.plot_power_by_n_samps,
     'power_by_n_targs':  power_comps.plot_power_by_n_targs,
 }

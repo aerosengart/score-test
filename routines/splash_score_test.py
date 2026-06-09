@@ -27,7 +27,9 @@ import jax.numpy as jnp
 
 sys.path.append('/home/arosenga/score-test')
 from score_module import score, info, helpers
-from data_module  import dispatch
+
+from data_module.dispatch  import data_types
+from model_module.dispatch import model_types
 
 def main():
     ## create an argument parser and add options
@@ -58,8 +60,8 @@ def main():
         m_dict = yaml.safe_load(file)
 
     ## instantiate data and model
-    data  = dispatch.data_types[d_dict['outcome']](d_dict, args.anchor)
-    model = dispatch.model_types[m_dict['outcome']](m_dict, data)
+    data  = data_types[d_dict['outcome']](d_dict, args.anchor)
+    model = model_types[m_dict['outcome']](m_dict, data)
 
     ## compute all of the pieces for the score test so that we can write to file
     score_val, scale_val = score.compute_score_var_comp(

@@ -27,20 +27,12 @@ def main():
                         help = 'Name of routine to run.', 
                         type = str, 
                         dest = 'routine')
-    ## these are not used, but we need to allow them to be passed so that there is no error thrown and we can re-use same configuration file
-    parser.add_argument('--reps',
-                        help    = 'Number of replicates.',
-                        type    = int,
-                        dest    = 'reps',
-                        default = 100)
-    parser.add_argument('--flag',
-                        help    = 'Optional boolean flag specific to routine.',
-                        type    = int,
-                        dest    = 'flag')
-    parser.add_argument('--iter_id',
-                        help    = 'Iteration ID for logging.',
-                        type    = int,
-                        dest    = 'iter_id')
+    ## this is not used, but we need to allow it to be passed so that there is no error thrown and we can re-use same configuration file
+    parser.add_argument('--r_args',
+                        help    = 'Routine-specific arguments',
+                        type    = list,
+                        dest    = 'r_args')
+
     ## parse the arguments and config file
     args = parser.parse_args()
 

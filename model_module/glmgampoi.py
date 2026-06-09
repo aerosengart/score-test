@@ -11,7 +11,7 @@ from rpy2.robjects.packages import importr
 from rpy2.robjects          import pandas2ri
 
 
-def glmgampoi_fit(model):
+def fit(model):
     """
     Wrapper for glmGamPoi fit in R. Fits separate Gamma-Poisson GLMs to each target's data. Models are constructed under H0 (no random effects).
 
@@ -98,6 +98,13 @@ def extract_estims(fit):
     ## size factors = exp(offsets), so take log
     offsets = jnp.log(jnp.array(base.summary(fit).rx2('size_factors')))
     return fx_effs, disps, offsets
+
+
+
+
+
+
+
 
 
 # def fit_model(

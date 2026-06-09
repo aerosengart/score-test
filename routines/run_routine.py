@@ -27,19 +27,13 @@ def main():
                         help = 'Name of routine to run.', 
                         type = str, 
                         dest = 'routine')
-    parser.add_argument('--reps',
-                        help    = 'Number of replicates.',
-                        type    = int,
-                        dest    = 'reps',
-                        default = 100)
-    parser.add_argument('--flag',
-                        help    = 'Optional boolean flag specific to routine.',
-                        type    = int,
-                        dest    = 'flag')
     parser.add_argument('--iter_id',
                         help    = 'Iteration ID for logging.',
                         type    = int,
                         dest    = 'iter_id')
+    parser.add_argument('--r_args',
+                        help    = 'Routine-specific arguments',
+                        dest    = 'r_args')
 
     ## parse the arguments and config file
     args = parser.parse_args()
@@ -51,22 +45,12 @@ def main():
         m_dict = yaml.safe_load(file)
 
     ## run routine (one iteration with ID equal to iter_id in arguments)
-    if args.flag is not None:
-        ## if we need one more argument for the routine
-        dispatch.routine_types[args.routine](
-            d_dict, 
-            m_dict, 
-            args.iter_id,
-            args.reps,
-            bool(args.flag)
-        )
-    else:
-        dispatch.routine_types[args.routine](
-            d_config = d_dict, 
-            m_config = m_dict, 
-            iter_id  = args.iter_id,
-            reps     = args.reps,
-        )
+    dispatch.routine_types[args.routine](
+        d_config = d_dict, 
+        m_config = m_dict, 
+        iter_id  = args.iter_id,
+        **args.r_args
+    )
 
 
 if __name__ == "__main__":

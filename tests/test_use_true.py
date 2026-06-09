@@ -12,8 +12,8 @@ def test_nb_simul(simul_data, nb_model):
     assert model.rd_effs_arr.shape == (n_targs, 1)
     ## data values
     assert jnp.array_equal(model.rd_effs_arr, jnp.zeros((n_targs, 1)))
-    assert jnp.array_equal(model.tau_sqr, jnp.zeros((data.q,)))
-    assert jnp.array_equal(model.gamma, data.gamma)
+    assert jnp.array_equal(model.var_comp, jnp.zeros((data.q,)))
+    assert jnp.array_equal(model.disp_arr, data.disp_arr)
     ## check offsets
     assert jnp.array_equal(model.offsets, data.offsets)
     assert jnp.array_equal(model.mu_arr, data.mu_arr)
