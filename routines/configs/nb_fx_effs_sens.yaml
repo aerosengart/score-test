@@ -4,4 +4,4 @@ routine: 'fx_effs_sens'
 r_args:
   param: 'fx_effs'
   other_known: True
-  reps: 10
+  reps: 100

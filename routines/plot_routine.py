@@ -30,7 +30,6 @@ def main():
     ## this is not used, but we need to allow it to be passed so that there is no error thrown and we can re-use same configuration file
     parser.add_argument('--r_args',
                         help    = 'Routine-specific arguments',
-                        type    = list,
                         dest    = 'r_args')
 
     ## parse the arguments and config file
@@ -43,7 +42,7 @@ def main():
         m_dict = yaml.safe_load(file)
 
     ## plot routine
-    dispatch.plot_types[args.routine](d_dict, m_dict)
+    dispatch.plot_types[args.routine](d_dict, m_dict, **args.r_args)
 
 if __name__ == "__main__":
     main()

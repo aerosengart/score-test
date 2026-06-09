@@ -35,9 +35,9 @@ def set_fx_effs_jitter(model, jitter_vals):
 
 def set_disp_jitter(model, jitter_vals):
     ## jitter the dispersion
-    disp_arr = model.data.gamma + jitter_vals
+    disp_arr = model.data.disp_arr + jitter_vals
     ## overwrite model MLE with jittered array
-    model.set_disp(disp_arr)
+    model.set_disp_arr(disp_arr)
     model.update_params()
     
 def test_stat_sensitivity(
@@ -130,11 +130,19 @@ def test_stat_sensitivity(
 ## Plotting                                                                   ##
 ##----------------------------------------------------------------------------##
 
-def gamma_jitter(d_config, m_config):
-    qq_jitter_grid(d_config, m_config, jitter_vals = [-0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0], routine = 'test_stat_gamma_sens_fx_effs_known')    
+def gamma_jitter(d_config, m_config, param, reps, other_known):
+    if other_known:
+        routine = f'test_stat_{param}_sens_others_known'
+    else:
+        routine = f'test_stat_{param}_sens'
+    qq_jitter_grid(d_config, m_config, jitter_vals = [-0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0], routine = routine)    
 
-def fx_effs_jitter(d_config, m_config):
-    qq_jitter_grid(d_config, m_config, jitter_vals = [-0.1, -0.05, -0.025, -0.01, 0.0, 0.01, 0.025, 0.05, 0.1], routine = 'test_stat_fx_effs_sens_disp_known')    
+def fx_effs_jitter(d_config, m_config, param, reps, other_known):
+    if other_known:
+        routine = f'test_stat_{param}_sens_others_known'
+    else:
+        routine = f'test_stat_{param}_sens'
+    qq_jitter_grid(d_config, m_config, jitter_vals = [-0.1, -0.05, -0.025, -0.01, 0.0, 0.01, 0.025, 0.05, 0.1], routine = routine)    
 
 
 def qq_jitter_grid(d_config, m_config, jitter_vals, routine):

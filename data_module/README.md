@@ -26,7 +26,7 @@ Regardless of child class, simulated datasets have the following attributes:
 | `n_targs` | positive `int` | Number of targets (rows). | Configuration file. | $$N_t$$ |
 | `incl_offsets` | `bool` | Whether to draw column sums and include offsets in computation of linear predictor, `eta_arr`. | Configuration file | — |
 | `p_star` | positive `int` | Total number of fixed effects when accounting for the fact that they are target-specific. `p_star` should equal $p$ multiplied by `n_targs`. | Computed. | $$p^*$$ |
-| `tau_sqr` | `list` of non-negative `float` | Random effects variance components. The length of the list should be equal to $q$ and therefore also equal to `rd_slopes`. | Configuration file. | $$\boldsymbol{\tau}^2$$ | 
+| `var_comp` | `list` of non-negative `float` | Random effects variance components. The length of the list should be equal to $q$ and therefore also equal to `rd_slopes`. | Configuration file. | $$\boldsymbol{\tau}^2$$ | 
 | `fx_effs_mu` | `float` | Mean for fixed effects coefficients (`fx_effs_arr`). | Configuration file. | $$\alpha_\mu$$ |
 | `fx_effs_sigma` | positive `float` | Standard deviation for fixed effects coefficients (`fx_effs_arr`). | Configuration file. | $$\alpha_\sigma$$ |
 | `x_types` | `list` of `str` | The type of covariate associated with the fixed slopes. Length of list much equal `fx_slopes`. | Configuration file. | — |
@@ -44,7 +44,6 @@ Regardless of child class, simulated datasets have the following attributes:
 | `counts` | `list` of positive `int` | Counts in non-zero array cells. Length will match that of `targ_idx` and `samp_idx`. | Computed. | — |
 | `eta_arr` | `jax.numpy.array` | Array of linear predictors for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | $$\boldsymbol{\eta}$$ |
 | `mu_arr` | `jax.numpy.array` | Array of means for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | $$\boldsymbol{\mu}$$ |
-| `var_arr` | `jax.numpy.array` | Array of variances for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | v(\boldsymbol{\mu}) |
 
 The actual count tables are stored as three lists to account for sparsity. These lists (`targ_idx`, `samp_idx`, and `counts`) record the indices and values of non-zero cells within the count tables. The full table can be constructed with the `simul_data.Data` method `construct_y()`; however, its use is discouraged for very high-dimensional tables. 
 
@@ -85,6 +84,7 @@ This class samples data according to a negative binomial generalized linear mixe
 | `disp_arr` | `jax.numpy.array` | Array of dispersion parameters. This is permitted to be target-specific if `disp_sigma` is set to be non-zero. The array will have dimensions (`n_targs`,). | Sampled. | $$\boldsymbol{\gamma}$$ |
 | `probs` | `jax.numpy.array` | Success probability for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | $$\boldsymbol{\pi}$$ |
 | `succs` | `jax.numpy.array` | Number of successes for each negative binomial draw. This is equal to `disp_arr`, so the array will have dimensions (`n_targs`,). | Computed. | $$\mathbf{s}$$ |
+| `var_arr` | `jax.numpy.array` | Array of variances for each observation. The array will have dimensions (`n_targs`, `n_samps`). | Computed. | v(\boldsymbol{\mu}) |
 
 The link function for a negative binomial GLMM is $\log(\cdot)$, so `mu_arr` is computed as the exponential function of `eta_arr` element-wise. The variance function is $v(\mu_{i,j}) = \mu_{i,j} + \frac{1}{\gamma_i} \mu_{i,j}^2$ where the dispersion paramter(s) ($\gamma_i$ and `disp_arr`) may or may not be target-specific. 
 
@@ -117,7 +117,7 @@ z:
 disp:
   mu: 1.0
   sigma: 0.0
-tau_sqr: [0.0]
+var_comp: [0.0]
 ```
 
 That is, we sample i.i.d. negative binomial observations with the linear predictors given by:
@@ -149,7 +149,7 @@ x:
 z: 
   mu: 0.0
   sigma: 1.0
-tau_sqr: [0.0]
+var_comp: [0.0]
 ```
 
 
@@ -203,7 +203,7 @@ z:
 col_sums:
   low: 10
   high: 100
-tau_sqr: [0.0]
+var_comp: [0.0]
 ```
 
 ---
@@ -222,7 +222,7 @@ The real data child class is implemented in `splash_data.py`. Data are read in f
 | `rd_covars` | List of `str` | Names of covariates to use as random effects. Values must match columns in `metadata_file`. | Configuration file. | — |
 | `x_arr`   | `jax.numpy.array` | Fixed effects covariate array. Because the covariate data is sample-specific, the array will have dimensions (`n_samps`, $p$) for a model with $p$ fixed effects. The first column will be all ones to account for the intercept. | Loaded from file. | $$\mathbf{X}$$ |
 | `z_arr`   | `jax.numpy.array` | Random effects covariate array. Because the covariate data is sample-specific, the array will have dimensions (`n_samps`, $q$) for a model with $q$ random effects. | Loaded from file. | $$\mathbf{Z}$$ |
-| `tau_sqr` | `list` of non-negative `float` | Random effects variance components. The length of the list should be equal to $q$ and therefore also equal to `rd_slopes`. | Configuration file. | $$\boldsymbol{\tau}^2$$ |
+| `var_comp` | `list` of non-negative `float` | Random effects variance components. The length of the list should be equal to $q$ and therefore also equal to `rd_slopes`. | Configuration file. | $$\boldsymbol{\tau}^2$$ |
 | `n_samps` | positive `int` | Number of samples (columns). | Computed. | $$N_s$$ |
 | `n_targs` | positive `int` | Number of targets (rows). | Computed. | $$N_t$$ |
 | `targ_idx` | `list` of non-negative `int` | Row indices ($1$-indexed) of non-zero array counts. Length will match that of `samp_idx` and `counts`. | Computed. |  — |
@@ -267,8 +267,6 @@ There are a few extra functions used to help construct the `Data` and `Model` in
 ---
 
 # References
-
-Ahlmann-Eltze, C., & Huber, W. (04 2021). glmGamPoi: fitting Gamma-Poisson generalized linear models on single cell count data. Bioinformatics, 36(24), 5701–5702. doi:10.1093/bioinformatics/btaa1009
 
 Baharav, T. Z., Tse, D., & Salzman, J. (2024). OASIS: An interpretable, finite-sample valid alternative to Pearson’s \textitX$^\textrm2$ for scientific discovery. Proceedings of the National Academy of Sciences, 121(15), e2304671121. doi:10.1073/pnas.2304671121
 

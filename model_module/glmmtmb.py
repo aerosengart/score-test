@@ -9,13 +9,11 @@ import src.doc         as doc
 from rpy2.robjects.packages import importr
 from rpy2.robjects          import pandas2ri
 
-def fit_model(
+def fit(
         model, 
+        fx_effs_arr: None,
+        disp_arr:    None,
         null_model:  bool = True,
-        fx_effs_arr: jnp.array = None,
-        rd_effs_arr: jnp.array = None,
-        gamma:       jnp.array = None,
-        tau_sqr:     jnp.array = None
     ):
     """
     Fit a generalized linear (mixed) model using glmmTMB.
@@ -38,19 +36,19 @@ def fit_model(
         model      = model, 
         null_model = null_model
     )
-    formula, fx_terms = model_formula_glmmtmb(
-        model   = model, 
-        fx_cols = fx_cols, 
+    formula = construct_model_formula(
+        model   = model,
+        fx_cols = fx_cols,
         rd_cols = rd_cols
     )
     mapping, param_values = set_map_params(
         model       = model,
         fx_effs_arr = fx_effs_arr,
-        gamma       = gamma,
+        disp_arr    = disp_arr
     )
 
     ## fit model and extract parameters
-    fit = glmmtmb_fit(
+    fit = fit_model(
         model    = model,
         formula  = formula,
         data_arr = data_arr,
@@ -63,53 +61,10 @@ def fit_model(
         null_model = null_model
     )
     return params['fx_effs'], params['rd_effs'], params['disp'], \
-           params['tau_sqr'], fit
-    
-def extract_coefs(model, fit, null_model):
-    """
-    Wrapper for extracting coefficients from glmmTMB fit into structure matching that in Model class implementation.
+           params['var_comp'], fit
 
-    ARGS: 
-        model      - instance of Model class
-        fit        - glmmTMB model fit
-        null_model - bool; whether to fit the null model or not
-    RAISES:
-        None
-    RETURNS:
-        dict; dictionary containing
-            fx_effs - jnp.array; fixed effects estimates (n, k, p)
-            rd_effs - jnp.array; random effects modes (n, k, q)
-            disp    - jnp.array; auxiliary variable estimate (1,) 
-            tau_sqr - jnp.array; random effects variance components estimate (q,)
-    """
-    ## importing for rpy2
-    glmmTMB = importr('glmmTMB')
-    base    = importr('base')
-    unlist  = ro.r('unlist')
-    ## fixed effects
-    fx_effs_estims = extract_fx(model, fit)
-    ## negative binomial scale or quasi poisson dispersion
-    with (ro.default_converter + pandas2ri.converter).context():
-        disp = ro.conversion.get_conversion().rpy2py(
-            glmmTMB.sigma_glmmTMB(fit)
-        )[0]
-    ## random effects conditional modes
-    if not null_model:
-        rd_effs_estims = extract_rd(model, fit)
-        var_corr = unlist(base.summary(fit).rx('varcor'))
-        with (ro.default_converter + pandas2ri.converter).context():
-            rd_sd = ro.conversion.get_conversion().rpy2py(
-                var_corr
-            )
-    else:
-        rd_effs_estims = jnp.zeros((model.data.n, model.data.k, model.data.q))
-        rd_sd = jnp.empty((model.data.q))
-    return {'fx_effs': fx_effs_estims, 
-            'rd_effs': rd_effs_estims, 
-            'disp': jnp.array(disp), 
-            'tau_sqr': jnp.array(rd_sd**2)}
 
-def glmmtmb_fit(
+def fit_model(
         model, 
         formula: str, 
         data_arr: jnp.array,
@@ -190,55 +145,6 @@ def glmmtmb_fit(
     return fit
 
 
-def model_formula_glmmtmb(model, fx_cols = None, rd_cols = None):
-    """
-    Construct string specifying glmm model formula for glmmTMB.
-
-    ARGS: 
-        model   - instance of Model class
-        fx_cols - list; fixed effects columns
-        rd_cols - list; random effects columns
-    RAISES: 
-        Exception - need to at least have one fixed or random effect
-    RETURNS: 
-        str; glmm formula
-    """
-    n = model.data.n
-    k = model.data.k
-
-    ## base model string
-    model_str = 'y ~ 1 + '
-    ## record terms for extraction
-    fx_terms = ['(Intercept)']
-    ## dummies for cluster membership (skip first cluster so not overdetermined)
-    dummy_vars = [f'clust_{x}' for x in range(2, k + 1)]
-
-    ## intercepts
-    if model.data.fx_by_k_int:
-        model_str += f'{' + '.join(dummy_vars)} + '
-        fx_terms += dummy_vars
-    if not model.data.fx_int and not model.data.fx_by_k_int:
-        model_str = f'y ~ -1 + '
-        fx_terms = []
-
-    for col in fx_cols:
-        if 'by_k' in col:
-            clust_col = [f'{col}:{x}' for x in dummy_vars]
-            model_str += f'{' + '.join(clust_col)} + '
-            fx_terms += clust_col
-        model_str += f'{col} + '
-        fx_terms += [col]
-    if rd_cols is not None:
-        if model.data.rd_int:
-            model_str += f'diag(1 | clust) + '
-        for col in rd_cols:
-            model_str += f'diag(0 + {col} | clust) + '
-
-    ## cut off extra +
-    model_str = model_str[:-3]
-    return model_str, fx_terms
-
-
 def construct_data_frame(model, null_model = True):
     """
     Construct data frame for glmm fitting. Extracts response, fixed effects covariates, and random effects covariates from model object and concatenates into a single Pandas array. Appends a column to specify cluster membership as well as dummy variables for the clusters if the data have cluster-specific fixed effects.
@@ -246,28 +152,24 @@ def construct_data_frame(model, null_model = True):
     ARGS: 
         model - instance of Model class
         null_model - bool; whether to fit the null model or not
-    RETURNS: 
-        pandas array; model data frame
-        list; fixed effects names
-        list; random effects names
     RAISES: None
+    RETURNS: 
+        pandas.array; model data frame
+        two lists; fixed and random slopes column names
     """
     if model.data.outcome == 'splash':
-        raise Exception('Do not run LRT for real data! Necessary memory not available.')
+        raise Exception('Do not run with real data! Necessary memory not available.')
     
     ## get data
     x_design  = model.data.x_arr
     z_design  = model.data.z_arr
     resp      = model.data.construct_y().todense()
-    n         = model.data.n_targs
-    k         = model.data.n_samps
+    n         = model.data.n_samps
+    k         = model.data.n_targs
     total_obs = n * k
     
     ## remove the columns of ones for intercepts (not needed for glmmTMB)
-    if model.data.fx_int or model.data.fx_by_k_int:
-        x_design = x_design[:, :, 1:]
-    if model.data.rd_int:
-        z_design = z_design[:, :, 1:]
+    x_design = x_design[:, 1:]
 
     ## reshape to n x k rows
     resp_np = jnp.reshape(
@@ -287,61 +189,90 @@ def construct_data_frame(model, null_model = True):
     )
 
     ## add cluster indicator
-    clusters = list(range(1, k + 1))
-    cluster_idx = np.repeat(clusters, n)
-    cluster_idx_np = jnp.reshape(
-        a     = cluster_idx, 
+    targets = list(range(1, k + 1))
+    targ_idx = np.repeat(targets, n)
+    targ_idx_np = jnp.reshape(
+        a     = targ_idx, 
         shape = (total_obs, 1), 
         order = 'F'
     )
 
     ## components in model formula
-    fx_slopes      = list(range(model.data.fx_slope))
-    fx_by_k_slopes = list(range(model.data.fx_by_k_slope))
-    rd_slopes      = list(range(model.data.rd_slope))
-    fx_slopes      = [f'fx_{str(x)}'   for x in fx_slopes]
-    fx_by_k_slopes = [f'by_k_{str(x)}' for x in fx_by_k_slopes]
-    rd_slopes      = [f'rd_{str(x)}'   for x in rd_slopes]
-    fx_cols = fx_slopes + fx_by_k_slopes
-    rd_cols = rd_slopes
+    fx_slopes = [f'fx_{str(x)}' for x in list(range(model.data.fx_slopes)) ]
+    rd_slopes = [f'rd_{str(x)}' for x in list(range(model.data.rd_slopes))]
     
     ## combine into single data frame
     if null_model:
-        rd_cols = None
-        if model.comb:
-            ## no fixed slopes --- we test these in the combined test
-            fx_cols = []
-            data_arr = pd.DataFrame(
-                jnp.concatenate([resp_np, cluster_idx_np], axis = 1)
-            )
-            data_arr.columns = ['y'] + ['clust']
-        else:
-            data_arr = pd.DataFrame(
-                jnp.concatenate([resp_np, x_np, cluster_idx_np], axis = 1)
-            )
-            data_arr.columns = ['y'] + fx_cols + ['clust']
-    else:
+        ## model under H0 -> no random effects
         data_arr = pd.DataFrame(
-            jnp.concatenate([resp_np, x_np, z_np, cluster_idx_np], axis = 1)
+            jnp.concatenate([resp_np, x_np, targ_idx_np], axis = 1)
         )
-        data_arr.columns = ['y'] + fx_cols + rd_cols + ['clust']
-    data_arr['clust'] = data_arr['clust'].astype('int')
-    ## create dummy variables
+        data_arr.columns = ['y'] + fx_slopes + ['targ']
+    else:
+        ## model under H1 -> random effects included
+        data_arr = pd.DataFrame(
+            jnp.concatenate([resp_np, x_np, z_np, targ_idx_np], axis = 1)
+        )
+        data_arr.columns = ['y'] + fx_slopes + rd_slopes + ['targ']
+    data_arr['targ'] = data_arr['targ'].astype('int')
+    ## create dummy variables for targets
     data_arr_dummy = pd.get_dummies(
         data_arr, 
-        columns    = ['clust'],
+        columns    = ['targ'],
         drop_first = True, 
         dtype      = 'int'
     )
-    data_arr = pd.concat([data_arr_dummy, pd.DataFrame(cluster_idx_np)], axis = 1)
-    data_arr.columns = [str(col) for col in data_arr_dummy.columns] + ['clust']
-    return data_arr, fx_cols, rd_cols
+    data_arr = pd.concat([data_arr_dummy, pd.DataFrame(targ_idx_np)], axis = 1)
+    data_arr.columns = [str(col) for col in data_arr_dummy.columns] + ['targ']
+    return data_arr, fx_slopes, rd_slopes
+
+
+
+def construct_model_formula(model, fx_cols, rd_cols):
+    """
+    Construct string specifying glmm model formula for glmmTMB.
+
+    ARGS: 
+        model   - instance of Model class
+        fx_cols - list; fixed effects columns
+        rd_cols - list; random effects columns
+    RAISES: 
+        Exception - need to at least have one fixed or random effect
+    RETURNS: 
+        str; glmm formula
+    """
+    ## dimensions
+    n = model.data.n_samps
+    k = model.data.n_targs
+
+    ## base model string
+    model_str = 'y ~ 1 + '
+    ## dummies for target membership (skip first target so not overdetermined)
+    dummy_vars = [f'targ_{x}' for x in range(2, k + 1)]
+
+    ## fixed intercepts
+    model_str += f'{' + '.join(dummy_vars)} + '
+
+    ## slopes
+    for col in fx_cols:
+        ## first target
+        model_str += f'{col} + '
+        ## all other targets
+        model_str += f'{' + '.join([f'{col}:{x}' for x in dummy_vars])} + '
+    if rd_cols is not None:
+        for col in rd_cols:
+            model_str += f'diag(0 + {col} | targ) + '
+
+    ## cut off extra +
+    model_str = model_str[:-3]
+    return model_str
+
 
 
 def set_map_params(
         model,
         fx_effs_arr: jnp.array,
-        gamma:       jnp.array,
+        disp_arr:    jnp.array,
     ):
     """
     Set mapping and starting values for fixing parameter values in glmmTMB.
@@ -355,54 +286,50 @@ def set_map_params(
     theta    - log std dev for random effects (tau_sqr values)
 
     ARGS:
-        fx_effs_arr - jnp.array; fixed effects values (n, k, p)
-        gamma       - jnp.array; negative binomial overdispersion (n, k, 1)
+        fx_effs_arr - jnp.array; fixed effects coefficient values (n_targs, p)
+        disp_arr    - jnp.array; dispersion parameter values (n_targs, 1)
     RAISES:
     RETURNS:
         mapping - dictionary of what parameters we should not estimate
         start   - dictionary of what values to hold those parameters at
     """
     ## fix nothing
-    if (fx_effs_arr is None) and (gamma is None):
+    if (fx_effs_arr is None) and (disp_arr is None):
         return None, None
     ## otherwise need to do some manipulations
     mapping = {}
     params  = {}
-
     fx_effs = []
+
+    ## do fixed effects first
     if fx_effs_arr is not None:
-        ## adjust for baseline group (first cluster)
+        ## adjust for baseline group (first target)
         fx_effs_adj = fx_effs_arr
-        if model.data.fx_int > 0:
-            fx_effs += [fx_effs_adj[0, 0, 0]]
-        if model.data.fx_by_k_int > 0:
-            fx_effs_baseline = jnp.transpose(jnp.tile(
-                fx_effs_arr[:, 0, 0], (model.data.k - 1, 1)
-            ))
-            fx_effs_adj = fx_effs_adj.at[:, 1:, 0].set(fx_effs_adj[:, 1:, 0] - fx_effs_baseline)
-            fx_effs += jnp.squeeze((jnp.reshape(
-                a     = fx_effs_adj[0, :, 0],
-                shape = (model.data.k),
-                order = 'C'
-            ))).tolist()
-        if model.data.fx_slope > 0:
-            ## add fixed slopes but need to check if null model includes them by looking at last dimension of passed array
-            for j in range(fx_effs_arr.shape[-1] - 1):
-                fx_effs += [fx_effs_adj[0, 0, j + 1]]
-                
-        # if model.data.fx_by_k_slope > 0:
-        #     fx_effs_baseline = jnp.transpose(jnp.tile(
-        #         fx_effs_arr[:, 0, 1:], (model.data.k - 1,)
-        #     ))
-        #     fx_effs_adj = fx_effs_adj.at[:, 1:, 1:].set(fx_effs_adj[:, 1:, 1:] - fx_effs_baseline)
+        ## tile baseline target values for all other targets
+        fx_effs_baseline = jnp.transpose(jnp.tile(
+            fx_effs_arr[0, :], (model.data.n_targs - 1, 1)
+        ))
+        ## subtract off baseline target value from other targets' values
+        fx_effs_adj = fx_effs_adj.at[1:, :].set(fx_effs_adj[1:, :] - fx_effs_baseline)
+        ## reshape and convert to list for use in R
+        fx_effs += jnp.squeeze((jnp.reshape(
+            a     = fx_effs_adj,
+            shape = (model.data.n_targs * fx_effs_arr.shape[-1],),
+            order = 'C'
+        ))).tolist()
+        ## in glmmTMB, fixed effects coefficients are called 'beta'
         mapping['beta'] = ro.FactorVector([ro.NA_Character] * len(fx_effs))
         params['beta']  = ro.FloatVector(fx_effs)
 
-    if gamma is not None:
+    ## do dispersion parameters
+    if disp_arr is not None:
+        ## cannot set map parameters if we do not have a global dispersion parameter
+        if model.global_disp != 'global':
+            raise NotImplementedError('Cannot fix a global dispersion parameter value for model with target-specific parameters.')
         ## ONLY WORKS FOR SHARED GAMMA PARAMETER (ACROSS ALL CLUSTERS/OBS)
+        ## in glmmTMB, dispersion is called 'betadisp' and is on log scale
         mapping['betadisp'] = ro.FactorVector([ro.NA_Character])
-        params['betadisp']  = ro.FloatVector([jnp.log(gamma[0, 0, 0])])
-
+        params['betadisp']  = ro.FloatVector([jnp.log(disp_arr[0, 0])])
     return ro.ListVector(mapping), ro.ListVector(params)
 
 
@@ -430,53 +357,42 @@ def extract_fx(model, fit) -> jnp.array:
         coef_df = ro.conversion.get_conversion().rpy2py(fx_coefs)
 
     ## initialize
-    fx_effs_estims = jnp.zeros((model.data.n, model.data.k, model.data.p))
-
+    fx_effs_estims = jnp.zeros((model.data.n_targs, model.data.p))
     ## accounting for intercept in indexing
-    if model.data.fx_int or model.data.fx_by_k_int:
-        fx_start = 1
-    else: 
-        fx_start = 0
+    fx_start = 1
 
     ## loop over all coefficient estimates
     for coef in coef_df.index:
         if coef == '(Intercept)':
             ## overall intercept
             grand_value = coef_df.loc[coef].iloc[0]
-            fx_effs_estims = fx_effs_estims.at[:, :, 0].set(
-                grand_value + fx_effs_estims[:, :, 0]
+            fx_effs_estims = fx_effs_estims.at[:, 0].set(
+                grand_value + fx_effs_estims[:, 0]
             )
-        elif coef.startswith('clust'):
-            ## cluster-specific intercept
-            clust_idx = int(re.sub(r'\D', '', coef)) - 1
-            clust_val = coef_df.loc[coef].iloc[0]
-            fx_effs_estims = fx_effs_estims.at[:, clust_idx, 0].set(
-                fx_effs_estims[:, clust_idx, 0] + clust_val
+        elif coef.startswith('targ'):
+            ## targ-specific intercept
+            targ_idx = int(re.sub(r'\D', '', coef)) - 1
+            targ_val = coef_df.loc[coef].iloc[0]
+            fx_effs_estims = fx_effs_estims.at[targ_idx, 0].set(
+                fx_effs_estims[targ_idx, 0] + targ_val
             )
         elif ':' in coef:
             ## cluster-specific fixed slope
             eff_clust = coef.split(':')
             ## add 1 to account for intercept in indexing
             eff_idx = int(re.sub(r'\D', '', eff_clust[0])) + fx_start
-            ## clusters are 1-indexed but python is 0-indexed
-            clust_idx = int(re.sub(r'\D', '', eff_clust[1])) - 1
-            clust_val = coef_df.loc[coef].iloc[0]
-            fx_effs_estims = fx_effs_estims.at[:, clust_idx, eff_idx].set(
-                fx_effs_estims[:, clust_idx, eff_idx] + clust_val
-            )
-        elif 'by_k' in coef:
-            ## baseline cluster value for cluster-specific slope
-            eff_idx = int(re.sub(r'\D', '', coef)) + fx_start
-            eff_val = coef_df.loc[coef].iloc[0]
-            fx_effs_estims = fx_effs_estims.at[:, :, eff_idx].set(
-                fx_effs_estims[:, :, eff_idx] + eff_val
+            ## targets are 1-indexed but python is 0-indexed
+            targ_idx = int(re.sub(r'\D', '', eff_clust[1])) - 1
+            targ_val = coef_df.loc[coef].iloc[0]
+            fx_effs_estims = fx_effs_estims.at[targ_idx, eff_idx].set(
+                fx_effs_estims[targ_idx, eff_idx] + targ_val
             )
         else:
-            ## overall fixed slope
+            ## baseline target value for target-specific slope
             eff_idx = int(re.sub(r'\D', '', coef)) + fx_start
-            val = coef_df.loc[coef].iloc[0]
-            fx_effs_estims = fx_effs_estims.at[:, :, eff_idx].set(
-                fx_effs_estims[:, :, eff_idx] + val
+            eff_val = coef_df.loc[coef].iloc[0]
+            fx_effs_estims = fx_effs_estims.at[:, eff_idx].set(
+                fx_effs_estims[:, eff_idx] + eff_val
             )
     return fx_effs_estims
 
@@ -490,7 +406,7 @@ def extract_rd(model, fit) -> jnp.array:
         model - instance of Model class
         fit   - an instance of model.summary (from R)
     RETURNS: 
-        jnp.array; random effect modes (n, k, q)
+        jnp.array; random effect modes (n_targs, q)
     RAISES: None
     """
     ## R imports
@@ -504,15 +420,58 @@ def extract_rd(model, fit) -> jnp.array:
         coef_df = ro.conversion.get_conversion().rpy2py(rd_effs_modes)
 
     ## initialize
-    rd_effs_estims = jnp.zeros((model.data.n, model.data.k, model.data.q))
+    rd_effs_vals = jnp.zeros((model.data.n_targs, model.data.q))
     col_names = coef_df.columns
 
     for eff_idx in range(len(col_names)):
         coef = coef_df.iloc[eff_idx]
-        #eff_idx = int(re.sub(r'\D', '', coef.name))
-        vals = jnp.tile(coef.values, (model.data.n, 1))
-        rd_effs_estims = rd_effs_estims.at[:, :, eff_idx].set(
-            rd_effs_estims[:, :, eff_idx] + vals
+        rd_effs_vals = rd_effs_vals.at[:, eff_idx].set(
+            rd_effs_vals[:, eff_idx] + coef.values
         )
     
-    return rd_effs_estims
+    return rd_effs_vals
+
+
+def extract_coefs(model, fit, null_model):
+    """
+    Wrapper for extracting coefficients from glmmTMB fit into structure matching that in Model class implementation.
+
+    ARGS: 
+        model      - instance of Model class
+        fit        - glmmTMB model fit
+        null_model - bool; whether to fit the null model or not
+    RAISES:
+        None
+    RETURNS:
+        dict; dictionary containing
+            fx_effs - jnp.array; fixed effects estimates (n, k, p)
+            rd_effs - jnp.array; random effects modes (n, k, q)
+            disp    - jnp.array; auxiliary variable estimate (1,) 
+            tau_sqr - jnp.array; random effects variance components estimate (q,)
+    """
+    ## importing for rpy2
+    glmmTMB = importr('glmmTMB')
+    base    = importr('base')
+    unlist  = ro.r('unlist')
+    ## fixed effects
+    fx_effs_estims = extract_fx(model, fit)
+    ## negative binomial scale or quasi poisson dispersion
+    with (ro.default_converter + pandas2ri.converter).context():
+        disp = ro.conversion.get_conversion().rpy2py(
+            glmmTMB.sigma_glmmTMB(fit)
+        )[0]
+    ## random effects conditional modes
+    if not null_model:
+        rd_effs_vals = extract_rd(model, fit)
+        var_corr = unlist(base.summary(fit).rx('varcor'))
+        with (ro.default_converter + pandas2ri.converter).context():
+            rd_sd = ro.conversion.get_conversion().rpy2py(
+                var_corr
+            )
+    else:
+        rd_effs_vals = jnp.zeros((model.data.n_targs, model.data.q))
+        rd_sd = jnp.empty((model.data.q))
+    return {'fx_effs': fx_effs_estims, 
+            'rd_effs': rd_effs_vals, 
+            'disp': jnp.array(disp), 
+            'var_comp': jnp.array(rd_sd**2)}

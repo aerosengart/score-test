@@ -12,16 +12,7 @@ from data_module import data, helpers
 
 class Data(data.Data):
     def __init__(self, config):
-        """Constructor for simul_data.Data class for simulated datasets. Sets all attributes of data.Data (parent class) using specification from config. Coefficients and covariates arrays are drawn as Gaussian using draw_covars(), draw_fx_effs(), and draw_rd_effs(). Sets debugging dictionary for routine tracking as well.
-        
-        Additionally sets the following attributes specific to simulated data:
-            fx_effs_mu    - float; fixed effects coefficients mean 
-            fx_effs_sigma - float; fixed effects coefficients standard deviation
-            x_mu          - float; fixed effects covariates mean
-            x_sigma       - float; fixed effects covariates standard deviation
-            z_mu          - float; random effects covariates mean
-            z_sigma       - float; random effects covariates standard deviation
-            var_comp       - jnp.array; non-negative floats (q,)
+        """Constructor for simul_data.Data class for simulated datasets. Sets all attributes of data.Data (parent class) using specification from config. 
 
         ARGS:
             config: 

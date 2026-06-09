@@ -1,0 +1,7 @@
+d_config: '/home/arosenga/score-test/data/configs/d_nb_batch.yaml'
+m_config: '/home/arosenga/score-test/data/configs/m_simul.yaml'
+routine: 'disp_sens'
+r_args:
+  param: 'disp'
+  other_known: True
+  reps: 100
