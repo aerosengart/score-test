@@ -5,14 +5,17 @@ Functions to:
 """
 
 import os
-import subprocess
-import random
 
 import jax.numpy  as jnp
 import pandas     as pd
 import numpy      as np
+import scipy.sparse   as sps
 
-def draw_gaussian_arr(row, col, mu = 0.0, sigma = 0.0):
+
+## ---------------------------------------------------------------------- ##
+## SAMPLERS                                                               ##
+## ---------------------------------------------------------------------- ##
+def draw_gaussian_arr(row, col, rng, mu = 0.0, sigma = 0.0):
     """
     Draw an array of i.i.d. Gaussian random variables with the provided dimensions, mean, and standard deviation.
     
@@ -21,10 +24,10 @@ def draw_gaussian_arr(row, col, mu = 0.0, sigma = 0.0):
         col   - int; number of columns
         mu    - float; mean
         sigma - float; standard deviation
+        rng   - numpy random number generator
     RAISES: None
     RETURNS: jnp.array (row, col)
     """
-    rng   = np.random.default_rng(None)
     return jnp.array(rng.normal(
         loc   = mu,
         scale = sigma,
@@ -32,7 +35,7 @@ def draw_gaussian_arr(row, col, mu = 0.0, sigma = 0.0):
     ))
 
 
-def draw_factor_arr(row, col, levels):
+def draw_factor_arr(row, col, levels, rng):
     """
     Draw an array of factor level indicators of the specified shape. Values of the returned array will be integers sampled from {0, 1, 2, ..., levels - 1}.
     
@@ -40,13 +43,77 @@ def draw_factor_arr(row, col, levels):
         row    - int; number of rows
         col    - int; number of columns
         levels - int; number of levels of factor
+        rng    - numpy random number generator
     RAISES: None
     RETURNS: jnp.array (row, col)
     """
     level_list = range(levels)
-    x_levels = jnp.asarray(random.choices(level_list, k = row * col))
+    x_levels = jnp.asarray(rng.choice(level_list, size = row * col))
     return jnp.reshape(x_levels, (row, col))
 
+
+def draw_time_arr(row, col, reg_int, rng):
+    """
+    Draw an array of covariates representing sampling/collection times. Values of the returned array will be floats in [0, 1]. The times are NOT ordered by column index.
+
+    ARGS:
+        row     - int; number of rows
+        col     - int; number of columns
+        reg_int - bool; whether "times" should be at regular intervals
+        rng     - numpy random number generator
+    RAISES:  None
+    RETURNS: jnp.array (row, col)
+    """
+    arr = np.empty((row, col))
+    for i in range(col):
+        if reg_int:
+            vals = [x / (row - 1) for x in list(range(row))]
+            vals = rng.choice(vals, size = len(vals), replace = False)
+            arr[:, i] = vals
+        else:
+            arr[:, i] = rng.uniform(0, 1, row)
+    return jnp.array(arr)
+
+
+## ---------------------------------------------------------------------- ##
+## COMPUTATIONS                                                           ##
+## ---------------------------------------------------------------------- ##
+def table_to_sparse_rep(counts):
+    """
+    Construct lists for CSC representation of count table.
+
+    ARGS:    counts - jnp.array; anchor count table 
+    RAISES:  None
+    RETURNS: three lists of integers; target indices, sample indices, and non-zero counts
+    """
+    ## get indices of non-zero elements in table
+    non_zero = np.nonzero(counts)
+    ## R is 1-indexed
+    targ_idx = [1 + x for x in non_zero[0]]
+    samp_idx = [1 + x for x in non_zero[1]]
+    counts  = counts[non_zero].tolist()
+    return targ_idx, samp_idx, counts
+
+def sparse_rep_to_table(row_idx, col_idx, counts):
+    """
+    Construct dense anchor count table from CSC sparse representation.
+
+    ARGS:    
+        row_idx - list of ints; row indices of non-zero counts
+        col_idx - list of ints; column indices of non-zero counts
+        counts  - list of ints; non-zero counts
+    RAISES:  None
+    RETURNS: jnp.array (n_row, n_col); dense count table
+    """
+    ## 1-indexed
+    n_row = max(row_idx)
+    n_col = max(col_idx)
+    coo_arr = sps.coo_array(
+        (np.array(counts), 
+        (np.array(row_idx) - 1, np.array(col_idx) - 1)), ## convert to 0-indexed
+        (n_row, n_col)
+    )
+    return coo_arr.tocsc().todense()
 
 def satc_to_sparse_rep(
         anchor:     str, 

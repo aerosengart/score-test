@@ -10,7 +10,7 @@ import numpy             as np
 from tqdm        import tqdm
 
 from routine_module  import doc
-from score_module import score, helpers
+from stat_module import score, helpers
 
 from data_module.dispatch  import data_types
 from model_module.dispatch import model_types
@@ -40,6 +40,9 @@ def score_var_comp_emp_dist(
     RAISES:  None
     RETURNS: None
     """
+    ## update seed for iteration
+    d_config['seed'] = int(d_config['seed']) + iter_id
+
     ## instantiate data
     data = data_types[d_config['outcome']](d_config)
     ## initialize
@@ -50,12 +53,13 @@ def score_var_comp_emp_dist(
 
     for i in tqdm(range(reps)):
         ## draw observations and build model
+        data.set_debug(iter = '', rep = str(i), routine = routine, seed = data.seed)
         data.resample()
-        data.set_debug(iter = '', rep = str(i), routine = routine)
         model = model_types[m_config['outcome']](m_config, data)
         ## update debugging dictionary
         if m_config['debug'] == 'full':
             doc.debug_sample(model = model)
+        doc.log_routine(model, routine)
         ## compute score
         gradient, _ = score.compute_score_var_comp(model, scale = False)
         scores_arr = scores_arr.at[:, i].set(gradient)
@@ -95,8 +99,8 @@ def score_var_comp_by_disp_emp_dist(
     ## copy model config
     m_config_alt = m_config
     for i in tqdm(range(reps)):
+        data.set_debug(iter = '', rep = str(i), routine = routine, seed = data.seed)
         data.resample()
-        data.set_debug(iter = '', rep = str(i), routine = routine)
         for j in range(len(disp_vals)):
             ## draw observations and build model
             m_config_alt['global_disp'] = data.disp_arr + disp_vals[j]
@@ -119,7 +123,7 @@ def score_var_comp_by_disp_emp_dist(
 ## Plotting                                                                   ##
 ##----------------------------------------------------------------------------##
 
-def score_hist(d_config, m_config):
+def score_hist(d_config, m_config, reps):
     """
     Plot empirical distribution of component(s) of score vector.
 

@@ -18,7 +18,7 @@ def fit(model):
     Adds an offset term (called a "size factor" in glmGamPoi implementation) that adjusts for uneven sequencing depth (i.e. differences in column sums). The size factors are computed as the column sums of the count table divided by exp() of the mean log column sum like so:
 
     ```
-        col_sums       = jnp.sum(model.data.construct_y().todense(), axis = 0)
+        col_sums       = jnp.sum(model.data.construct_y(), axis = 0)
         scale_col_sums = col_sums / jnp.exp(jnp.mean(jnp.log(col_sums)))    
     ```
 
@@ -66,14 +66,14 @@ def fit(model):
             design   = ro.Formula(formula), 
             col_data = col_df,
             # do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-            overdispersion_shrinkage = False,
+            overdispersion_shrinkage = False, #True,
             overdispersion = disps
         ) 
     else:
         fit = glmgampoi.glm_gp(
             model_df,
             # do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-            overdispersion_shrinkage = False,
+            overdispersion_shrinkage = False, #1True,
             overdispersion = disps
         ) 
     mu_arr = jnp.array(fit.rx2['Mu'])

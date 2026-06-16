@@ -59,7 +59,6 @@ class Data(data.Data):
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
-
     def get_tab_vals(self):
         """
         Read anchor table from file and convert to sparse representation. Additionally sets class attributes `targ_key` and `samp_key` so that indexing with targ_idx and samp_idx can be traced back to target sequences and SPLASH sample IDs. 

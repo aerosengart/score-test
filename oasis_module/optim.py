@@ -1,6 +1,5 @@
 import numpy as np
 
-from tqdm import tqdm
 from oasis_module import helpers
 
 def alt_max(anch_arr, c_vec, c_vec_list = None):
@@ -101,11 +100,7 @@ def generate_alt_max_c_f(
     f_max  = 0
     c_max  = 0
     ## re-initialize numRandInits times
-    for _ in tqdm(
-        range(num_rand_inits),
-        total = num_rand_inits,
-        desc  = 'running alternating orthogonal maximization'
-    ):
+    for _ in range(num_rand_inits):
         ## randomly initialize c vector
         c_vec= np.random.choice(
             [-1, 1], size = anch_arr.shape[1]

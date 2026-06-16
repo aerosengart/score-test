@@ -1,0 +1,5 @@
+d_config: '/home/arosenga/score-test/data/configs/d_poi_t1.yaml'
+m_config: '/home/arosenga/score-test/data/configs/m_poi_t1.yaml'
+routine: 'one_two_sided'
+r_args:
+  reps: 100

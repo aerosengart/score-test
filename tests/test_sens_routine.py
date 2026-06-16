@@ -12,7 +12,7 @@ def test_fx_effs_jitter(simul_data, nb_model):
     assert jnp.array_equal(model.disp_arr, data.disp_arr)
     assert jnp.array_equal(model.var_comp, data.var_comp)
     assert jnp.array_equal(model.offsets, data.offsets)
-    assert jnp.array_equal(model.mu_arr, data.mu_arr)
+    assert jnp.array_equal(model.mu_arr, data.compute_mu())
 
     ## do jitter
     stat_sens.set_fx_effs_jitter(model = model, jitter_vals = 0.1)
@@ -23,7 +23,7 @@ def test_fx_effs_jitter(simul_data, nb_model):
     assert jnp.array_equal(model.var_comp, data.var_comp)
     assert jnp.array_equal(model.offsets, data.offsets)
     assert not jnp.array_equal(model.fx_effs_arr, data.fx_effs_arr)
-    assert not jnp.array_equal(model.mu_arr, data.mu_arr)
+    assert not jnp.array_equal(model.mu_arr, data.compute_mu())
     ## check that value was correct added
     t_idx = 8 ## target
     s_idx = 2 ## sample
@@ -45,7 +45,7 @@ def test_disp_jitter(simul_data, nb_model):
     assert jnp.array_equal(model.disp_arr, data.disp_arr)
     assert jnp.array_equal(model.var_comp, data.var_comp)
     assert jnp.array_equal(model.offsets, data.offsets)
-    assert jnp.array_equal(model.mu_arr, data.mu_arr)
+    assert jnp.array_equal(model.mu_arr, data.compute_mu())
 
     ## do jitter
     stat_sens.set_disp_jitter(model = model, jitter_vals = 0.1)
@@ -53,7 +53,7 @@ def test_disp_jitter(simul_data, nb_model):
     ## check only the fixed effects coefficients changed (and mu)
     assert jnp.array_equal(model.rd_effs_arr, data.rd_effs_arr)
     assert jnp.array_equal(model.fx_effs_arr, data.fx_effs_arr)
-    assert jnp.array_equal(model.mu_arr, data.mu_arr)
+    assert jnp.array_equal(model.mu_arr, data.compute_mu())
     assert jnp.array_equal(model.var_comp, data.var_comp)
     assert not jnp.array_equal(model.disp_arr, data.disp_arr)
     ## check that value was correct added

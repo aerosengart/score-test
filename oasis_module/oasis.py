@@ -24,7 +24,7 @@ def oasis(
         two numpy.ndarrays; the f and c vectors
     """
     ## get full anchor count table
-    anch_arr = data.construct_y().todense()
+    anch_arr = data.construct_y()
     ## dimensions
     n_rows, n_cols = anch_arr.shape
     ## initialize best p-value so far
@@ -76,10 +76,9 @@ def oasis_perp(
         two numpy.ndarrays; the f and c vectors
     """
     ## get full anchor count table
-    anch_arr = data.construct_y().todense()
+    anch_arr = data.construct_y()
     ## construct list of (normalized) c vectors
     c_vec_list = helpers.construct_c_vec_list(data = data)
-    print(c_vec_list)
     train = helpers.split_counts_colwise(anch_arr, train_frac)
 
     ## run OASIS with orthogonal constraints to get optimal c and f vectors

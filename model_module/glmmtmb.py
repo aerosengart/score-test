@@ -4,7 +4,8 @@ import numpy           as np
 import jax.numpy       as jnp
 import pandas          as pd
 import rpy2.robjects   as ro
-import src.doc         as doc
+
+from routine_module import doc
 
 from rpy2.robjects.packages import importr
 from rpy2.robjects          import pandas2ri
@@ -112,6 +113,7 @@ def fit_model(
             family  = family,
             control = glmmTMB.glmmTMBControl(optCtrl = ctrl)#, parallel = 8)
         )
+
     convergence = fit.rx2('fit').rx2('convergence')[0]
 
     if convergence == ro.rinterface.NULL:
@@ -119,7 +121,7 @@ def fit_model(
     
     if convergence != 0 and model.debug != 'off':
         doc.debug_sample(model = model)
-        doc.debug_fit(model = model, fit = fit, method = 'default')
+        #doc.debug_fit(model = model, fit = fit, method = 'default')
         if model.debug == 'full':
             glmmTMB.diagnose(fit)
             args = ro.ListVector({'method': 'BGFS'})
@@ -140,7 +142,7 @@ def fit_model(
                     control = glmmTMB.glmmTMBControl(optCtrl = ctrl)
                 )
             glmmTMB.diagnose(fit)
-            doc.debug_fit(model = model, fit = fit, method = 'bgfs')
+            #doc.debug_fit(model = model, fit = fit, method = 'bgfs')
             print('Convergence problem! Check output.')
     return fit
 
@@ -163,34 +165,27 @@ def construct_data_frame(model, null_model = True):
     ## get data
     x_design  = model.data.x_arr
     z_design  = model.data.z_arr
-    resp      = model.data.construct_y().todense()
-    n         = model.data.n_samps
-    k         = model.data.n_targs
-    total_obs = n * k
+    resp      = model.data.construct_y()
+    n_samps   = model.data.n_samps
+    n_targs   = model.data.n_targs
+    total_obs = n_targs * n_samps
     
     ## remove the columns of ones for intercepts (not needed for glmmTMB)
     x_design = x_design[:, 1:]
 
-    ## reshape to n x k rows
+    ## reshape n_targs x n_samps rows
     resp_np = jnp.reshape(
         a     = resp,
         shape = (total_obs, 1),
-        order = 'F'
+        order = 'F' ## column-major (Fortran-style)
     )
-    x_np = jnp.reshape(
-        a     = x_design,
-        shape = (total_obs, x_design.shape[-1]),
-        order = 'F'
-    )
-    z_np = jnp.reshape(
-        a     = z_design,
-        shape = (total_obs, z_design.shape[-1]),
-        order = 'F'
-    )
+    ## have to tile
+    x_np = jnp.tile(x_design, (n_targs, x_design.shape[-1]))
+    z_np = jnp.tile(z_design, (n_targs, z_design.shape[-1]))
 
     ## add cluster indicator
-    targets = list(range(1, k + 1))
-    targ_idx = np.repeat(targets, n)
+    targets = list(range(1, n_targs + 1))
+    targ_idx = np.repeat(targets, n_samps)
     targ_idx_np = jnp.reshape(
         a     = targ_idx, 
         shape = (total_obs, 1), 
@@ -198,22 +193,22 @@ def construct_data_frame(model, null_model = True):
     )
 
     ## components in model formula
-    fx_slopes = [f'fx_{str(x)}' for x in list(range(model.data.fx_slopes)) ]
-    rd_slopes = [f'rd_{str(x)}' for x in list(range(model.data.rd_slopes))]
+    fx_slopes = [f'fx_{str(x)}' for x in list(range(model.data.fx_slopes))]
     
     ## combine into single data frame
     if null_model:
         ## model under H0 -> no random effects
+        rd_slopes = []
         data_arr = pd.DataFrame(
             jnp.concatenate([resp_np, x_np, targ_idx_np], axis = 1)
         )
-        data_arr.columns = ['y'] + fx_slopes + ['targ']
     else:
         ## model under H1 -> random effects included
+        rd_slopes = [f'rd_{str(x)}' for x in list(range(model.data.rd_slopes))]
         data_arr = pd.DataFrame(
             jnp.concatenate([resp_np, x_np, z_np, targ_idx_np], axis = 1)
         )
-        data_arr.columns = ['y'] + fx_slopes + rd_slopes + ['targ']
+    data_arr.columns = ['y'] + fx_slopes + rd_slopes + ['targ']
     data_arr['targ'] = data_arr['targ'].astype('int')
     ## create dummy variables for targets
     data_arr_dummy = pd.get_dummies(
@@ -271,8 +266,8 @@ def construct_model_formula(model, fx_cols, rd_cols):
 
 def set_map_params(
         model,
-        fx_effs_arr: jnp.array,
-        disp_arr:    jnp.array,
+        fx_effs_arr: jnp.array = None,
+        disp_arr:    jnp.array = None,
     ):
     """
     Set mapping and starting values for fixing parameter values in glmmTMB.
@@ -306,16 +301,16 @@ def set_map_params(
         ## adjust for baseline group (first target)
         fx_effs_adj = fx_effs_arr
         ## tile baseline target values for all other targets
-        fx_effs_baseline = jnp.transpose(jnp.tile(
+        fx_effs_baseline = jnp.tile(
             fx_effs_arr[0, :], (model.data.n_targs - 1, 1)
-        ))
+        )
         ## subtract off baseline target value from other targets' values
         fx_effs_adj = fx_effs_adj.at[1:, :].set(fx_effs_adj[1:, :] - fx_effs_baseline)
         ## reshape and convert to list for use in R
         fx_effs += jnp.squeeze((jnp.reshape(
             a     = fx_effs_adj,
             shape = (model.data.n_targs * fx_effs_arr.shape[-1],),
-            order = 'C'
+            order = 'F' ## column-major (Fortran-style)
         ))).tolist()
         ## in glmmTMB, fixed effects coefficients are called 'beta'
         mapping['beta'] = ro.FactorVector([ro.NA_Character] * len(fx_effs))
@@ -324,11 +319,11 @@ def set_map_params(
     ## do dispersion parameters
     if disp_arr is not None:
         ## cannot set map parameters if we do not have a global dispersion parameter
-        if model.global_disp != 'global':
+        if model.estim_disp != 'global':
             raise NotImplementedError('Cannot fix a global dispersion parameter value for model with target-specific parameters.')
-        ## ONLY WORKS FOR SHARED GAMMA PARAMETER (ACROSS ALL CLUSTERS/OBS)
         ## in glmmTMB, dispersion is called 'betadisp' and is on log scale
         mapping['betadisp'] = ro.FactorVector([ro.NA_Character])
+        ## just take the first value since they should all be the same!
         params['betadisp']  = ro.FloatVector([jnp.log(disp_arr[0, 0])])
     return ro.ListVector(mapping), ro.ListVector(params)
 
@@ -358,17 +353,26 @@ def extract_fx(model, fit) -> jnp.array:
 
     ## initialize
     fx_effs_estims = jnp.zeros((model.data.n_targs, model.data.p))
-    ## accounting for intercept in indexing
-    fx_start = 1
 
     ## loop over all coefficient estimates
     for coef in coef_df.index:
         if coef == '(Intercept)':
-            ## overall intercept
+            ## overall intercept --- add to first column of fx_effs_estims
             grand_value = coef_df.loc[coef].iloc[0]
             fx_effs_estims = fx_effs_estims.at[:, 0].set(
                 grand_value + fx_effs_estims[:, 0]
             )
+        elif ':' in coef:
+            ## cluster-specific fixed slope
+            eff_clust = coef.split(':')
+            ## targets are 1-indexed but python is 0-indexed
+            targ_idx = int(re.sub(r'\D', '', eff_clust[0])) - 1
+            ## add 1 to account for intercept in indexing
+            eff_idx = int(re.sub(r'\D', '', eff_clust[1])) + 1
+            targ_val = coef_df.loc[coef].iloc[0]
+            fx_effs_estims = fx_effs_estims.at[targ_idx, eff_idx].set(
+                fx_effs_estims[targ_idx, eff_idx] + targ_val
+            )  
         elif coef.startswith('targ'):
             ## targ-specific intercept
             targ_idx = int(re.sub(r'\D', '', coef)) - 1
@@ -376,20 +380,10 @@ def extract_fx(model, fit) -> jnp.array:
             fx_effs_estims = fx_effs_estims.at[targ_idx, 0].set(
                 fx_effs_estims[targ_idx, 0] + targ_val
             )
-        elif ':' in coef:
-            ## cluster-specific fixed slope
-            eff_clust = coef.split(':')
-            ## add 1 to account for intercept in indexing
-            eff_idx = int(re.sub(r'\D', '', eff_clust[0])) + fx_start
-            ## targets are 1-indexed but python is 0-indexed
-            targ_idx = int(re.sub(r'\D', '', eff_clust[1])) - 1
-            targ_val = coef_df.loc[coef].iloc[0]
-            fx_effs_estims = fx_effs_estims.at[targ_idx, eff_idx].set(
-                fx_effs_estims[targ_idx, eff_idx] + targ_val
-            )
         else:
             ## baseline target value for target-specific slope
-            eff_idx = int(re.sub(r'\D', '', coef)) + fx_start
+            ## add 1 to account for intercept in indexing
+            eff_idx = int(re.sub(r'\D', '', coef)) + 1
             eff_val = coef_df.loc[coef].iloc[0]
             fx_effs_estims = fx_effs_estims.at[:, eff_idx].set(
                 fx_effs_estims[:, eff_idx] + eff_val

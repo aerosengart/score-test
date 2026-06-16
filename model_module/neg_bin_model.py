@@ -2,6 +2,7 @@
 
 import jax.numpy       as jnp
 import scipy.sparse    as sps
+import numpy           as np
 
 from model_module import model
 from model_module import glmgampoi
@@ -31,7 +32,7 @@ class Model(model.Model):
         if self.use_true:
             fx_effs  = self.data.fx_effs_arr
             disp_arr = self.data.disp_arr
-            mu_arr   = self.data.mu_arr
+            mu_arr   = self.data.compute_mu()
             offsets  = self.data.offsets
         else:
             fx_effs, disp_arr, offsets, mu_arr = glmgampoi.fit(model = self)
@@ -54,6 +55,7 @@ class Model(model.Model):
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##
     ## ---------------------------------------------------------------------- ##
+    
     def compute_mu(self):
         """
         Compute mean array using class attributes.
@@ -77,7 +79,7 @@ class Model(model.Model):
         exp_val_csc = sps.csc_array(exp_val)
         y_arr = self.data.construct_y()
         resid_arr = y_arr - exp_val_csc
-        return jnp.array(resid_arr.todense())
+        return jnp.array(resid_arr)
 
     def compute_g(self) -> jnp.array:
         """
@@ -101,7 +103,10 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return 1 / self.mu_arr 
+        g_prime = 1 / self.mu_arr
+        zero_mu = np.where(self.mu_arr == 0)
+        g_prime = g_prime.at[zero_mu].set(np.inf)
+        return g_prime
 
 
     def compute_g_prime_2(self) -> jnp.array:
@@ -114,7 +119,10 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return -1 / self.mu_arr**2 
+        g_prime_2 = -1 / self.mu_arr**2 
+        zero_mu = np.where(self.mu_arr == 0)
+        g_prime_2 = g_prime_2.at[zero_mu].set(-np.inf)
+        return g_prime_2
     
 
     def compute_v(self) -> jnp.array:
@@ -160,3 +168,62 @@ class Model(model.Model):
         return 2 / self.disp_arr
 
     
+    ## ---------------------------------------------------------------------- ##
+    ## INTERMEDIATE QUANTITIES                                                ##
+    ##     have to overwrite to avoid numerical issues (divide by zero)       ##
+    ## ---------------------------------------------------------------------- ##
+    def compute_delta_inv_omega(self) -> jnp.array:
+        """
+        Compute and return the values of delta_i^{-1} * omega_i for negative binomial outcomes. This is:
+
+        delta^2 / v(mu) * 1 / delta = delta / v(mu)
+
+        ARGS:    None
+        RETURNS: jnp.array (n_targs, n_samps)
+        RAISES:  None
+        """
+        delta_inv = self.compute_mu()
+        variances = self.compute_v()
+        return delta_inv / variances
+    
+    def compute_omega(self) -> jnp.array:
+        """
+        Compute and return the omega_i values for negative binomial responses. This is:
+
+        delta^2 / v(mu) = mu^2 / (mu + mu^2 / disp) = mu / (1 + mu / disp)
+
+        ARGS:    None
+        RETURNS: jnp.array (n_targs, n_samps)
+        RAISES:  None
+        """
+        return self.compute_mu() / (1 + self.mu_arr / self.disp_arr)
+
+    def compute_epsilon(self) -> jnp.array:
+        """
+        Compute and return the epsilon_i values for negative binomial response. 
+        ARGS:    None
+        RETURNS: jnp.array (n_targs, n_samps)
+        RAISES:  None
+        """
+        ## initial computations
+        g_prime_vals   = self.compute_g_prime()
+        g_prime_2_vals = self.compute_g_prime_2()
+        v_vals         = self.compute_v()
+        v_prime_vals   = self.compute_v_prime()
+        ## compute epsilon_i values
+        numer_vals = v_prime_vals * g_prime_vals + v_vals * g_prime_2_vals
+        denom_vals = v_vals**2 * g_prime_vals**3
+        return numer_vals / denom_vals
+
+
+    def compute_xi(self) -> jnp.array:        
+        """
+        Compute and return the xi_i values for negative binomial responses. This is:
+
+        omega + eps * (y - mu)
+
+        ARGS:    None
+        RETURNS: jnp.array (n_targs, n_samps)
+        RAISES:  None
+        """
+        return self.compute_omega() + self.compute_epsilon() * self.compute_resid()

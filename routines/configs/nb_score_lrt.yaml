@@ -1,0 +1,5 @@
+d_config: '/home/arosenga/score-test/data/configs/d_nb.yaml'
+m_config: '/home/arosenga/score-test/data/configs/m_simul.yaml'
+routine: 'score_lrt'
+r_args:
+  reps: 100

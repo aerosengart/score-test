@@ -28,9 +28,6 @@ ATTRIBUTES:
     q - int; total number of random effects
 """
 
-# import scipy.sparse as sps
-# import numpy        as np
-
 class Data():
     def __init__(self, config):
         """Constructor for class Data. This class organizes all of the data-related information like the response vector/array, the covariates, etc.

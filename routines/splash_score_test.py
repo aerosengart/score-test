@@ -26,7 +26,7 @@ import sys
 import jax.numpy as jnp
 
 sys.path.append('/home/arosenga/score-test')
-from score_module import score, info, helpers
+from stat_module import score, info, helpers
 
 from data_module.dispatch  import data_types
 from model_module.dispatch import model_types

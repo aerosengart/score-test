@@ -7,7 +7,7 @@ import jax.numpy    as jnp
 import numpy        as np
 import scipy.sparse as sps
 
-from score_module import intermed
+from stat_module import intermed
 
 
 def info_var_comp_j_var_comp_l(
@@ -94,11 +94,11 @@ def info_fx_effs_fx_effs(
     n_samps = model.data.n_samps
     targs_samps = n_targs * n_samps
     ## omega values to diagonal matrix (n_targs * n_samps, n_targs * n_samps)
-    omega_vals = intermed.compute_omega(model)
+    omega_vals = model.compute_omega()
     omega_crc  = sps.coo_array(
         (jnp.ravel(omega_vals), (range(targs_samps), range(targs_samps))), 
         (targs_samps, targs_samps)
-    ).tocsc()
+    ).tocsc().todense()
     ## (n_samps, p)
     x_arr = model.data.x_arr
     ## x_arr values to sparse matrix (n_targs * n_samps, n_targs * p)
@@ -118,7 +118,7 @@ def info_fx_effs_fx_effs(
     x_arr_crc = sps.coo_array(
         (list(vals), (list(row_idx), list(col_idx))),
         (targs_samps, n_targs * x_arr.shape[-1])
-    ).tocsc()
+    ).tocsc().todense()
 
     return x_arr_crc.T @ omega_crc @ x_arr_crc
 
@@ -145,7 +145,7 @@ def compute_info(
 
     ## fx effs
     info_fx_effs = info_fx_effs_fx_effs(model)
-    info_arr = info_arr.at[0:total_p, 0:total_p].set(info_fx_effs.todense())
+    info_arr = info_arr.at[0:total_p, 0:total_p].set(info_fx_effs)
 
     for idx1 in range(q):
         info_fx_tau_j = info_fx_effs_var_comp_j(model, j = idx1)

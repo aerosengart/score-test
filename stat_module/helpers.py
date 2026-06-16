@@ -3,7 +3,7 @@ import scipy
 
 import numpy           as np
 import jax.numpy       as jnp
-from score_module import score, info
+from stat_module import score, info
 
 from scipy                 import stats
 from cvxopt                import matrix, solvers

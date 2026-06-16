@@ -4,8 +4,8 @@
 #SBATCH --nodes=1                      # node count
 #SBATCH --ntasks=1                     # total number of tasks across all nodes
 #SBATCH --ntasks-per-node 1
-#SBATCH --time=02:00:00          # total run time limit (HH:MM:SS)
-#SBATCH --nice=200               ## deprioritize to be nice to others
+#SBATCH --time=40:00:00          # total run time limit (HH:MM:SS)
+#SBATCH --nice=500               ## deprioritize to be nice to others
 
 source /home/arosenga/miniconda/bin/activate /home/arosenga/miniconda/envs/score-test
 

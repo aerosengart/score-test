@@ -42,7 +42,11 @@ def main():
         m_dict = yaml.safe_load(file)
 
     ## plot routine
-    dispatch.plot_types[args.routine](d_dict, m_dict, **args.r_args)
+    if args.r_args is not None:
+        dispatch.plot_types[args.routine](d_dict, m_dict, **args.r_args)
+    else:
+        dispatch.plot_types[args.routine](d_dict, m_dict)
+
 
 if __name__ == "__main__":
     main()

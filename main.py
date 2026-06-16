@@ -2,13 +2,15 @@
 
 import argparse
 import yaml
+import numpy as np
 
-from data_module.neg_bin_data import Data as neg_bin_data
-from data_module.splash_data import Data as splash_data
-from data_module.neg_bin_model import Model as neg_bin_model
+from data_module.neg_bin_data   import Data  as neg_bin_data
+from model_module.neg_bin_model import Model as neg_bin_model
+from data_module.poi_data import Data as poi_data
 
-from score_module import score, info, intermed
-from main_module import wrappers
+from routine_module.error_comps import error_comparison
+from routine_module.stat_comps import score_lrt_comparison
+from stat_module import score, info, intermed, stat
 
 def main(): 
     ## create an argument parser and add options
@@ -31,20 +33,18 @@ def main():
     with open(args.m_config, 'r') as file:
         m_config = yaml.safe_load(file)
 
-    # wrappers.run_routine(args.d_config, args.m_config, 'score_var_comp', reps = 100)
-    wrappers.run_routine(args.d_config, args.m_config, 'one_two_sided', iters = 25, reps = 100)
+    data = neg_bin_data(d_config)
+    print(data.construct_y())
+    data = neg_bin_data(d_config)
+    print(data.construct_y())
+    # data = poi_data(d_config)
+    # model = neg_bin_model(m_config, data)
 
-    # d = neg_bin_data(d_config)
-    # # d = splash_data(d_config, 'AAAAACAGACACAAGCTCTTATCATGT')
-    # m = neg_bin_model(m_config, d)
 
-    # s, sc = score.compute_score_var_comp(m, scale = True)
-    # i = info.compute_info(m, sc)
-    # print(score.compute_test_stat(m, True))
+    # score_lrt_comparison(d_config, m_config, 0, 100)
 
 
 
 if __name__ == "__main__":
     main()
-
 

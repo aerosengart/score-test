@@ -43,6 +43,64 @@ def output_directory_path(d_config, m_config):
     return sub_dir
 
 
+def format_attrbs(val):
+    attrbs = []
+    if isinstance(val, list):
+        for y in val:
+            if isinstance(y, list):
+                attrbs.append('[' + ', '.join([str(round(x, 3)) for x in y]) + ']')
+            else:
+                attrbs.append(str(round(y, 3)))
+    else:
+        attrbs.append(str(round(val, 3)))
+    return ', '.join(attrbs)
+
+
+def log_routine(model, routine):
+    """Document the routine ran in a README file.
+    
+    ARGS:
+        data       - an instance of Data class
+        model      - an instance of Model class
+        routine    - str; routine name
+    RAISES:
+        None
+    RETURNS:
+        output directory
+    """
+    ## get output directory path
+    out_dir = output_directory_path(model.data.config, model.config)
+    routine_dir = os.path.join(out_dir, routine)
+    ## add sub-directories for iteration
+    save_dir = os.path.join(
+        routine_dir,
+        f'iter{model.data.debug['iter']}'
+    )
+
+    ## check if save path exists
+    if not os.path.isdir(save_dir):
+        os.makedirs(save_dir, exist_ok = True)
+
+    with open(os.path.join(save_dir, 'log.txt'), "a") as file:
+        mu_arr = model.data.compute_mu()
+        file.write(f'{model.data.n_targs} Targets, {model.data.n_samps} Samples, Seed = {model.data.seed} \n')
+        file.write(f'Data Targets 0 and 1: \n')
+        file.write(f'    Mean {mu_arr.shape}: {format_attrbs(mu_arr[0:2, 0:2].tolist())}\n')
+        file.write(f'    Fixed Effects {model.data.fx_effs_arr.shape}: {format_attrbs(model.data.fx_effs_arr[0:2, :].tolist())}\n')
+        file.write(f'    Random Effects {model.data.rd_effs_arr.shape}: {format_attrbs(model.data.rd_effs_arr[0:2, :].tolist())}\n')
+        file.write(f'    Dispersion {model.data.disp_arr.shape}: {format_attrbs(model.data.disp_arr[0:2, :].tolist())}\n')
+        file.write(f'    Variance Component: {format_attrbs(model.data.var_comp[0:2].tolist())}\n')
+        file.write(f'Model Targets 0 and 1: \n')
+        file.write(f'    Mean {model.mu_arr.shape}: {format_attrbs(model.mu_arr[0:2, 0:2].tolist())}\n')
+        file.write(f'    Fixed Effects {model.fx_effs_arr.shape}: {format_attrbs(model.fx_effs_arr[0:2, :].tolist())}\n')
+        file.write(f'    Random Effects {model.rd_effs_arr.shape}: {format_attrbs(model.rd_effs_arr[0:2, :].tolist())}\n')
+        file.write(f'    Dispersion {model.disp_arr.shape}: {format_attrbs(model.disp_arr[0:2, :].tolist())}\n')
+        file.write(f'    Variance Component: {format_attrbs(model.var_comp[0:2].tolist())}\n')
+        file.write('================================================================================\n')
+
+
+
+
 def document_routine(d_config, m_config, routine):
     """Document the routine ran in a README file.
     
@@ -113,19 +171,19 @@ def save_data(data, m_config):
     RETURNS:
         None
     """
-    debug_dict = data.debug
+    debug = data.debug
     d_config = data.config
 
     ## get output directory path
     out_dir = output_directory_path(d_config, m_config)
     save_dir = os.path.join(
         out_dir,
-        debug_dict['routine']
+        debug['routine']
     )
     ## add subdirectories for iteration
     save_dir = os.path.join(
         save_dir,
-        f'iter{debug_dict['iter']}'
+        f'iter{debug['iter']}'
     )
 
     ## check if save path exists
@@ -133,7 +191,7 @@ def save_data(data, m_config):
         os.makedirs(save_dir, exist_ok = True)
 
     with open(os.path.join(save_dir, 
-        f'rep{debug_dict['rep']}_data.pickle'), "wb") as f:
+        f'rep{debug['rep']}_data.pickle'), "wb") as f:
         pickle.dump(data, f)
 
 
@@ -147,7 +205,7 @@ def debug_sample(model):
     RETURNS:
         None
     """
-    debug_dict = model.data.debug
+    debug = model.data.debug
     d_config = model.data.config
     m_config = model.config
 
@@ -155,12 +213,12 @@ def debug_sample(model):
     out_dir = output_directory_path(d_config, m_config)
     save_dir = os.path.join(
         out_dir,
-        debug_dict['routine']
+        debug['routine']
     )
     ## add subdirectories for iteration
     save_dir = os.path.join(
         save_dir,
-        f'iter{debug_dict['iter']}'
+        f'iter{debug['iter']}'
     )
 
     ## check if save path exists
@@ -168,7 +226,7 @@ def debug_sample(model):
         os.makedirs(save_dir, exist_ok = True)
 
     with open(os.path.join(save_dir, 
-        f'rep{debug_dict['rep']}_model.pickle'), "wb") as f:
+        f'rep{debug['rep']}_model.pickle'), "wb") as f:
         pickle.dump(model, f)
 
 
@@ -194,19 +252,19 @@ def debug_sample(model):
 #     as_list = ro.r('as.list')
 
 #     ## debugging dictionary from model
-#     debug_dict = model.data.debug
+#     debug = model.data.debug
 
 #     ## get output directory path
 #     out_dir = output_directory_path(data = model.data)
 #     save_dir = os.path.join(
 #         out_dir,
-#         debug_dict['routine']
+#         debug['routine']
 #     )
 #     if model.config['data']['outcome'] != 'real':
 #         save_dir = os.path.join(
 #             save_dir,
-#             f'iter{debug_dict['iter']}',
-#             f'rep{debug_dict['rep']}'
+#             f'iter{debug['iter']}',
+#             f'rep{debug['rep']}'
 #         )
 #     if not os.path.isdir(save_dir):
 #         os.makedirs(save_dir)
@@ -264,15 +322,15 @@ def debug_sample(model):
 #         None
 #     """
 #     ## debugging dictionary from model
-#     debug_dict = model.data.debug
+#     debug = model.data.debug
 
 #     ## get output directory path
 #     out_dir = output_directory_path(data = model.data)
 #     save_dir = os.path.join(
 #         out_dir,
-#         debug_dict['routine'],
-#         f'iter{debug_dict['iter']}',
-#         f'rep{debug_dict['rep']}'
+#         debug['routine'],
+#         f'iter{debug['iter']}',
+#         f'rep{debug['rep']}'
 #     )
 
 #     ## check if save path exists

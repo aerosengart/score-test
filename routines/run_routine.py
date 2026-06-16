@@ -45,12 +45,20 @@ def main():
         m_dict = yaml.safe_load(file)
 
     ## run routine (one iteration with ID equal to iter_id in arguments)
-    dispatch.routine_types[args.routine](
-        d_config = d_dict, 
-        m_config = m_dict, 
-        iter_id  = args.iter_id,
-        **args.r_args
-    )
+    if args.r_args is not None:
+        dispatch.routine_types[args.routine](
+            d_config = d_dict, 
+            m_config = m_dict, 
+            iter_id  = args.iter_id,
+            **args.r_args
+        )
+    else:
+        dispatch.routine_types[args.routine](
+            d_config = d_dict, 
+            m_config = m_dict, 
+            iter_id  = args.iter_id
+        )
+
 
 
 if __name__ == "__main__":

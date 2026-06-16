@@ -13,25 +13,19 @@ class Data(simul_data.Data):
         super().__init__(config)
 
     ## ---------------------------------------------------------------------- ##
-    ## CHILD CLASS FUNCTIONS                                                  ##
+    ## COMPUTATIONS                                                           ##
     ## ---------------------------------------------------------------------- ##
-    def set_dist_attrs(self):
-        """
-        Set Poisson distribution attributes.
-        
-        ARGS:    None
-        RAISES:  None
-        RETURNS: None
-        """
-        ## set column sums
-        self.col_sums = self.draw_column_sums()
-        # compute linear predictor
-        self.eta_arr = self.compute_eta()
-        ## set means
-        self.mu_arr = jnp.exp(self.eta_arr)
-        ## need to set disp in case we need to 'use_true' in neg_bin_model
-        self.disp_arr = jnp.ones((self.n_targs, 1)) * np.inf
+    def compute_mu(self):
+        """Compute and return linear predictor."""
+        return jnp.exp(self.compute_eta())
 
+    ## ---------------------------------------------------------------------- ##
+    ## SAMPLERS                                                               ##
+    ## ---------------------------------------------------------------------- ##
+    def draw_disp(self):
+        """Sample negative binomial dispersion parameter."""
+        return jnp.ones((self.n_targs, 1)) * np.inf
+    
     def sample(self):
         """
         Sample responses as negative binomial. 
@@ -43,8 +37,7 @@ class Data(simul_data.Data):
         RAISES:
             None
         """
-        rng   = np.random.default_rng(None)
         y_arr = jnp.array(
-            rng.poisson(lam = self.mu_arr)
+            self.rng.poisson(lam = self.compute_mu())
         )
         return y_arr

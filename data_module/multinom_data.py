@@ -55,14 +55,13 @@ class Data(simul_data.Data):
         RAISES:
             None
         """
-        rng   = np.random.default_rng(None)
         y_arr = jnp.array(
-            rng.multinomial(n = self.col_sums, pvals = self.probs.T).T
+            self.rng.multinomial(n = self.col_sums, pvals = self.probs.T).T
         )
         ## ensure no row sums to zero (null target)
         while 0 in jnp.sum(y_arr, axis = 1):
             y_arr = jnp.array(
-                rng.multinomial(n = self.col_sums, pvals = self.probs.T).T
+                self.rng.multinomial(n = self.col_sums, pvals = self.probs.T).T
             )
         return y_arr
 

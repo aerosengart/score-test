@@ -1,0 +1,7 @@
+d_config: '/home/arosenga/score-test/data/configs/d_nb_t1.yaml'
+m_config: '/home/arosenga/score-test/data/configs/m_nb_t1.yaml'
+routine: 'disp_sens'
+r_args:
+  reps: 100
+  param: 'disp'
+  other_known: True

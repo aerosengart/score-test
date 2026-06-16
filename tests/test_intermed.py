@@ -1,5 +1,6 @@
 import jax.numpy as jnp
-from score_module import intermed
+import numpy as np
+from stat_module import intermed
 
 
 def test_quantities(simul_data, nb_model):
@@ -15,6 +16,8 @@ def test_quantities(simul_data, nb_model):
     delta_inv_vals = intermed.compute_delta(model, inv = True)
     epsilon_vals   = intermed.compute_epsilon(model)
     xi_vals        = intermed.compute_xi(model)
+                                         
+    delta_inv_omega_vals = delta_inv_vals * omega_vals
     
     c_vals = intermed.compute_c(model)
     r_vals = intermed.compute_r(model)
@@ -37,3 +40,25 @@ def test_quantities(simul_data, nb_model):
     assert not jnp.isnan(c_vals).any()
     assert not jnp.isnan(r_vals).any()
     assert not jnp.isnan(a_vals).any()
+
+    print(model.compute_mu())
+
+    assert jnp.allclose(omega_vals, model.compute_omega())
+    p = np.argwhere(np.isnan(epsilon_vals))
+    print(p)
+    z = np.argwhere(np.isnan(model.compute_epsilon()))
+    print(z)
+
+    # print(epsilon_vals[p[0][0], :])
+
+    # print(model.compute_mu()[p[0][0], :])
+    # print(model.compute_omega()[p[0][0], :])
+    # print(model.compute_delta_inv_omega()[p[0][0], :])
+    # print(model.compute_resid()[p[0][0], :])
+    # print(model.compute_epsilon()[p[0][0], :])
+
+    # print(model.compute_xi()[p[0][0], :])
+
+    assert jnp.allclose(epsilon_vals, model.compute_epsilon())
+    assert jnp.allclose(xi_vals, model.compute_xi())
+    assert jnp.allclose(delta_inv_omega_vals, model.compute_delta_inv_omega())

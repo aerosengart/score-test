@@ -59,9 +59,6 @@ class Model():
         self.offsets = offsets
 
     def set_mu_arr(self, mu_arr):
-        ## replace exact zeros with small number to avoid divide by zero error
-        if jnp.sum(mu_arr <= 1e-10) > 0:
-            mu_arr = mu_arr.at[mu_arr <= 1e-10].set(1e-6)
         self.mu_arr = mu_arr
 
     def set_eta_arr(self, eta_arr):
@@ -125,10 +122,7 @@ class Model():
     def compute_mu(self):
         raise NotImplementedError("Subclasses must implement this method.")
     
-    def set_disp_param(self, disp_param):
-        raise NotImplementedError("Subclasses must implement this method.")
-
-    def set_dist_param(self, disp_param):
+    def set_disp_arr(self, disp_arr):
         raise NotImplementedError("Subclasses must implement this method.")
     
     def set_dist_params_estim(self):
@@ -158,4 +152,15 @@ class Model():
     def compute_dispersion(self):
         raise NotImplementedError("Subclasses must implement this method.")
 
+    def compute_delta_inv_omega(self):
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def compute_omega(self):
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def compute_epsilon(self):
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def compute_xi(self):
+        raise NotImplementedError("Subclasses must implement this method.")
 

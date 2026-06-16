@@ -13,7 +13,14 @@ class Data(simul_data.Data):
         super().__init__(config)
 
     ## ---------------------------------------------------------------------- ##
-    ## CHILD CLASS FUNCTIONS                                                  ##
+    ## COMPUTATIONS                                                           ##
+    ## ---------------------------------------------------------------------- ##
+    def compute_mu(self):
+        """Compute and return linear predictor."""
+        return jnp.exp(self.compute_eta())
+
+    ## ---------------------------------------------------------------------- ##
+    ## SAMPLERS                                                               ##
     ## ---------------------------------------------------------------------- ##
     def sample(self):
         """
@@ -26,51 +33,35 @@ class Data(simul_data.Data):
         RAISES:
             None
         """
-        rng   = np.random.default_rng(None)
-        y_arr = jnp.array(
-            rng.negative_binomial(n = self.succs, p = self.probs)
-        )
-        ## quick fix to avoid rows of only zeroes
-        while 0 in jnp.sum(y_arr, axis = 1):
-            y_arr = jnp.array(
-                rng.negative_binomial(n = self.succs, p = self.probs)
-            )
-        return y_arr
-
-    def set_dist_attrs(self):
-        """
-        Set negative binomial distribution attributes.
-        
-        ARGS:    None
-        RAISES:  None
-        RETURNS: None
-        """        
-        ## set disp_arr
-        self.set_disp_arr(self.draw_disp_arr())
-        ## set means
-        self.eta_arr = self.compute_eta()
-        self.mu_arr = jnp.exp(self.eta_arr)
-        ## vars
-        self.var_arr = self.mu_arr + jnp.divide(self.mu_arr**2, self.disp_arr)
         ## compute success probability for (r, p) parametrization in numpy
         ## r = # successes; p = success probability
         ## p = mean / var = mu / (mu + mu^2/disp) = disp / (disp + mu)
         ## r = mean^2 / (var - mean) = mu^2 / (mu^2/disp) = disp
-        self.probs = jnp.divide(self.disp_arr, jnp.add(self.mu_arr, self.disp_arr))
-        self.succs = self.disp_arr
-
-    def draw_disp_arr(self):
-        """Sample negative binomial dispersion parameter."""
-        disp_arr = helpers.draw_gaussian_arr(
-            row   = self.n_targs,
-            col   = 1,
-            mu    = self.disp_mu,
-            sigma = self.disp_sigma
+        probs = jnp.divide(self.disp_arr, jnp.add(self.compute_mu(), self.disp_arr))
+        succs = self.disp_arr
+        y_arr = jnp.array(
+            self.rng.negative_binomial(n = succs, p = probs)
         )
-        disp_arr = disp_arr.at[disp_arr <= 0.0].set(1e-4) ## avoid zero/negative disp
+        ## quick fix to avoid rows of only zeroes
+        while 0 in jnp.sum(y_arr, axis = 1):
+            y_arr = jnp.array(
+                self.rng.negative_binomial(n = succs, p = probs)
+            )
+        return y_arr
+    
+
+    def draw_disp(self):
+        """Sample negative binomial dispersion parameter."""
+        if self.disp_mu != float('inf'):
+            disp_arr = helpers.draw_gaussian_arr(
+                row   = self.n_targs,
+                col   = 1,
+                mu    = self.disp_mu,
+                sigma = self.disp_sigma,
+                rng   = self.rng,
+            )
+        else:
+            disp_arr = self.disp_mu * jnp.ones((self.n_targs, 1))
+        disp_arr = disp_arr.at[disp_arr < 0.0].set(1e-4) ## avoid negative disp
         return disp_arr
 
-    def set_disp_arr(self, disp_arr):
-        """Setter for negative binomial dispersion parameter."""
-        self.disp_arr = disp_arr
-    

@@ -1,4 +1,4 @@
-This module contains all of the methods related to the score test computations.
+This module contains all of the methods related to the hypothesis test computations.
 
 ---
 
@@ -14,7 +14,6 @@ This file contains the methods related to computing the score test statistic and
 | Name      | Description     | Notation |
 | :---        |   :---     | :--- |
 | `compute_score_var_comp()` | Compute the first derivative of the (full data) marginal log quasi-likelihood with respect to the variacnce component(s) and evaluate at the parameter values/estimates under $H_0$. | $$U_{\boldsymbol{\tau}^2}(\boldsymbol{\theta})$$ |
-| `compute_test_stat()` | Compute the score test statistic for variance component(s) in a generalized linear mixed model. The test can be one- or two-sided depending upon the `one_sided` flag. | $$t$$ |
 
 
 ## `compute_score_var_comp()`
@@ -37,6 +36,10 @@ This function computes the first-order partial derivatives of the full data's ma
 $$
 U_{\tau^2_k}(\hat{\boldsymbol{\theta}}) = \frac{1}{2} \sum_{i = 1}^{N_t} \left[ (\mathbf{y}_i -\hat{\boldsymbol{\mu}}_i)^\top \hat{\boldsymbol{\Delta}}_i^{-1} \hat{\boldsymbol{\Omega}}_i \mathbf{Z}_i  \left. \left[ \frac{\partial \boldsymbol{\Sigma} }{\partial \tau^2_k} \right] \right\rvert_{\boldsymbol{\tau}^2 = \mathbf{0}_q}  \mathbf{Z}_i^\top \hat{\boldsymbol{\Omega}}_i \hat{\boldsymbol{\Delta}}_i^{-1} (\mathbf{y}_i - \hat{\boldsymbol{\mu}}_i) - \text{tr} \left[ \hat{\boldsymbol{\Xi}} \mathbf{Z}_i \left. \left[ \frac{\partial \boldsymbol{\Sigma} }{\partial \tau^2_k} \boldsymbol{\Sigma} \right] \right\rvert_{\boldsymbol{\tau}^2 = \mathbf{0}_q} \boldsymbol{Z}_i^\top \right]\right]
 $$
+
+
+## `stat.py`
+TODO
 
 
 ## `compute_test_stat()`

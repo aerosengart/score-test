@@ -1,0 +1,5 @@
+d_config: '/home/arosenga/score-test/data/configs/d_nb_t1.yaml'
+m_config: '/home/arosenga/score-test/data/configs/m_nb_t1.yaml'
+routine: 'score_var_comp'
+r_args:
+  reps: 100

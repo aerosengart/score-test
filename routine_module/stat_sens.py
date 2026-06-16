@@ -14,7 +14,7 @@ import numpy             as np
 from tqdm        import tqdm
 
 from routine_module  import doc
-from score_module import score, helpers
+from stat_module import score, helpers, stat
 
 from data_module.dispatch  import data_types
 from model_module.dispatch import model_types
@@ -24,7 +24,7 @@ from model_module.dispatch import model_types
 plt.rcParams['axes.unicode_minus'] = False
 
 ##----------------------------------------------------------------------------##
-## Computations                                                               ##
+## Wrappers                                                                   ##
 ##----------------------------------------------------------------------------##
 def set_fx_effs_jitter(model, jitter_vals):
     ## jitter the fixed effects
@@ -39,7 +39,27 @@ def set_disp_jitter(model, jitter_vals):
     ## overwrite model MLE with jittered array
     model.set_disp_arr(disp_arr)
     model.update_params()
-    
+
+##----------------------------------------------------------------------------##
+## Dispatch Dictionaries                                                      ##
+##----------------------------------------------------------------------------##
+jitter_dispatch = {
+    'fx_effs': set_fx_effs_jitter,
+    'disp':    set_disp_jitter,
+}
+
+x_axis_vals_dispatch = {
+    'fx_effs': [-1, -0.1, -0.05, -0.01, 0.0, 0.01, 0.05, 0.1, 1],
+    'disp':    [-0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
+}
+
+title_dispatch = {
+    'fx_effs': 'QQ Plots of Test Statistics with Jittered Fixed Effects',
+    'disp': r'QQ Plots of Test Statistics with Jittered Dispersion ($\gamma$)'
+}
+##----------------------------------------------------------------------------##
+## Computations                                                               ##
+##----------------------------------------------------------------------------##
 def test_stat_sensitivity(
         d_config,
         m_config,
@@ -61,66 +81,58 @@ def test_stat_sensitivity(
     RAISES:  None
     RETURNS: None
     """
+    ## check parameter to jitter
+    if param not in ['fx_effs', 'disp']:
+        raise NotImplementedError('Parameter unrecognized.')
     ## check if real data (cannot jitter because no true values)
     if d_config['outcome'] == 'splash':
         raise Exception('Cannot jitter real data')
+    
+    ## update seed for iteration
+    d_config['seed'] = int(d_config['seed']) + iter_id
 
     ## need to adjust model config so copy
-    new_config = m_config
-
+    m_config['use_true'] = other_known
     ## routine name
     if other_known:
-        new_config['use_true'] = True
         routine = f'test_stat_{param}_sens_others_known'
     else:
-        new_config['use_true'] = False
         routine = f'test_stat_{param}_sens'
-
     ## document routine
-    out_dir = doc.document_routine(d_config, new_config, routine)
-
+    out_dir = doc.document_routine(d_config, m_config, routine)
     ## instantiate data
     data = data_types[d_config['outcome']](d_config)
 
+    ## routine settings
+    x_axis_vals = x_axis_vals_dispatch[param]
+    jitter_func = jitter_dispatch[param]
+
     ## initialize
-    if param == 'fx_effs':
-        x_axis_ticks = [-1, -0.1, -0.05, -0.01, 0.0, \
-                        0.01, 0.05, 0.1, 1]
-        jitter_func = set_fx_effs_jitter
-    elif param == 'disp':
-        ## set dispersion parameter to true values
-        new_config['global_disp'] = data.disp_arr.ravel().tolist()
-        x_axis_ticks = [-0.5, -0.25, -0.1, -0.05, 0.0, \
-                        0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
-        jitter_func = set_disp_jitter
-    else:
-        raise NotImplementedError('Parameter unrecognized.')
-    
-    one_sided = jnp.zeros((reps, len(x_axis_ticks)))
-    two_sided = jnp.zeros((reps, len(x_axis_ticks)))
+    one_sided = jnp.zeros((reps, len(x_axis_vals)))
+    two_sided = jnp.zeros((reps, len(x_axis_vals)))
 
     for r in tqdm(range(reps)):
         ## draw data
+        data.set_debug(iter = str(iter_id), rep = str(r), routine = routine, seed = data.seed)
         data.resample()
-        data.set_debug(iter = str(iter_id), rep = str(r), routine = routine)
         ## build model
-        model = model_types[new_config['outcome']](new_config, data)
+        model = model_types[m_config['outcome']](m_config, data)
         ## update debugging dictionary
-        if new_config['debug'] == 'full':
+        if m_config['debug'] == 'full':
             doc.debug_sample(model = model)
-
-        for k in range(len(x_axis_ticks)):
+        for k in range(len(x_axis_vals)):
             ## jitter the appropriate parameters
-            jitter_func(model = model, jitter_vals = x_axis_ticks[k])
+            jitter_func(model = model, jitter_vals = x_axis_vals[k])
             ## compute score test
-            one_stat = score.compute_test_stat(model, one_sided = True)
-            two_stat = score.compute_test_stat(model, one_sided = False)
+            one_stat = stat.compute_score_stat(model, one_sided = True)
+            two_stat = stat.compute_score_stat(model, one_sided = False)
             ## record values
             one_sided = one_sided.at[r, k].set(one_stat)
             two_sided = two_sided.at[r, k].set(two_stat)
     ## save results
     jnp.savez(
         os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
+        x_axis_vals     = x_axis_vals,
         one_sided_stats = one_sided,
         two_sided_stats = two_sided
     )
@@ -129,33 +141,35 @@ def test_stat_sensitivity(
 ##----------------------------------------------------------------------------##
 ## Plotting                                                                   ##
 ##----------------------------------------------------------------------------##
-
-def gamma_jitter(d_config, m_config, param, reps, other_known):
-    if other_known:
-        routine = f'test_stat_{param}_sens_others_known'
-    else:
-        routine = f'test_stat_{param}_sens'
-    qq_jitter_grid(d_config, m_config, jitter_vals = [-0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0], routine = routine)    
-
-def fx_effs_jitter(d_config, m_config, param, reps, other_known):
-    if other_known:
-        routine = f'test_stat_{param}_sens_others_known'
-    else:
-        routine = f'test_stat_{param}_sens'
-    qq_jitter_grid(d_config, m_config, jitter_vals = [-0.1, -0.05, -0.025, -0.01, 0.0, 0.01, 0.025, 0.05, 0.1], routine = routine)    
-
-
-def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
+def qq_jitter_grid(d_config, m_config, param, reps, other_known):
     """Save grid of QQ-plots with jitter."""
+    ## get routine specifics by parameter being varied
+    if other_known:
+        routine = f'test_stat_{param}_sens_others_known'
+    else:
+        routine = f'test_stat_{param}_sens'
+    jitter_vals = jitter_dispatch[param]
+
     ## read all results from output directory
     out_dir = doc.output_directory_path(d_config, m_config)
     one_sided = []
     two_sided = []
+    x_axis_vals = []
     for file in glob.glob(os.path.join(out_dir, routine, 'results_iter*.npz')):
         iter_res = jnp.load(file)
+        ## overwrite since all the same
+        x_axis_vals = iter_res['x_axis_vals']
         ## expand dims because we want to create a 2D array
         one_sided.append(jnp.expand_dims(iter_res['one_sided_stats'], 1))
         two_sided.append(jnp.expand_dims(iter_res['two_sided_stats'], 1))
+
+    ## save full results
+    jnp.savez(
+        os.path.join(out_dir, routine, f'results.npz'),
+        x_axis_vals     = x_axis_vals,
+        one_sided_stats = one_sided,
+        two_sided_stats = two_sided
+    )
 
     ## join together results (reps, iters, # jitter vals)
     one_sided_stats = jnp.concatenate(one_sided, axis = 1)
@@ -169,7 +183,7 @@ def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
 
     plt.rcParams.update({'font.size': 8})
     _, axs = plt.subplots(
-        len(jitter_vals), 2,
+        len(x_axis_vals), 2,
         tight_layout = True, 
         figsize = (8, 24)
     )
@@ -187,7 +201,7 @@ def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
 
     for i in range(iters):
         ## loop over x-axis ticks
-        for l in range(len(jitter_vals)):
+        for l in range(len(x_axis_vals)):
             ## compute quantiles
             one_sided_qs = np.quantile(one_sided_stats[:, i, l], quantiles)
             two_sided_qs = np.quantile(two_sided_stats[:, i, l], quantiles)
@@ -195,7 +209,7 @@ def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
             ## plot two-sided stats
             axs[l, 0].axline((0, 0), slope = 1, color = 'black', linestyle = 'dotted')
             axs[l, 0].plot(chisqr_qs, two_sided_qs, color = 'red', alpha = 0.3)
-            axs[l, 0].set_ylabel(f'Jitter = {jitter_vals[l]}')
+            axs[l, 0].set_ylabel(f'Jitter = {x_axis_vals[l]}')
 
             ## plot one-sided stats
             axs[l, 1].axline((0, 0), slope = 1, color = 'black', linestyle = 'dotted')
@@ -203,9 +217,9 @@ def qq_jitter_grid(d_config, m_config, jitter_vals, routine):
 
     axs[0, 0].set_title('Two-Sided Score Test')
     axs[0, 1].set_title('One-Sided Score Test')
-    axs[len(jitter_vals) - 1, 0].set_xlabel(r'$\chi^2$ theoretical quantiles')
-    axs[len(jitter_vals) - 1, 1].set_xlabel(r'$\bar{\chi}^2$ theoretical quantiles')
-    plt.suptitle('QQ Plots of Test Statistics with Jitter')
+    axs[len(x_axis_vals) - 1, 0].set_xlabel(r'$\chi^2$ theoretical quantiles')
+    axs[len(x_axis_vals) - 1, 1].set_xlabel(r'$\bar{\chi}^2$ theoretical quantiles')
+    plt.suptitle(title_dispatch[param])
     plt.tight_layout(rect=[0, 0.03, 1, 0.98])
     plt.savefig(plt_name)
     plt.close()

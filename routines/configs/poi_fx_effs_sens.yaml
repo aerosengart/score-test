@@ -1,7 +1,0 @@
-d_config: '/home/arosenga/score-test/data/configs/d_poi.yaml'
-m_config: '/home/arosenga/score-test/data/configs/m_poi.yaml'
-routine: 'fx_effs_sens'
-r_args:
-  param: 'fx_effs'
-  other_known: True
-  reps: 100
