@@ -28,6 +28,8 @@ ATTRIBUTES:
     q - int; total number of random effects
 """
 
+import jax.numpy as jnp
+
 class Data():
     def __init__(self, config):
         """Constructor for class Data. This class organizes all of the data-related information like the response vector/array, the covariates, etc.
@@ -44,7 +46,9 @@ class Data():
             None
         """
         ## for doc.py (should remove this and edit that file to read attrbs)
-        self.config = config
+        self.config  = config
+        self.ctr_x = config['x']['center']
+        self.ctr_z = config['z']['center']
 
         ## outcome type
         self.outcome = config['outcome']
@@ -63,8 +67,14 @@ class Data():
 
     def set_covars(self, x_arr, z_arr):
         """Setter for covariate arrays."""
-        self.x_arr = x_arr
-        self.z_arr = z_arr
+        if self.ctr_x:
+            self.x_arr = x_arr - jnp.mean(x_arr)
+        else:
+            self.x_arr = x_arr
+        if self.ctr_z:
+            self.z_arr = z_arr - jnp.mean(z_arr)
+        else:
+            self.z_arr
 
     def set_tab_vals(self, targ_idx, samp_idx, counts):
         """Setter for covariate arrays."""

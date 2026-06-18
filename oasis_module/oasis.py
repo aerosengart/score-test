@@ -81,6 +81,11 @@ def oasis_perp(
     c_vec_list = helpers.construct_c_vec_list(data = data)
     train = helpers.split_counts_colwise(anch_arr, train_frac)
 
+    ## col/row sums and dimensions
+    relevant_samps = train.sum(axis = 0) > 0
+    ## have to restrict c_vecs to relevant samples
+    c_vec_list = [c[np.ix_(relevant_samps)] for c in c_vec_list]
+
     ## run OASIS with orthogonal constraints to get optimal c and f vectors
     c_vec, f_vec = optim.generate_alt_max_c_f(
         anch_arr       = train,

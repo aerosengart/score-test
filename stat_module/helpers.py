@@ -3,7 +3,6 @@ import scipy
 
 import numpy           as np
 import jax.numpy       as jnp
-from stat_module import score, info
 
 from scipy                 import stats
 from cvxopt                import matrix, solvers
@@ -118,7 +117,6 @@ def compute_infimum(
     h_vec = matrix([1.0e-7] * dims) 
     ## solve the quadratic form
     sol = solvers.qp(p_arr, q_vec, g_arr, h_vec)
-    #print(p_arr, q_vec, g_arr, h_vec)
     sol_x = jnp.squeeze(jnp.array(sol['x']))
     ## compute infimum value
     if dims == 1:

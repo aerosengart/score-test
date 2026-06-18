@@ -40,4 +40,9 @@ class Data(simul_data.Data):
         y_arr = jnp.array(
             self.rng.poisson(lam = self.compute_mu())
         )
+                ## quick fix to avoid rows of only zeroes
+        while (0 in jnp.sum(y_arr, axis = 1)) or (0 in jnp.sum(y_arr, axis = 0)):
+            y_arr = jnp.array(
+            self.rng.poisson(lam = self.compute_mu())
+            )
         return y_arr

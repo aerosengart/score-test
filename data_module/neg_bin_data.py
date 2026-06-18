@@ -43,7 +43,7 @@ class Data(simul_data.Data):
             self.rng.negative_binomial(n = succs, p = probs)
         )
         ## quick fix to avoid rows of only zeroes
-        while 0 in jnp.sum(y_arr, axis = 1):
+        while (0 in jnp.sum(y_arr, axis = 1)) or (0 in jnp.sum(y_arr, axis = 0)):
             y_arr = jnp.array(
                 self.rng.negative_binomial(n = succs, p = probs)
             )

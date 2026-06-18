@@ -89,12 +89,11 @@ def generate_alt_max_c_f(
     relevant_targs = anch_arr.sum(axis = 1) > 0
     relevant_samps = anch_arr.sum(axis = 0) > 0
     n_rows, n_cols = anch_arr.shape
-    ## if 
     if relevant_targs.sum() < 2 or relevant_samps.sum() < 2:
         return np.zeros(n_cols), np.zeros(n_rows)
     ## subset cols/rows of count table to those that are not all zeros
     anch_arr = anch_arr[np.ix_(relevant_targs, relevant_samps)]
-    
+
     ## initialize
     s_base = 0
     f_max  = 0
@@ -102,15 +101,14 @@ def generate_alt_max_c_f(
     ## re-initialize numRandInits times
     for _ in range(num_rand_inits):
         ## randomly initialize c vector
-        c_vec= np.random.choice(
+        c_vec = np.random.choice(
             [-1, 1], size = anch_arr.shape[1]
         ).astype('float')
-
-        ## correct c vector so that it is orthogonal to all other vects
+        ## correct c vector so that it is orthogonal to all other vectors
         if c_vec_list is not None:
             for v in c_vec_list:
                 c_vec = c_vec - c_vec @ v / np.linalg.norm(v, 2)**2 * v
-            
+
         ## compute optimal test statistic and c and f vectors
         c_vec, f_vec, stat = alt_max(
             anch_arr   = anch_arr, 
