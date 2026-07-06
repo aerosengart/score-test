@@ -31,14 +31,12 @@ def set_fx_effs_jitter(model, jitter_vals):
     fx_effs_arr = model.data.fx_effs_arr + jitter_vals
     ## overwrite model MLE with jittered array
     model.set_fx_effs_arr(fx_effs_arr)
-    model.update_params()
 
 def set_disp_jitter(model, jitter_vals):
     ## jitter the dispersion
     disp_arr = model.data.disp_arr + jitter_vals
     ## overwrite model MLE with jittered array
     model.set_disp_arr(disp_arr)
-    model.update_params()
 
 ##----------------------------------------------------------------------------##
 ## Dispatch Dictionaries                                                      ##
@@ -99,7 +97,7 @@ def test_stat_sensitivity(
     else:
         routine = f'test_stat_{param}_sens'
     ## document routine
-    out_dir = doc.document_routine(d_config, m_config, routine)
+    out_dir = doc.routine_dir(d_config, m_config, routine)
     ## instantiate data
     data = data_types[d_config['outcome']](d_config)
 
@@ -131,11 +129,12 @@ def test_stat_sensitivity(
             two_sided = two_sided.at[r, k].set(two_stat)
     ## save results
     jnp.savez(
-        os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
+        os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         x_axis_vals     = x_axis_vals,
         one_sided_stats = one_sided,
         two_sided_stats = two_sided
     )
+    return out_dir
 
 
 ##----------------------------------------------------------------------------##
@@ -151,11 +150,11 @@ def qq_jitter_grid(d_config, m_config, param, reps, other_known):
     jitter_vals = jitter_dispatch[param]
 
     ## read all results from output directory
-    out_dir = doc.output_directory_path(d_config, m_config)
+    out_dir = doc.routine_dir(d_config, m_config, routine)
     one_sided = []
     two_sided = []
     x_axis_vals = []
-    for file in glob.glob(os.path.join(out_dir, routine, 'results_iter*.npz')):
+    for file in glob.glob(os.path.join(out_dir, 'results_iter*.npz')):
         iter_res = jnp.load(file)
         ## overwrite since all the same
         x_axis_vals = iter_res['x_axis_vals']
@@ -165,7 +164,7 @@ def qq_jitter_grid(d_config, m_config, param, reps, other_known):
 
     ## save full results
     jnp.savez(
-        os.path.join(out_dir, routine, f'results.npz'),
+        os.path.join(out_dir, f'results.npz'),
         x_axis_vals     = x_axis_vals,
         one_sided_stats = one_sided,
         two_sided_stats = two_sided
@@ -178,7 +177,7 @@ def qq_jitter_grid(d_config, m_config, param, reps, other_known):
     ## get necessary quantities/names
     q = len(d_config['var_comp'])
     k = d_config['n_targs']
-    plt_name = os.path.join(out_dir, routine, f'{routine}.pdf')
+    plt_name = os.path.join(out_dir, f'{routine}.pdf')
     iters = len(one_sided)
 
     plt.rcParams.update({'font.size': 8})

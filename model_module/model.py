@@ -16,9 +16,6 @@ class Model():
         RAISES:
             None
         """
-        ## for doc.py (should remove this and edit that file to read attrbs)
-        self.config = config
-        
         ## save data
         self.data = data
         ## model housekeeping
@@ -26,22 +23,10 @@ class Model():
         self.scale        = config['scale']
         self.use_true     = config['use_true']
         self.debug        = config['debug']
-        ## set whether dispersion is allowed to be target-specific and/or fixed
-        if isinstance(config['global_disp'], bool):
-            if config['global_disp'] == True:
-                self.estim_disp = 'global'
-            else:
-                self.estim_disp = True
-        else:
-            ## set dispersion to be some fixed value specific in config file
-            ## reciprocal because of parametrization in glmGamPoi
-            self.estim_disp = [1 / x for x in config['global_disp']]
 
         ## !! these are not the MLEs --- they are the values under H0 !!
         self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, self.data.q)))
         self.set_var_comp(jnp.zeros((self.data.q)))
-        ## estimate the other parameters via maximum likelihood
-        self.set_dist_params_estim()
 
     ## ---------------------------------------------------------------------- ##
     ## GETTERS/SETTERS                                                        ##
@@ -80,7 +65,6 @@ class Model():
         lin_pred += jnp.tile(self.offsets, (self.data.n_targs, 1))
         return lin_pred
 
-
     def compute_kappa(
             self,
             order: int = 2
@@ -116,9 +100,6 @@ class Model():
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
-    def update_params(self):
-        raise NotImplementedError("Subclasses must implement this method.")
-        
     def compute_mu(self):
         raise NotImplementedError("Subclasses must implement this method.")
     

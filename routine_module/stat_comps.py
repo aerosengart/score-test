@@ -52,7 +52,7 @@ def one_two_sided_comparison(
     data = data_types[d_config['outcome']](d_config)
     ## document routine
     routine = 'one_two_sided'
-    out_dir = doc.document_routine(d_config, m_config, routine)
+    out_dir = doc.routine_dir(d_config, m_config, routine)
     ## initialize
     one_sided_stats = jnp.zeros((reps))
     two_sided_stats = jnp.zeros((reps))
@@ -67,7 +67,7 @@ def one_two_sided_comparison(
         ## update debugging dictionary
         if m_config['debug'] == 'full':
             doc.debug_sample(model = model)
-        doc.log_routine(model, routine)
+        doc.log_routine(model, out_dir)
         ## compute test statistics
         one_sided_stat = stat.compute_score_stat(model, one_sided = True)
         two_sided_stat = stat.compute_score_stat(model, one_sided = False)
@@ -79,10 +79,11 @@ def one_two_sided_comparison(
         two_sided_stats = two_sided_stats.at[r].set(two_sided_stat)
     ## save iteration
     jnp.savez(
-        os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
+        os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         one_sided_stats = one_sided_stats,
         two_sided_stats = two_sided_stats
     )
+    return out_dir
 
 
 def score_lrt_comparison(
@@ -105,7 +106,7 @@ def score_lrt_comparison(
     data = data_types[d_config['outcome']](d_config)
     ## document routine
     routine = 'score_lrt_comp'
-    out_dir = doc.document_routine(d_config, m_config, routine)
+    out_dir = doc.routine_dir(d_config, m_config, routine)
     ## initialize
     score_stats = np.zeros((reps))
     lrt_stats   = np.zeros((reps))
@@ -129,10 +130,11 @@ def score_lrt_comparison(
         lrt_stats[r] = lrt_stat
     ## save iteration
     jnp.savez(
-        os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
+        os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         score_stats = score_stats,
         lrt_stats   = lrt_stats
     )
+    return out_dir
 
 
 
@@ -152,10 +154,10 @@ def plot_one_two_sided(d_config, m_config, reps):
     """
     ## read all results from output directory
     routine = 'one_two_sided'
-    out_dir = doc.output_directory_path(d_config, m_config)
+    out_dir = doc.routine_dir(d_config, m_config, routine)
     one_sided = []
     two_sided = []
-    for file in glob.glob(os.path.join(out_dir, routine, 'results_iter*.npz')):
+    for file in glob.glob(os.path.join(out_dir, 'results_iter*.npz')):
         iter_res = jnp.load(file)
         ## expand dims because we want to create a 2D array
         one_sided.append(jnp.expand_dims(iter_res['one_sided_stats'], 1))
@@ -166,9 +168,9 @@ def plot_one_two_sided(d_config, m_config, reps):
     two_sided_stats = jnp.concatenate(two_sided, axis = 1)
 
     ## get necessary quantities/names
-    q = len(d_config['var_comp'])
+    q = len(d_config['rd_effs']['sigma'])
     k = d_config['n_targs']
-    plt_name = os.path.join(out_dir, routine, f'{routine}.pdf')
+    plt_name = os.path.join(out_dir, f'{routine}.pdf')
 
     plt.rcParams.update({'font.size': 8})
     _, axs = plt.subplots(
@@ -234,10 +236,10 @@ def plot_score_lrt(d_config, m_config, reps):
     """
     ## read all results from output directory
     routine = 'score_lrt_comp'
-    out_dir = doc.output_directory_path(d_config, m_config) 
+    out_dir = doc.routine_dir(d_config, m_config, routine) 
     score_stats = []
     lrt_stats = []
-    for file in glob.glob(os.path.join(out_dir, routine, 'results_iter*.npz')):
+    for file in glob.glob(os.path.join(out_dir, 'results_iter*.npz')):
         iter_res = jnp.load(file)
         ## expand dims because we want to create a 2D array
         score_stats.append(jnp.expand_dims(iter_res['score_stats'], 1))
@@ -248,9 +250,9 @@ def plot_score_lrt(d_config, m_config, reps):
     lrt_stats = jnp.concatenate(lrt_stats, axis = 1)
 
     ## get necessary quantities/names
-    q = len(d_config['var_comp'])
+    q = len(d_config['rd_effs']['sigma'])
     k = d_config['n_targs']
-    plt_name = os.path.join(out_dir, routine, f'{routine}.pdf')
+    plt_name = os.path.join(out_dir, f'{routine}.pdf')
 
     plt.rcParams.update({'font.size': 8})
     _, axs = plt.subplots(

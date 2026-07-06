@@ -48,7 +48,7 @@ def fit(model):
     else:
         disps = model.estim_disp
 
-    if model.data.fx_slopes > 0:
+    if model.data.p - 1 > 0:
         ## there are slopes in model, so need to create col_data object
         x_targs_dict = {}
         formula   = f'~ 1'

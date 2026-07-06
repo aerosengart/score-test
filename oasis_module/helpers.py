@@ -118,6 +118,7 @@ def construct_c_vec_list(data):
     """
     ## initialize list of c vectors
     c_vec_list = []
+    x_arr, _ = data.get_covars(ctr = False)
     ## just do a loop because i am lazy right now --- do NOT include intercept
     for j in range(len(data.x_types)):
         if data.x_types[j] == 'cont':
@@ -126,9 +127,9 @@ def construct_c_vec_list(data):
         if batch_lvls != 2:
             raise NotImplementedError('OASIS-perp not implemented batch effects with more than 2 levels.')
         ## get levels --- +1 to exclude intercept
-        arr_vals = np.sort(np.unique(data.x_arr[:, j + 1]))
+        arr_vals = np.sort(np.unique(x_arr[:, j + 1]))
         mapped_vals = {str(arr_vals[0]): -1, str(arr_vals[1]): 1}
-        c_vec = [mapped_vals[str(i)] for i in data.x_arr[:, j + 1].tolist()]
+        c_vec = [mapped_vals[str(i)] for i in x_arr[:, j + 1].tolist()]
         c_vec_list.append(np.asarray(c_vec))
     return c_vec_list
 

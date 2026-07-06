@@ -193,7 +193,7 @@ def construct_data_frame(model, null_model = True):
     )
 
     ## components in model formula
-    fx_slopes = [f'fx_{str(x)}' for x in list(range(model.data.fx_slopes))]
+    fx_slopes = [f'fx_{str(x)}' for x in list(range(model.data.p - 1))]
     
     ## combine into single data frame
     if null_model:
@@ -204,7 +204,7 @@ def construct_data_frame(model, null_model = True):
         )
     else:
         ## model under H1 -> random effects included
-        rd_slopes = [f'rd_{str(x)}' for x in list(range(model.data.rd_slopes))]
+        rd_slopes = [f'rd_{str(x)}' for x in list(range(model.data.q))]
         data_arr = pd.DataFrame(
             jnp.concatenate([resp_np, x_np, z_np, targ_idx_np], axis = 1)
         )

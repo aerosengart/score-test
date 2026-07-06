@@ -12,13 +12,27 @@ class Model(model.Model):
         ## initialize parent class
         super().__init__(config, data)
 
+        ## set whether dispersion is allowed to be target-specific and/or fixed
+        if isinstance(config['global_disp'], bool):
+            if config['global_disp'] == True:
+                self.estim_disp = 'global'
+            else:
+                self.estim_disp = True
+        else:
+            ## set dispersion to be some fixed value specific in config file
+            ## reciprocal because of parametrization in glmGamPoi
+            self.estim_disp = [1 / x for x in config['global_disp']]
+
+        ## estimate the other parameters via maximum likelihood
+        self.set_dist_params_estim()
+
     ## ---------------------------------------------------------------------- ##
     ## GETTERS/SETTERS                                                        ##
     ## ---------------------------------------------------------------------- ##
     def set_disp_arr(self, disp_arr):
         """Set negative binomial dispersion/scale parameter."""
         self.disp_arr = disp_arr
-        
+
     def set_dist_params_estim(self):
         """Compute the maximum likelihood estimate for the fixed effects and the negative binomial dispersion/scale parameters. Also compute the estimated means because there are adjustments made by glmGamPoi.
 
@@ -41,21 +55,9 @@ class Model(model.Model):
         self.set_offsets(offsets)
         self.set_mu_arr(mu_arr)
 
-    def update_params(self):
-        """
-        Update model attributes downstream of fx_effs_arr, eta_arr, mu_arr, disp_arr, or offsets. This includes the linear predictor array (eta_arr) and the mean array (mu_arr).
-
-        ARGS:    None
-        RAISES:  None
-        RETURNS: None
-        """
-        self.set_eta_arr(self.compute_eta())
-        self.set_mu_arr(self.compute_mu())
-
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##
     ## ---------------------------------------------------------------------- ##
-    
     def compute_mu(self):
         """
         Compute mean array using class attributes.
@@ -75,7 +77,7 @@ class Model(model.Model):
         RETURNS: jnp.array (n_targs, n_samps)
         """
         ## (n_targs, n_samps)
-        exp_val = self.mu_arr
+        exp_val = self.compute_mu()
         exp_val_csc = sps.csc_array(exp_val)
         y_arr = self.data.construct_y()
         resid_arr = y_arr - exp_val_csc
@@ -85,13 +87,13 @@ class Model(model.Model):
         """
         Compute and return the linear predictor values under H0.
         
-        Computes g(mu) = eta.
+        Computes g(mu) = eta = log(mu)
 
         ARGS:   None
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        return jnp.exp(self.mu_arr) 
+        return jnp.exp(self.compute_mu())
 
     def compute_g_prime(self) -> jnp.array:
         r"""
@@ -103,8 +105,8 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        g_prime = 1 / self.mu_arr
-        zero_mu = np.where(self.mu_arr == 0)
+        g_prime = 1 / self.compute_mu()
+        zero_mu = np.where(self.compute_mu() == 0)
         g_prime = g_prime.at[zero_mu].set(np.inf)
         return g_prime
 
@@ -119,8 +121,8 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array (n_targs, n_samps)
         """
-        g_prime_2 = -1 / self.mu_arr**2 
-        zero_mu = np.where(self.mu_arr == 0)
+        g_prime_2 = -1 / self.compute_mu()**2 
+        zero_mu = np.where(self.compute_mu() == 0)
         g_prime_2 = g_prime_2.at[zero_mu].set(-np.inf)
         return g_prime_2
     
@@ -135,7 +137,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array; diagonal array (n, k, 1)
         """
-        mu_arr = self.mu_arr
+        mu_arr = self.compute_mu()
         prod = (1 / self.disp_arr) * mu_arr**2
         return mu_arr + prod
 
@@ -150,7 +152,7 @@ class Model(model.Model):
         RAISES: None
         RETURNS: jnp.array; diagonal array (n, k, 1)
         """        
-        mu_arr = self.mu_arr
+        mu_arr = self.compute_mu()
         prod = (2 / self.disp_arr) * mu_arr
         return 1 + prod
 
@@ -196,7 +198,7 @@ class Model(model.Model):
         RETURNS: jnp.array (n_targs, n_samps)
         RAISES:  None
         """
-        return self.compute_mu() / (1 + self.mu_arr / self.disp_arr)
+        return self.compute_mu() / (1 + self.compute_mu() / self.disp_arr)
 
     def compute_epsilon(self) -> jnp.array:
         """

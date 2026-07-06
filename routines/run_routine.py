@@ -7,9 +7,10 @@ Run the specified routine from configuration file and save results to file.
 import jsonargparse
 import yaml
 import sys
+import os
 
 sys.path.append('/home/arosenga/score-test')
-from routine_module import dispatch
+from routine_module import dispatch, doc
 
 def main(): 
     ## create an argument parser and add options
@@ -43,23 +44,27 @@ def main():
         d_dict = yaml.safe_load(file)
     with open(args.m_config, 'r') as file:
         m_dict = yaml.safe_load(file)
+    
 
     ## run routine (one iteration with ID equal to iter_id in arguments)
     if args.r_args is not None:
-        dispatch.routine_types[args.routine](
+        out_dir = dispatch.routine_types[args.routine](
             d_config = d_dict, 
             m_config = m_dict, 
             iter_id  = args.iter_id,
             **args.r_args
         )
     else:
-        dispatch.routine_types[args.routine](
+        out_dir = dispatch.routine_types[args.routine](
             d_config = d_dict, 
             m_config = m_dict, 
             iter_id  = args.iter_id
         )
 
-
+    ## log configuration files 
+    ## only logs to data/model sub-directory, have to manually move to 
+    ## routine sub-directory
+    doc.log_configs(args.cfg[0], out_dir)
 
 if __name__ == "__main__":
     main()

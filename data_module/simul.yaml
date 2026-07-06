@@ -1,0 +1,20 @@
+outcome: 'poi'
+data_type: 'simul'
+fx_effs:
+  mu:
+  sigma:
+rd_effs:
+  mu:
+  sigma:
+x:
+  center: False
+  types: []
+  mu:
+  sigma:
+z:
+  center: True
+  types: ['time_reg']
+  mu:
+  sigma:
+disp:
+  

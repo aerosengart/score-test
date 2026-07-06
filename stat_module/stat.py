@@ -40,16 +40,16 @@ def compute_score_stat(model, one_sided = False):
         scale = model.scale
     )
     ## compute information
-    info_val = info.compute_info(
+    info_fx, info_fx_var, info_var = info.compute_info(
         model, 
         scale_val = scale_val
     )
     ## schur complement
     schur_inv = helpers.lower_right_inv(
-        mat = info_val,
-        q   = model.data.q
+        upp_left  = info_fx,
+        middle    = info_fx_var,
+        low_right = info_var
     )
-
     ## find infimum if one-sided test. otherwise set to 0
     inf_val = 0
     if one_sided:

@@ -161,7 +161,7 @@ def document_routine(d_config, m_config, routine):
 
 ################################################################################## DEBUGGING
 ################################################################################
-def save_data(data, m_config):
+def save_data(data, d_config, m_config, sub_dir = None):
     """Document the sampled data (helpful for diagnosing convergence/optimization problems).
     
     ARGS:
@@ -172,19 +172,17 @@ def save_data(data, m_config):
         None
     """
     debug = data.debug
-    d_config = data.config
 
     ## get output directory path
     out_dir = output_directory_path(d_config, m_config)
     save_dir = os.path.join(
         out_dir,
-        debug['routine']
-    )
-    ## add subdirectories for iteration
-    save_dir = os.path.join(
-        save_dir,
+        debug['routine'],
         f'iter{debug['iter']}'
     )
+
+    if sub_dir is not None:
+        save_dir = os.path.join(save_dir, sub_dir)
 
     ## check if save path exists
     if not os.path.isdir(save_dir):
@@ -195,7 +193,7 @@ def save_data(data, m_config):
         pickle.dump(data, f)
 
 
-def debug_sample(model):
+def debug_sample(model, d_config, m_config):
     """Document the sampled data (helpful for diagnosing convergence/optimization problems).
     
     ARGS:
@@ -206,8 +204,6 @@ def debug_sample(model):
         None
     """
     debug = model.data.debug
-    d_config = model.data.config
-    m_config = model.config
 
     ## get output directory path
     out_dir = output_directory_path(d_config, m_config)
@@ -382,5 +378,4 @@ def debug_sample(model):
 #         kappa3    = kappa3,
 #         kappa4    = kappa4
 #     )
-
 

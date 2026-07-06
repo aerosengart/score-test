@@ -89,8 +89,8 @@ def table_to_sparse_rep(counts):
     ## get indices of non-zero elements in table
     non_zero = np.nonzero(counts)
     ## R is 1-indexed
-    targ_idx = [1 + x for x in non_zero[0]]
-    samp_idx = [1 + x for x in non_zero[1]]
+    targ_idx = [1 + int(x) for x in non_zero[0]]
+    samp_idx = [1 + int(x) for x in non_zero[1]]
     counts  = counts[non_zero].tolist()
     return targ_idx, samp_idx, counts
 
@@ -192,130 +192,17 @@ def construct_metadata(
     return x_cov_arr, z_cov_arr
     
 
+def check_attrbs(data):
+    """Check data attributes are compatible."""
+    assert hasattr(data, 'fx_effs_mu')
+    assert hasattr(data, 'fx_effs_sigma')
+    assert hasattr(data, 'rd_effs_mu')
+    assert hasattr(data, 'rd_effs_sigma')
+    if 'cont' in data.x_types:
+        assert hasattr(data, 'x_mu')
+        assert hasattr(data, 'x_sigma')
+    if 'cont' in data.z_types:
+        assert hasattr(data, 'z_mu')
+        assert hasattr(data, 'z_sigma')
 
-
-
-
-
-
-
-# def anchor_bin(anchor, bin_key_file):
-#     """
-#     Look up anchor bin file.
-
-#     ARGS:
-#         anchor  - str; anchor sequence
-#         bin_key_file - str; path to anchor_bin.tsv
-#     RAISES:  None
-#     RETURNS: str; bin index for specified anchor
-#     """
-#     anchor_bin_key = pd.read_csv(bin_key_file)
-#     return int(anchor_bin_key[anchor_bin_key['anchor'] == anchor]['bin'].iloc[0])
-
-# def satc_to_dense_mat(
-#         anchor:     str, 
-#         satc_dir:   str
-#     ):
-#     """
-#     Create contingency table from anchor-specific SATC file.
-
-#     ARGS:
-#         anchor     - str;  anchor 
-#         satc_dir   - str;  directory of anchor-specific SATC files
-#     RAISES: None
-#     RETURNS: pd.array - contingency table from SATC data (targets, samples)
-#     """
-#     ## make output file name
-#     anchor_file = os.path.join(satc_dir, f'{anchor}.txt')
-    
-#     anchor_satc = pd.read_csv(anchor_file, sep = ' ', header = None, names = ['sample', 'target', 'count'])
-
-#     ## samples/targets found in this anchor's table
-#     samps = anchor_satc['sample'].unique().tolist()
-#     targs = anchor_satc['target'].unique().tolist()
-#     samp_id_key = dict(zip(samps, range(len(samps))))
-
-#     ## initialize anchor array
-#     anchor_arr = jnp.zeros((len(targs), len(samps)))
-
-#     for i in range(len(targs)):
-#         targ_vals = anchor_satc[anchor_satc['target'] == targs[i]]
-#         samp_ids = targ_vals['sample'].astype(int).tolist()
-#         samp_idx = [samp_id_key[id] for id in samp_ids]
-#         counts = targ_vals['count'].astype(int).tolist()
-#         anchor_arr = anchor_arr.at[i, samp_idx].set(counts)
-
-#     anchor_arr = pd.DataFrame(anchor_arr, index = targs, columns = samps)
-#     return anchor_arr
-
-
-# def bin_to_conting(
-#         splash_dir: str, 
-#         anchor:     str, 
-#         bin:        int, 
-#         satc_dir:   str, 
-#         out_dir:    str, 
-#         clean_up:   bool = False
-#     ):
-#     """
-#     Create contingency table from binarized SATC file for a particular anchor.
-
-#     ARGS:
-#         splash_dir - str; directory to SPLASH executables
-#         anchor     - str; anchor 
-#         bin        - int; index of file
-#         satc_dir   - str; directory of binary SATC files
-#         out_dir    - str; output directory
-#         clean_up   - bool; whether to remove intermedaite files (SATC dump)
-#     RAISES: None
-#     RETURNS: jnp.array - contingency table from SATC data (targets, samples)
-#     """
-#     ## check if save path exists
-#     if not os.path.isdir(out_dir):
-#         os.makedirs(out_dir)
-
-#     ## make output file name
-#     anchor_file = os.path.join(out_dir, anchor + '.csv')
-
-#     if os.path.isfile(anchor_file):
-#         return pd.read_csv(anchor_file, header = 0, index_col = 0)
-    
-#     ## dump bin to satc
-#     bin_read = os.path.join(satc_dir, f'bin{bin}.satc')
-#     bin_dump = os.path.join(out_dir, f'bin{bin}.satc.dump')
-#     if not os.path.isfile(bin_dump):
-#         subprocess.call([splash_dir + '/satc_dump', bin_read, bin_dump])
-#     satc = pd.read_csv(bin_dump, sep = '\t')
-
-#     ## rename columns
-#     if satc.shape[-1] == 4:
-#         satc.columns = ['sample', 'anchor', 'target', 'count']
-#     else:
-#         satc.columns = ['sample_id', 'cell_barcode', 'anchor', 'target', 'count']
-
-#     ## filter to only selected anchor
-#     anchor_satc = satc[satc['anchor'] == anchor]
-#     anchor_satc = anchor_satc.sort_values(by = ['sample', 'target'])
-#     ## samples/targets found in this anchor's table
-#     samps = anchor_satc['sample'].unique().tolist()
-#     targs = anchor_satc['target'].unique().tolist()
-#     samp_id_key = dict(zip(samps, range(len(samps))))
-
-#     ## initialize anchor array
-#     anchor_arr = jnp.zeros((len(targs), len(samps)))
-
-#     for i in range(len(targs)):
-#         targ_vals = anchor_satc[anchor_satc['target'] == targs[i]]
-#         samp_ids = targ_vals['sample'].astype(int).tolist()
-#         samp_idx = [samp_id_key[id] for id in samp_ids]
-#         counts = targ_vals['count'].astype(int).tolist()
-#         anchor_arr = anchor_arr.at[i, samp_idx].set(counts)
-
-#     anchor_arr = pd.DataFrame(anchor_arr, index = targs, columns = samps)
-
-#     ## clean up files
-#     if clean_up:
-#         subprocess.call(['rm', bin_dump])
-
-#     return anchor_arr
 

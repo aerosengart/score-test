@@ -19,7 +19,6 @@ from model_module.dispatch import model_types
 #plt.rcParams['text.usetex'] = True
 plt.rcParams['axes.unicode_minus'] = False
 
-
 ##----------------------------------------------------------------------------##
 ## Computations                                                               ##
 ##----------------------------------------------------------------------------##
@@ -49,7 +48,7 @@ def score_var_comp_emp_dist(
     scores_arr = jnp.zeros((data.q, reps)) 
     routine = 'score_var_comp_emp_dist'
     ## get plot name and document routine
-    out_dir = doc.document_routine(d_config, m_config, routine)
+    out_dir = doc.routine_dir(d_config, m_config, routine)
 
     for i in tqdm(range(reps)):
         ## draw observations and build model
@@ -95,7 +94,7 @@ def score_var_comp_by_disp_emp_dist(
     scores_arr = jnp.zeros((data.q, len(disp_vals), reps)) 
     routine = 'score_var_comp_by_disp_emp_dist'
     ## get plot name and document routine
-    out_dir = doc.document_routine(d_config, m_config, routine)
+    out_dir = doc.routine_dir(d_config, m_config, routine)
     ## copy model config
     m_config_alt = m_config
     for i in tqdm(range(reps)):

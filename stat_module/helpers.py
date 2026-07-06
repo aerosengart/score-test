@@ -5,6 +5,7 @@ import numpy           as np
 import jax.numpy       as jnp
 
 from scipy                 import stats
+from scipy.optimize        import minimize
 from cvxopt                import matrix, solvers
 from numpyro.distributions import CategoricalProbs, MixtureSameFamily, Chi2
 
@@ -13,8 +14,9 @@ solvers.options['maxiters'] = 200
 solvers.options['feastol'] = 1e-7
 
 def lower_right_inv(
-        mat: jnp.array,
-        q:   int  = 1
+        upp_left:  jnp.array,
+        middle:    jnp.array,
+        low_right: jnp.array,
     ) -> jnp.array:
     r"""Compute inverse of the lower right block of the given matrix.
 
@@ -46,38 +48,124 @@ def lower_right_inv(
         C^{-1} = (D - c^t c)^{-1}
 
     ARGS:
-        mat:
-            jax.numpy array; the matrix of interest
-        q:
-            int; dimension to consider as the "lower right block"
+        upp_left  - jax.numpy array; the upper left block of the information matrix corresponding to the fixed effects covariances
+        middle    - jax.numpy array; the block of the information matrix corresponding to the fixed effects/variance components covariances
+        low_right - jax.numpy array; the lower right block of the information matrix corresponding to the variance components covariances
     RETURNS:
         jax.numpy array; the lower right block of the inverse matrix (q, q)
     RAISES:
         None
     """
-    ## dimension of mat
-    dim = mat.shape[0]
-    ## get upper left block of matrix --- scale by mean for stability
-    #upp_block = mat[0:(dim - q), 0:(dim - q)]
-    upp_block = mat[:-q, :-q]
-    #mean = scipy.stats.gmean(jnp.ravel(upp_block))
-    mean = jnp.mean(upp_block)
-    upp_block_scale = upp_block / mean
-    ## rightmost chunk of matrix --- scale by sqrt mean to retain value
-    #r_col = mat[0:(dim - q), (dim - q):]
-    r_col = mat[:-q, -q:]
-    r_col_scale = r_col / jnp.sqrt(mean)
-    ## compute Cholesky factor
-    l_arr = jax.scipy.linalg.cho_factor(upp_block)
-    l_arr_scale = jax.scipy.linalg.cho_factor(upp_block_scale)
-    ## compute c vector as in description --- Cholesky solve
-    c_vec_scale = jax.scipy.linalg.cho_solve(l_arr_scale, r_col_scale)
-    ct_c_scale = jnp.matmul(jnp.transpose(c_vec_scale), c_vec_scale)
-    ## compute schur complement and invert
-    #low_block = mat[(dim - q):, (dim - q):]
-    low_block = mat[-q:, -q:]
-    schur_comp = low_block - ct_c_scale
+    mean_val = jnp.mean(upp_left)
+    upp_block = upp_left / mean_val
+    mid_scale = middle / jnp.sqrt(mean_val)
+
+    # ## if upper left shape is (_, 1, 1) and non-invertible, do pseudo-inverse
+    # if upp_left.shape[-1] == 1:
+    #     big_mat = jnp.diag(upp_block[:, 0, 0])
+    #     if np.linalg.det(big_mat) == 0.0:
+    #         upp_block_invs = np.linalg.pinv(big_mat)
+    #     else:
+    #         upp_block_invs = np.linalg.inv(big_mat)
+    #     ## reshape to be (rel_targs, p, p)
+    #     upp_block_invs = jnp.diag(upp_block_invs)
+    #     upp_block_invs = jnp.expand_dims(upp_block_invs, axis = (1, 2))
+
+    ## invert each matrix in block diagonal upp_left block --- this is kind of inefficient
+    dets = jnp.linalg.det(upp_block)
+    #zero_dets = np.where(dets == 0.0)
+
+    def wrap_inv(mat):
+        return jnp.linalg.inv(mat)
+    
+    def wrap_pinv(mat):
+        return jnp.linalg.pinv(mat)
+    
+    #inv_func = jax.vmap(wrap_inv, in_axes = [0])
+    pinv_func = jax.vmap(wrap_pinv, in_axes = [0])
+    ## (rel_targs, p, p)
+    upp_block_invs = pinv_func(upp_block)
+    ## replace non-invertible entries with pseudo-inverses
+    #upp_block_invs = upp_block_invs.at[zero_dets].set(pinv_func(upp_block[zero_dets]))
+
+    ## D - C A^{-1} B = M/A 
+    def wrap_func(c_i, a_i):
+        ## c_i is (p, q)
+        ## a_i is (p, p)
+        return jnp.matmul(jnp.matmul(c_i.T, a_i), c_i)
+    vmap_func = jax.vmap(wrap_func, in_axes = [0, 0])
+    ## (n_targs, q, q)
+    vals = vmap_func(mid_scale, upp_block_invs)
+    schur_comp = low_right - jnp.sum(vals, axis = 0)
+    ## D^{-1} = (M/A)^{-1}
     return jnp.linalg.inv(schur_comp)
+
+    # ## dimension of mat
+    # dim = mat.shape[0]
+    # ## get upper left block of matrix --- scale by mean for stability
+    # #upp_block = mat[0:(dim - q), 0:(dim - q)]
+    # upp_block = mat[:-q, :-q]
+    # #mean = scipy.stats.gmean(jnp.ravel(upp_block))
+    # mean = jnp.mean(upp_block)
+    # upp_block_scale = upp_block / mean
+    # ## rightmost chunk of matrix --- scale by sqrt mean to retain value
+    # #r_col = mat[0:(dim - q), (dim - q):]
+    # r_col = mat[:-q, -q:]
+    # r_col_scale = r_col / jnp.sqrt(mean)
+    # ## compute Cholesky factor
+    # l_arr = jax.scipy.linalg.cho_factor(upp_block)
+    # l_arr_scale = jax.scipy.linalg.cho_factor(upp_block_scale)
+    # ## compute c vector as in description --- Cholesky solve
+    # c_vec_scale = jax.scipy.linalg.cho_solve(l_arr_scale, r_col_scale)
+    # ct_c_scale = jnp.matmul(jnp.transpose(c_vec_scale), c_vec_scale)
+    # ## compute schur complement and invert
+    # #low_block = mat[(dim - q):, (dim - q):]
+    # low_block = mat[-q:, -q:]
+    # schur_comp = low_block - ct_c_scale
+    # return jnp.linalg.inv(schur_comp)
+
+
+# def compute_infimum_scalar(
+#         score:     jnp.array, 
+#         schur_inv: jnp.array
+#     ) -> float:
+#     """Compute the infimum of the quadratic program under the constraint that var_comp is non-negative...
+    
+#     Uses `cvxopt` package's solvers.qp (quadratic program solver).
+
+#     ARGS:
+#         score     - jax.numpy array; the gradient (first derivative) of the full marginal log-likelihood with respect to var_comp evaluated at var_comp = 0 (q,)
+#         schur_inv - jax.numpy array; the inverse Schur complement of the lower right block of the Fisher information (q + test_p, q + test_p)
+#         test_p    - int; the number of fixed effects being tested
+#         q         - int; dimension of variance component (var_comp)
+#     RETURNS:
+#         inf_val - jnp.array; the value of the objective function evaluated at the solution found by the solver (q + test_p, 1)
+#     RAISES:
+#         None
+#     """
+#     def obj_func(b):
+#         return (score - b)**2 * schur_inv
+
+#     def jac_func(b):
+#         return -2 * (score - b) * schur_inv
+    
+#     def ineq_constr(b):
+#         return b
+
+#     constraints = {
+#         'type': 'ineq',
+#         'fun':  ineq_constr,
+#     }
+
+#     inf_val = minimize(
+#         fun         = obj_func, 
+#         method      = 'COBYQA',
+#         x0          = 1.0, 
+#         constraints = constraints
+#     )
+#     print(inf_val)
+
+#     return inf_val
 
 
 def compute_infimum(

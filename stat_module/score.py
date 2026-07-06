@@ -3,7 +3,7 @@
 import math
 import jax
 import jax.numpy    as jnp
-
+import numpy        as np
 from stat_module import info, helpers, intermed
 
 from routine_module import doc
@@ -26,24 +26,22 @@ def compute_score_var_comp(
 
     ## initial computations
     resid_vals     = model.compute_resid()
-    omega_vals     = intermed.compute_omega(model)
-    delta_inv_vals = intermed.compute_delta(model, inv = True)
     xi_vals        = intermed.compute_xi(model)
-
+    delta_inv_omega_vals = intermed.compute_delta_inv_omega(model)
     for idx in range(model.data.q):
         ## (n_samps, n_samps) --- same for all targets
         a_j_arr = intermed.compute_a_j(model, j = idx)
 
         ## vectorize wrapper --- compute target-by-target
-        def wrap_func(resid_targ, delta_inv_targ, omega_targ, xi_targ):
-            rdo_targ = resid_targ * delta_inv_targ * omega_targ
+        def wrap_func(resid_targ, delta_inv_omega_targ, xi_targ):
+            rdo_targ = resid_targ * delta_inv_omega_targ
             term1 = rdo_targ.T @ a_j_arr @ rdo_targ
             term2 = jnp.diag(xi_targ) @ a_j_arr
             return term1 - jnp.trace(term2)
     
         ## compute values
-        vmap_func = jax.vmap(wrap_func, in_axes = [0, 0, 0, 0])
-        summands = vmap_func(resid_vals, delta_inv_vals, omega_vals, xi_vals)
+        vmap_func = jax.vmap(wrap_func, in_axes = [0, 0, 0])
+        summands = vmap_func(resid_vals, delta_inv_omega_vals, xi_vals)
         full_log_lik = (1 / 2) * jnp.sum(summands)
         scores = scores.at[idx].set(full_log_lik)
     if scale:
@@ -53,7 +51,7 @@ def compute_score_var_comp(
         scale_val = 1
     wrt_var_comp = jnp.squeeze(scores / scale_val)
     
-    if math.isnan(wrt_var_comp):
+    if np.isnan(wrt_var_comp):
         doc.debug_sample(model)
         raise Exception
     return wrt_var_comp, scale_val
