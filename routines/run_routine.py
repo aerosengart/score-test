@@ -46,7 +46,7 @@ def main():
         m_dict = yaml.safe_load(file)
     
 
-    ## run routine (one iteration with ID equal to iter_id in arguments)
+    # run routine (one iteration with ID equal to iter_id in arguments)
     if args.r_args is not None:
         out_dir = dispatch.routine_types[args.routine](
             d_config = d_dict, 

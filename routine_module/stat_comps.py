@@ -61,19 +61,17 @@ def one_two_sided_comparison(
         ## draw data and build model
         data.set_debug(iter = '', rep = str(r), routine = routine, seed = data.seed)
         data.resample()
-        if m_config['debug'] == 'full':
-            doc.save_data(data = data, m_config = m_config)
         model = model_types[m_config['outcome']](m_config, data)
         ## update debugging dictionary
         if m_config['debug'] == 'full':
-            doc.debug_sample(model = model)
-        doc.log_routine(model, out_dir)
+            doc.save_rep(model, d_config, m_config, sub_dir = None)
+        doc.log_routine(model, d_config, m_config, routine)
         ## compute test statistics
         one_sided_stat = stat.compute_score_stat(model, one_sided = True)
         two_sided_stat = stat.compute_score_stat(model, one_sided = False)
         ## check for crazy large values
-        if one_sided_stat >= 100 or two_sided_stat >= 100:
-            doc.debug_sample(model = model)
+        #if one_sided_stat >= 100 or two_sided_stat >= 100:
+            #doc.debug_sample(model = model)
         ## record values
         one_sided_stats = one_sided_stats.at[r].set(one_sided_stat)
         two_sided_stats = two_sided_stats.at[r].set(two_sided_stat)

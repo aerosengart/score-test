@@ -4,6 +4,7 @@ def test_poi_fx_targ_int_rd_slope(simul_data):
     ## n_samps: 50
     ## n_targs: 100
     data = simul_data('tests/data/poi_data.yaml')
+    data.resample()
     eta_arr = data.compute_eta()
     ## data dimensions
     assert data.x_arr.shape == (50, 1)
@@ -21,6 +22,7 @@ def test_poi_fx_targ_int_batch(simul_data):
     ## n_samps: 100
     ## n_targs: 100
     data = simul_data('tests/data/poi_batch.yaml')
+    data.resample()
     eta_arr = data.compute_eta()
     ## data dimensions
     assert data.x_arr.shape == (100, 2)

@@ -7,6 +7,7 @@ from model_module import glmmtmb
 
 def test_lrt_test(simul_data, nb_model):
     data = simul_data('tests/data/nb_data_small.yaml')
+    data.resample()
     model = nb_model('tests/data/nb_model.yaml', data)
 
     ## R imports

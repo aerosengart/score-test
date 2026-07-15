@@ -234,7 +234,6 @@ def error_comparison(
     ## instantiate data
     data = data_types[d_config['outcome']](d_config)
     data.resample()
-    doc.plot_heatmap(data, out_dir)
 
     for r in tqdm(range(reps)):
         data.set_debug(iter = '', rep = str(r), routine = routine, seed = data.seed)
@@ -243,8 +242,8 @@ def error_comparison(
             model = model_types[m_config['outcome']](m_config, data)
             ## update debugging dictionary
             if m_config['debug'] == 'full':
-                doc.save_data(data, d_config, m_config, sub_dir = f'{param}{str(x_axis_vals[i])}')
-            doc.log_routine(model, out_dir)
+                doc.save_rep(model, d_config, m_config, sub_dir = f'{param}{str(x_axis_vals[i])}')
+            doc.log_routine(model, d_config, m_config, routine)
             ## compute p-values
             oasis_p, asymp_p, one_p, two_p = p_val_func(data, model)
             oasis_p_vals[r, i]   = oasis_p

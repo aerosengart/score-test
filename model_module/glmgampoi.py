@@ -33,7 +33,7 @@ def fit(model):
     RAISES:
         None
     RETURNS:
-        three jnp.arrays; fixed effects estimates (k, p), dispersion parameter estimates (k, 1), estiamted means (n, k)
+        three jnp.arrays; fixed effects estimates (k, p), dispersion parameter estimates (k, 1), estimated means (n, k)
     """
     matrix_lib = importr('Matrix')
     glmgampoi  = importr('glmGamPoi')

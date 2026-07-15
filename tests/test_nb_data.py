@@ -5,6 +5,7 @@ def test_nb_fx_targ_int_rd_slope(simul_data):
     ## n_targs: 100
     ## no fixed slopes
     data = simul_data('tests/data/nb_data.yaml')
+    data.resample()
     eta_arr = data.compute_eta()
     ## data dimensions
     assert data.x_arr.shape == (50, 1)
@@ -27,6 +28,7 @@ def test_nb_fx_targ_int_slope_rd_slope(simul_data):
     ## n_targs: 100
     ## 3 level batch effect
     data = simul_data('tests/data/nb_data_fx_slope.yaml')
+    data.resample()
     eta_arr = data.compute_eta()
     ## data dimensions
     assert data.x_arr.shape == (50, 2)

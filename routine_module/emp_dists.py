@@ -44,6 +44,7 @@ def score_var_comp_emp_dist(
 
     ## instantiate data
     data = data_types[d_config['outcome']](d_config)
+    data.resample()
     ## initialize
     scores_arr = jnp.zeros((data.q, reps)) 
     routine = 'score_var_comp_emp_dist'
@@ -57,17 +58,18 @@ def score_var_comp_emp_dist(
         model = model_types[m_config['outcome']](m_config, data)
         ## update debugging dictionary
         if m_config['debug'] == 'full':
-            doc.debug_sample(model = model)
-        doc.log_routine(model, routine)
+            doc.save_rep(model, d_config, m_config, sub_dir = None)
+        doc.log_routine(model, d_config, m_config, routine)
         ## compute score
         gradient, _ = score.compute_score_var_comp(model, scale = False)
         scores_arr = scores_arr.at[:, i].set(gradient)
 
     ## save full results
     jnp.savez(
-        os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
+        os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         scores = scores_arr
     )
+    return out_dir
 
 
 def score_var_comp_by_disp_emp_dist(
@@ -116,6 +118,7 @@ def score_var_comp_by_disp_emp_dist(
         os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
         scores = scores_arr
     )
+    return out_dir
 
 
 ##----------------------------------------------------------------------------##

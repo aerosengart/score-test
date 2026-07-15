@@ -10,6 +10,7 @@ from rpy2.robjects          import pandas2ri
 
 def test_construct_data_frame(simul_data, nb_model):
     data = simul_data('tests/data/nb_data_small.yaml')
+    data.resample()
     model = nb_model('tests/data/nb_model_small.yaml', data)
 
     ## null model
@@ -33,6 +34,7 @@ def test_construct_data_frame(simul_data, nb_model):
 
 def test_model_formula(simul_data, nb_model):
     data = simul_data('tests/data/nb_data_small.yaml')
+    data.resample()
     model = nb_model('tests/data/nb_model.yaml', data)
 
     ## null model
@@ -49,6 +51,7 @@ def test_model_formula(simul_data, nb_model):
 
 def test_map_params_simple(simul_data, nb_model):
     data = simul_data('tests/data/nb_data_small.yaml')
+    data.resample()
     model = nb_model('tests/data/nb_model_small.yaml', data)
     ## overwrite fixed effects
     new_fx_effs = jnp.ones(model.fx_effs_arr.shape)
@@ -80,6 +83,7 @@ def test_map_params_simple(simul_data, nb_model):
 
 def test_map_params(simul_data, nb_model):
     data = simul_data('tests/data/nb_data_small.yaml')
+    data.resample()
     model = nb_model('tests/data/nb_model_small.yaml', data)
     n_targs = data.n_targs
     ## overwrite fixed effects
@@ -112,6 +116,7 @@ def test_map_params(simul_data, nb_model):
 
 def test_extract_fx_effs(simul_data, nb_model):
     data = simul_data('tests/data/nb_data_small.yaml')
+    data.resample()
     model = nb_model('tests/data/nb_model_small.yaml', data)
     fx_effs_arr = model.fx_effs_arr
 
@@ -144,6 +149,7 @@ def test_extract_fx_effs(simul_data, nb_model):
 
 def test_extract_rd_effs(simul_data, nb_model):
     data = simul_data('tests/data/nb_data_small.yaml')
+    data.resample()
     model = nb_model('tests/data/nb_model_small.yaml', data)
     fx_effs_arr = model.fx_effs_arr
 
