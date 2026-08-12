@@ -48,13 +48,11 @@ def draw_factor_arr(row, col, levels, rng, covar = None):
     RAISES: None
     RETURNS: jnp.array (row, col) 
     """
-    if levels > 2:
-        raise NotImplementedError('Currently only 2 levels are supported.')
     level_list = range(levels)
     x_levels = jnp.asarray(rng.choice(level_list, size = row * col))
     factor_vals = jnp.reshape(x_levels, (row, col))
-    # if levels > 2:
-    #     factor_vals = pd.get_dummies(factor_vals, prefix = covar, drop_first = True)
+    if levels > 2:
+        factor_vals = pd.get_dummies(factor_vals, prefix = covar, drop_first = True)
     return factor_vals
 
 def draw_time_arr(row, col, reg_int, rng):

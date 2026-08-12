@@ -21,7 +21,7 @@ plt.rcParams['axes.unicode_minus']            = False
 def make_info_heatmap(arr, var, out_dir):
     plt.rcParams.update({'font.size': 8})
     fig, axs = plt.subplots(nrows = 1, ncols = 1)
-    fig.tight_layout(rect = [0.02, 0.03, 1, 0.95])
+    fig.tight_layout(rect = (0.02, 0.03, 1.0, 0.95))
     heatmap = axs.imshow(arr, interpolation = None, norm = colors.LogNorm())
     fig.colorbar(heatmap, ax = axs, shrink = 0.6)
     c_num = np.linalg.cond(arr)
@@ -40,7 +40,7 @@ def make_disp_heatmap(d_disp, m_disp, out_dir):
 
     plt.rcParams.update({'font.size': 8})
     fig, axs = plt.subplots(nrows = 1, ncols = 2, sharey = True, sharex = True)
-    fig.tight_layout(rect=[0.02, 0.03, 1, 0.95])
+    fig.tight_layout(rect = (0.02, 0.03, 1.0, 0.95))
     _ = axs[0].imshow(d_disp, interpolation = None, aspect='auto', vmin = _min, vmax = _max)
     heatmap = axs[1].imshow(m_disp, interpolation = None, aspect='auto', vmin = _min, vmax = _max)
     axs[0].set_title('data')
@@ -79,7 +79,7 @@ def make_coefs_heatmap(d_fx_arr, d_rd_arr, m_fx_arr, m_rd_arr, out_dir):
 
     plt.rcParams.update({'font.size': 8})
     fig, axs = plt.subplots(nrows = 2, ncols = 2, sharey = 'row', sharex = 'col')
-    fig.tight_layout(rect=[0.02, 0.03, 1, 0.95])
+    fig.tight_layout(rect = (0.02, 0.03, 1.0, 0.95))
     _ = axs[0, 0].imshow(d_fx_arr, interpolation = None, aspect='auto', vmin = _min, vmax = _max)
     _ = axs[0, 1].imshow(m_fx_arr, interpolation = None, aspect='auto', vmin = _min, vmax = _max)
     _ = axs[1, 0].imshow(d_rd_arr, interpolation = None, aspect='auto', vmin = _min, vmax = _max)
@@ -121,7 +121,7 @@ def make_eta_mu_heatmap(d_eta_arr, d_mu_arr, m_eta_arr, m_mu_arr, out_dir):
 
     plt.rcParams.update({'font.size': 8})
     fig, axs = plt.subplots(nrows = 2, ncols = 2, sharey = 'row', sharex = 'col')
-    fig.tight_layout(rect=[0.02, 0.03, 1, 0.95])
+    fig.tight_layout(rect = (0.02, 0.03, 1.0, 0.95))
     _ = axs[0, 0].imshow(d_eta_arr, interpolation = None, aspect='auto', vmin = eta_min, vmax = eta_max)
     heatmap1 = axs[0, 1].imshow(m_eta_arr, interpolation = None, aspect='auto', vmin = eta_min, vmax = eta_max)
     _ = axs[1, 0].imshow(d_mu_arr, interpolation = None, aspect='auto', vmin = mu_min, vmax = mu_max)

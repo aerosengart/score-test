@@ -56,8 +56,7 @@ last_job_sub=$(sbatch --parsable --array=1-$n_job_arr slurm_scripts/run_score_te
 end_idx=$(( $start_idx + $n_anch_arr ))
 
 ## loop over remaining anchors in anchor_list
-#for (( i=$end_idx; i<=$num_anchors; i+=$n_anch_arr )); do
-for (( i=$end_idx; i<=50; i+=$n_anch_arr)); do
+for (( i=$end_idx; i<=$num_anchors; i+=$n_anch_arr )); do
    wait_job=$last_job_sub
    ## wait until previous job array is done
    last_job_sub=$(sbatch --parsable --dependency=afterany:$wait_job --array=1-$n_job_arr slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir $i $n_anch_job $num_anchors) 

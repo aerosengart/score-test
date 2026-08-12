@@ -120,3 +120,94 @@ To re-plot the results:
 
 - Test statistic comparisons: `stat_comps.py`
 - Test statistic sensitivity analysis: `stat_sens.py`
+
+
+
+
+
+
+
+
+
+### Empirical Distribution of Score
+We can plot the empirical distribution of the score vector by simulating many datasets with the same data-generating mechanism.
+
+#### Usage
+`sbatch --array=1 [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "score_var_comp" [number of replicates per iteration]`
+
+#### Example
+`sbatch --array=1 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "score_var_comp" 100`
+
+We then plot the results with `routines/plot_routine.py`. This creates a histogram (or an array of histograms) that shows the empirical distribution of the score component(s) corresponding to the random effect(s) variance component(s) on the density scale.
+
+#### Usage
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r score_var_comp`
+
+#### Example
+This is very fast (maybe 2-3 minutes).
+
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r score_var_comp`
+
+**NOTE**: We specify this routine as `score_var_comp` but the sub-directory will be `score_var_comp_emp_dist` since we are plotting the empirical distribution of the score component(s).
+
+
+
+
+
+
+
+
+
+
+
+
+### One-Sided and Two-Sided Comparison
+In basically the same way as the previous routine, we can compare QQ-plots of the one- and two-sided score test statistics over many iterations and replicates. 
+
+#### Usage
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "one_two_sided" [number of replicates per iteration]`
+
+### Example
+This is also pretty fast (< 10 minutes).
+`sbatch --array=1-20 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "one_two_sided" 100`
+
+We plot the results with `routines/plot_routine.py`. This creates two QQ-plots side-by-side. The left sub-plot shows the two-sided test statistic empirical quantiles against the $\chi^2_q$ theoretical quantiles (where $q$ is the dimension of $\boldsymbol{\tau^2}$, the random effect(s) variance(s)). The right sub-plot show the one-sided test statistic empirical quantiles against the $\bar{\chi}^2$ theoretical quantiles (the specific choice of $\bar{\chi}^2$ depends on $q$). 
+
+#### Usage
+`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r one_two_sided`
+
+#### Example
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r one_two_sided`
+
+
+
+### Fixed Effects Sensitivity
+We can explore the sensitivity of the one- or two-sided score test statistics to misspecification (i.e. mis-estimation) of the fixed effects coefficients.
+
+#### Usage
+`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "fx_effs_sens" [number of replicates per iteration] [0/1 flag for known dispersion parameter]`
+
+#### Example
+A bit slow (~20 minutes/iteration).
+`sbatch --array=1-20 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "fx_effs_sens" 100 1`
+
+`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r fx_effs_sens`
+
+
+
+
+
+
+<!-- ### Unfiltered Tests
+An alternative to the above procedure is to _not_ filter the anchors and to conduct the test on _all_ anchor contingency tables. We first have to dump all of these tables. The following command does this and also creates `all_anchors_list.txt` in the output directory, which is a text file with each anchor's sequence as a separate line.
+
+#### Usage
+`python [path to make_satc.py] --sp_dir [path to splash bin files] --bin_dir [path to satc sub-directory] --scratch [path to scratch directory] --output [output directory]`
+
+#### Example
+`python python_scripts/make_satc.py --sp_dir splash --bin_dir analyses/viana/2026_05_29/result_satc --scratch /scratch/arosenga --output analyses/viana/2026_05_29`
+
+
+The Leviathans each have their own `/scratch`, so we have to copy these S(A)TC files over to `/home` if we want to use a slurm job array. It is not very good to keep millions of files on `/home`, so we use a more complicated wrapper shell script to submit the array. 
+ -->
+

@@ -1,16 +1,11 @@
 """
 Parent class for data object representing clustered data for GLMM variance component score test. Supports simulated data and real data child classes. Data are assumed to be organized as in SPLASH. 
-
-The count table is represented as three lists for sparse matrix construction: targ_idx (row indices), samp_idx (column indices), counts (cell value). Covariates are shared sample-wise across targets, so they are stored as an (n_samp, p) or (n_samp, q) arrays.
-
-All fixed effects are assumed to be TARGET-SPECIFIC, so that the null models can be fit with glmGamPoi() (i.e. target-wise null models). Null models with ALWAYS INCLUDE a target-specific, fixed intercept. User can decide to include additional slopes.
 """
 import numpy     as np
 import jax.numpy as jnp
 
 class Data():
     def __init__(self, config):
-        """Constructor for class Data. This class organizes all of the data-related information like the response vector/array, the covariates, etc."""
         ## seed for sampling/whatever
         self.seed = int(config['seed'])
         self.rng  = np.random.default_rng(self.seed)
@@ -70,7 +65,3 @@ class Data():
         unctr_x = self.x_arr + jnp.tile(self.x_ctr_vals, (self.x_arr.shape[0], 1))
         unctr_z = self.z_arr + jnp.tile(self.z_ctr_vals, (self.z_arr.shape[0], 1))
         return unctr_x, unctr_z, self.x_col_names, self.z_col_names
-
-    ## ---------------------------------------------------------------------- ##
-    ## CHILD CLASS FUNCTIONS                                                  ##
-    ## ---------------------------------------------------------------------- ##

@@ -92,7 +92,8 @@ class Data(simul_data.Data):
                     row = self.n_samps,
                     col = 1,
                     levels = int(re.sub(r"\D", "", self.x_types[i])),
-                    rng   = self.rng
+                    rng   = self.rng,
+                    covar = f'fx{i}'
                 )
             x_cols.append(x_i)
         ## no random intercept
@@ -127,7 +128,8 @@ class Data(simul_data.Data):
                     row = self.n_samps,
                     col = 1,
                     levels = int(re.sub(r"\D", "", self.z_types[i])),
-                    rng   = self.rng
+                    rng   = self.rng,
+                    covar = f'rd{i}'
                 )
             z_cols.append(z_i)
         x_arr = jnp.concatenate(x_cols, axis = 1)
@@ -177,90 +179,38 @@ class Data(simul_data.Data):
                 size = self.n_samps
             )
         )
-        ## log(col_sums) - mean(log(col_sums))
-        ## offsets = jnp.log(col_sums) / jnp.exp(jnp.mean(jnp.log(col_sums)))
+        # log(col_sums) - mean(log(col_sums))
+        offsets = jnp.log(col_sums) / jnp.exp(jnp.mean(jnp.log(col_sums)))
         return col_sums, offsets
     
     def update_n_samps(self, n_samps):
-        """Update number of samples and draw additional variables. Attributes that depend upon the number of saples include: n_samps, x_arr, z_arr, eta_arr, mu_arr, counts, targ_idx, samp_idx, column sums.
+        """Update number of samples by removing data. Attributes that depend upon the number of samples include: n_samps, x_arr, z_arr, eta_arr, mu_arr, counts, targ_idx, samp_idx, column sums.
         """
-        if self.n_samps < n_samps:
-            ## new number of samples is bigger than before
-            ## must draw additional data
-            diff = n_samps - self.n_samps
-            ## update number of samples to be difference in previous and current
-            self.n_samps = diff
-            ## update coefficient arrays 
-            x_arr, z_arr, _, _ = self.draw_covars()
-            ## uncenter because they will be recentered with added data
-            old_x, old_z, _, _ = self.get_covars(ctr = False)
-            new_x = jnp.concatenate(
-                [old_x, x_arr], axis = 0
-            )
-            new_z = jnp.concatenate(
-                [old_z, z_arr], axis = 0
-            )
-            self.set_covars(new_x, new_z)
-            ## update column sums
-            col_sums, offsets = self.draw_col_sums()
-            new_col_sums = jnp.concatenate(
-                [self.col_sums, col_sums]
-            )
-            new_offsets = jnp.concatenate(
-                [self.offsets, offsets]
-            )
-            self.set_col_sums(new_col_sums, new_offsets)
-            ## update counts --- requires constructing dense arrays
-            y_arr = self.sample()
-            ## cut off redrawn samples 
-            new_y = jnp.concatenate(
-                [self.construct_y(), y_arr[:, -diff:]],
-                axis = 1
-            )
-            rel_targs = new_y.sum(axis = 1) > 0
-            rel_samps = new_y.sum(axis = 0) > 0
-            new_targ, new_samp, new_counts = helpers.table_to_sparse_rep(new_y)
-            self.set_tab_vals(new_targ, new_samp, new_counts)
-            self.set_rel_idx(rel_targs, rel_samps)
-        elif self.n_samps > n_samps:
-            ## new number of samples is smaller than before so subset data
-            ## uncenter the data because it will be re-centered in set_covars()
-            new_x, new_z, _, _ = self.get_covars(ctr = False)
-            self.set_covars(new_x[:n_samps, :], new_z[:n_samps, :])
-            new_col_sums = self.col_sums[:n_samps]
-            new_offsets  = self.offsets[:n_samps]
-            self.set_col_sums(new_col_sums, new_offsets)
-            targ_arr  = np.array(self.targ_idx)
-            samp_arr  = np.array(self.samp_idx)
-            count_arr = np.array(self.counts)
-            keep = np.where(samp_arr <= n_samps)
-            new_targ_idx = targ_arr[keep].tolist()
-            new_samp_idx = samp_arr[keep].tolist()
-            new_counts   = count_arr[keep].tolist()
-            self.set_tab_vals(new_targ_idx, new_samp_idx, new_counts)
-            new_y = self.construct_y()
-            rel_targs = new_y.sum(axis = 1) > 0
-            rel_samps = new_y.sum(axis = 0) > 0
-            self.set_rel_idx(rel_targs, rel_samps)
+        ## new number of samples is smaller than before so subset data
+        ## uncenter the data because it will be re-centered in set_covars()
+        new_x, new_z, _, _ = self.get_covars(ctr = False)
+        self.set_covars(new_x[:n_samps, :], new_z[:n_samps, :])
+        new_col_sums = self.col_sums[:n_samps]
+        new_offsets  = self.offsets[:n_samps]
+        self.set_col_sums(new_col_sums, new_offsets)
+        targ_arr  = np.array(self.targ_idx)
+        samp_arr  = np.array(self.samp_idx)
+        count_arr = np.array(self.counts)
+        keep = np.where(samp_arr <= n_samps)
+        new_targ_idx = targ_arr[keep].tolist()
+        new_samp_idx = samp_arr[keep].tolist()
+        new_counts   = count_arr[keep].tolist()
+        self.set_tab_vals(new_targ_idx, new_samp_idx, new_counts)
+        new_y = self.construct_y()
+        rel_targs = new_y.sum(axis = 1) > 0
+        rel_samps = new_y.sum(axis = 0) > 0
+        self.set_rel_idx(rel_targs, rel_samps)
         ## set dimensions
         self.n_samps = n_samps
+
     ## ---------------------------------------------------------------------- ##
     ## SETTERS                                                                ##
     ## ---------------------------------------------------------------------- ##
-    def set_disp_arr(self, disp_arr):
-        """Set dispersion parameters array."""
-        self.disp_arr = disp_arr
-
-    def set_col_sums(self, col_sums, offsets):
-        """Setter for column sums and offsets."""
-        self.col_sums = col_sums
-        self.offsets  = offsets
-
-    def set_effs(self, fx_effs_arr, rd_effs_arr):
-        """Set coefficient arrays."""
-        self.fx_effs_arr = fx_effs_arr
-        self.rd_effs_arr = rd_effs_arr
-
     def parse_config(self, config):
         """Set attributes provided in config file."""
         ## number of samples
@@ -271,6 +221,8 @@ class Data(simul_data.Data):
         ## covariate types
         self.x_types = config['x']['types']
         self.z_types = config['z']['types']
+        self.x_dummy = config['x']['dummy']
+        self.z_dummy = config['z']['dummy']
         ## number of effects
         self.p = len(self.x_types) + 1
         self.q = len(self.z_types)

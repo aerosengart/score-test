@@ -23,15 +23,16 @@ class Data(data.Data):
         ## initialize parent class
         super().__init__(config)
 
-        ## parse configuration file attributes
-        self.parse_config(config)
-
         ## debugging dictionary
         self.debug = {
             'iter':    None,
             'rep':     None,
-            'routine': None
+            'routine': None,
+            'seed': None
         }
+
+        ## parse configuration file attributes
+        self.parse_config(config)
 
         ## set column sums: (n_samps,), (n_samps)
         col_sums, offsets = self.draw_col_sums()
@@ -41,9 +42,9 @@ class Data(data.Data):
         x_arr, z_arr, x_names, z_names = self.draw_covars()
         self.set_covars(x_arr, z_arr, x_names, z_names)
         
-        ## initialize column names (not used for simulated data right now)
-        self.x_col_names = None
-        self.z_col_names = None
+        # ## initialize column names (not used for simulated data right now)
+        # self.x_col_names = None
+        # self.z_col_names = None
 
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##
@@ -55,7 +56,7 @@ class Data(data.Data):
             col_idx = self.samp_idx,
             counts  = self.counts
         )
-        return y_arr #[np.ix_(self.rel_targs, self.rel_samps)]
+        return y_arr
 
     ## ---------------------------------------------------------------------- ##
     ## SAMPLERS                                                               ##
