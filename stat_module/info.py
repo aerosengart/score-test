@@ -155,8 +155,8 @@ def compute_info(
     """
     q = model.data.q
     ## initializations
-    #info_fx_var = jnp.zeros((len(model.data.rel_targs), model.data.p, q))
-    info_fx_var = jnp.zeros((model.data.n_targs, model.data.p, q))
+    p = model.data.x_arr.shape[1]
+    info_fx_var = jnp.zeros((model.data.n_targs, p, q))
     info_var = jnp.zeros((q, q))
 
     ## fx effs

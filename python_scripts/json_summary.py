@@ -11,13 +11,17 @@ import os
 import json
 import argparse
 
+import pandas as pd
+
+from scipy.stats import false_discovery_control as fdc
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--json_dir", type = str, help = "path of directory with anchor .json files")
 parser.add_argument("--out_dir", type = str, help = "output directory")
 args = parser.parse_args()
 
 out_file = os.path.join(args.out_dir, 'anchor_score_test_summary.csv')
-with open(out_file, 'a') as out:
+with open(out_file, 'w') as out:
     out.write('anchor,one_sided_test_stat,two_sided_test_stat,one_sided_p_val,two_sided_p_val\n')
     for f in os.listdir(args.json_dir):
         if f.endswith('.json'):
@@ -29,10 +33,21 @@ with open(out_file, 'a') as out:
             json_obj = json.loads(json_str)
             ## extract relevant information
             anchor = os.path.splitext(f)[0]
-            one_sided_t = json_obj['test']['one_side']
-            two_sided_t = json_obj['test']['two_side']
-            one_sided_p = json_obj['test']['one_side_p']
-            two_sided_p = json_obj['test']['two_side_p']
+            one_sided_t = float(json_obj['test']['one_side'])
+            two_sided_t = float(json_obj['test']['two_side'])
+            one_sided_p = float(json_obj['test']['one_side_p'])
+            two_sided_p = float(json_obj['test']['two_side_p'])
             ## write to file
             out.write(f'{anchor},{one_sided_t},{two_sided_t},{one_sided_p},{two_sided_p}\n')
 
+## add BY corrected p-values
+file_conts = pd.read_csv(out_file)
+file_conts['one_sided_p_val_by'] = fdc(
+    ps = file_conts['one_sided_p_val'],
+    method = 'by'
+)
+file_conts['two_sided_p_val_by'] = fdc(
+    ps = file_conts['two_sided_p_val'], 
+    method = 'by'
+)
+file_conts.to_csv(out_file, index = False)

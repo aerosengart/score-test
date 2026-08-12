@@ -38,8 +38,12 @@ class Data(data.Data):
         self.set_col_sums(col_sums, offsets)
 
         ## set covariates: (n_samps, p), (n_samps, q)
-        x_arr, z_arr = self.draw_covars()
-        self.set_covars(x_arr, z_arr)
+        x_arr, z_arr, x_names, z_names = self.draw_covars()
+        self.set_covars(x_arr, z_arr, x_names, z_names)
+        
+        ## initialize column names (not used for simulated data right now)
+        self.x_col_names = None
+        self.z_col_names = None
 
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##

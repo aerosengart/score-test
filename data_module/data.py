@@ -22,8 +22,14 @@ class Data():
     ## ---------------------------------------------------------------------- ##
     ## GETTERS / SETTERS                                                      ##
     ## ---------------------------------------------------------------------- ##
-    def set_covars(self, x_arr, z_arr):
+    def set_covars(self, x_arr, z_arr, x_cols = None, z_cols = None):
         """Setter for covariate arrays."""
+        ## column names
+        if x_cols is not None:
+            self.x_col_names = x_cols
+        if z_cols is not None:
+            self.z_col_names = z_cols
+        ## column values
         if self.ctr_x:
             self.x_ctr_vals = jnp.mean(x_arr, axis = 0)
             self.x_arr = x_arr - jnp.tile(self.x_ctr_vals, (x_arr.shape[0], 1))
@@ -55,14 +61,16 @@ class Data():
         
         ARGS: ctr - whether to return the centered arrays (if centered flag was set)
         RAISES: None
-        RETURNS: two jax.numpy arrays; x_arr and z_arr
+        RETURNS: 
+            two jax.numpy arrays; x_arr and z_arr
+            two jax.numpy arrays; x array column names and z array column names
         """
         if ctr:
-            return self.x_arr, self.z_arr
+            return self.x_arr, self.z_arr, self.x_col_names, self.z_col_names
         unctr_x = self.x_arr + jnp.tile(self.x_ctr_vals, (self.x_arr.shape[0], 1))
         unctr_z = self.z_arr + jnp.tile(self.z_ctr_vals, (self.z_arr.shape[0], 1))
-        return unctr_x, unctr_z
-    
+        return unctr_x, unctr_z, self.x_col_names, self.z_col_names
+
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##

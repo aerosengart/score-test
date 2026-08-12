@@ -45,7 +45,7 @@ Real data is also supported, but the configuration file has a different structur
 
 ```
 outcome: 'splash'
-satc_dir: '/home/arosenga/score-test/analyses/viana/2026_05_19/anchor_satc'   ## path to anchor-specific S(A)TC files
+satc_dir: '/home/arosenga/score-test/analyses/viana/2026_05_29/anchor_satc'   ## path to anchor-specific S(A)TC files
 splash_dir: /home/arosenga/score-test/splash'                                 ## path to splash executables
 metadata_file: '/home/arosenga/score-test/data/viana/clean_metadata.tsv'      ## path to clean_metadata.tsv
 temp_dir: 'viana_temp'                                                        ## path to temporary directory for writing intermediate files
@@ -87,6 +87,7 @@ Data is retrieved from the SRA at NCBI using the SRA Toolkit. The shell script j
 
 #### Example
 `bash shell_scripts/ids.sh -b "PRJNA784038" -o "data/viala"`
+`bash shell_scripts/ids.sh -b "PRJEB48985" -o "data/amman"`
 
 
 ### Retrieve metadata for BioSamples
@@ -96,17 +97,22 @@ This requires fetching the metadata for a single BioSample so that we can scrape
 
 We then run `python_scripts/metadata.py` from the command line to retrieve the desired metadata for all of the BioSamples. This creates `metadata.tsv` in the output directory, which contains rows corresponding to the samples in `ids.txt` and columns corresponding to the variables in `headers.tsv`.
 
+NOTE: For European experiments, we have slightly different metadata formatting. We specify this in the Python script with the `--european` flag.
+
 #### Usage
 `esearch -db biosample -query [sample SRS in quotes] | esummary`
-
 [_create headers.tsv_]
-
 `python [path to metadata.py] --sh_dir [path to shell script directory] --bsl [path to ids.txt] --head [path to headers.tsv] --output [output directory]`
 
-#### Example
+#### Example (Viana)
 `esearch -db biosample -query "SRS11294961" | esummary`
+[_create headers.tsv_]
+`python python_scripts/metadata.py --sh_dir shell_scripts --bsl data/viana/ids.txt --head data/viana/headers.tsv --output data/viana`
 
-`python python_scripts/metadata.py --sh_dir shell --bsl data/viana/ids.txt --head data/viana/headers.tsv --output data/viana`
+#### Example (Amman)
+`esearch -db biosample -query ERS10769992 | esummary | xtract -pattern DocumentSummary -element Attribute@attribute_name`
+[_copy output of previous command to create headers.tsv_]
+`python python_scripts/metadata.py --sh_dir shell_scripts --bsl data/amman/ids.txt --head data/amman/headers.tsv --output data/amman --european`
 
 
 ### Select BioSamples
@@ -115,8 +121,28 @@ At this stage, we filter the samples to make sure they are complete cases, etc. 
 #### Usage
 `python [path to filter.py] --meta [path to metadata.tsv] --ids [path to ids.txt] --output [output directory] --min-date [min collection date in quotes] -- max-date [max collection date in quotes]`
 
-#### Example
-`python python_scripts/filter.py --meta data/viana/metadata.tsv --ids data/viana/ids.txt --output data/viana --min_date 2021-12-01 --max_date 2021-12-05`
+#### Example (Viana)
+`python python_scripts/filter_viana.py --meta data/viana/metadata.tsv --ids data/viana/ids.txt --output data/viana --min_date 2021-12-01 --max_date 2021-12-05`
+
+#### Example (Amman)
+For the Amman et al. data, there are thousands of runs, and I am running out of disk space when converting to FASTQ. Gafurov et al. (VirPool) test their method on a subset of this data, so the date limits here are taken from that (see their supplementary information, tab C - Wastewater Samples). We take samples taken between 2020-11-01 and 2021-03-31 and subset the sites to those that have at least 20 observations in this period. These are the following:
+
+```
+site  num_obs
+Abwasserverband Wörthersee West|ATTP_2-K1944050 27
+ARA Zeller Becken|ATTP_5-A1844668R161 22
+Bregenz|ATTP_8-Bregenz 22
+EMREG_BE_Abwasserverband Region Hohenems|ATTP_8-Hohenems 24
+EMREG_BE_ebswien hauptkläranlage|ATTP_9-HKA-Simmering 37
+EMREG_BE_Hauptsitz AIZ Strass|ATTP_7-7930111 22
+EMREG_BE_Kläranlage Pfarrwerfen|ATTP_5-A1779244R157 28
+EMREG_BE_Siggerwiesen_2|ATTP_5-A1699622R154 31
+Innsbruck|ATTP_7-7101301 23
+Kufstein|ATTP_7-7513103 21
+Stadtgemeinde Graz ARA Graz Gössendorf 1/316|ATTP_6-M3489301R0 22
+```
+
+`python python_scripts/filter_amman.py --meta data/amman/metadata.tsv --ids data/amman/ids.txt --output data/amman --min_date 2020-11-01 --max_date 2021-03-31`
 
 
 ### Retrieve sequences
@@ -134,9 +160,12 @@ We need to copy all of the FASTQ files from their subdirectories into the same d
 
 
 #### Example
-`bash shell_scripts/fetch.sh -b ../ww-seq/sra/bin -p python -f data/viana/input_samples.txt -o data/viana`
-
+`bash shell_scripts/fetch.sh -b ../ww-seq/sra/bin -p python_scripts -f data/viana/input_samples.txt -o data/viana`
 `bash shell_scripts/fastq_dir.sh -p data/viana/srr -o fastq`
+
+Saving to `/scratch` for space/speed. 
+`bash shell_scripts/fetch.sh -b ../ww-seq/sra/bin -p python_scripts -f data/amman/input_samples.txt -o /scratch/arosenga/amman`
+`bash shell_scripts/fastq_dir.sh -p /scratch/arosenga/amman/srr -o fastq`
 
 
 ## SPLASH Analysis
@@ -189,6 +218,9 @@ mv result* ../../../analyses/viana/2026_05_29
 mv ../../../analyses/viana/splash_run.sh ../../../analyses/viana/2026_05_29
 ```
 
+#### Example (Amman)
+`bash /home/arosenga/score-test/analyses/amman/2026_08_10/splash_run.sh`
+
 
 ### $C_j$ Analysis
 TO DO
@@ -199,14 +231,20 @@ TO DO
 ### Get Anchor SATC
 TO DO
 
+
 ### Clean Metadata
 To do the contingency table analysis, it is helpful for us to first organize our metadata (e.g. add in the SPLASH sample ids, convert covariates to factors, etc.). This is done in `clean_metadata.py`. This writes `clean_metadata.tsv` to the specified output directory and will be the reference for metadata used in subsequent analyses.
 
 #### Usage
 `python [path to clean_metadata.py] --meta [path to metadata_filt.tsv] --id_key [path to sample_name_to_id.mapping.txt output by SPLASH] --output [output directory]`
 
-#### Example
-`python python_scripts/clean_metadata.py --meta data/viana/metadata_filt.tsv --id_key analyses/viana/2026_05_29/sample_name_to_id.mapping.txt --output data/viana`
+#### Example (Viana)
+`python python_scripts/clean_metadata_viana.py --meta data/viana/metadata_filt.tsv --id_key analyses/viana/2026_05_29/sample_name_to_id.mapping.txt --output data/viana`
+
+#### Example (Amman)
+`python python_scripts/clean_metadata_amman.py --meta data/amman/metadata_filt.tsv --id_key analyses/amman/2026_07_31/sample_name_to_id.mapping.txt --output data/amman`
+
+
 
 ---
 
@@ -219,12 +257,17 @@ The key will be saved in the specified output directory as `anchor_bin_key.csv`.
 #### Usage
 `python [path to anchor_bin_key.py] --sp_dir [path to splash bin files] --bin_dir [path to satc sub-directory] --output [output directory]`
 
-#### Example
+#### Example (Viana)
 `python python_scripts/anchor_bin_key.py --sp_dir splash --bin_dir analyses/viana/2026_05_29/result_satc --output analyses/viana/2026_05_29/`
+
+#### Example (Amman)
+`python python_scripts/anchor_bin_key.py --sp_dir splash --bin_dir analyses/amman/2026_08_10/result_satc --output analyses/amman/2026_08_10`
+
+
 
 
 ### Anchor Summary Statistics
-`anchor_prop.py` will go through all of the SATC bin files and write relevant summary statistics about the anchor contingency tables to `anchor_summary.csv` and `anchor_filt_summary.csv`. The latter only contains anchors with at least 5 targets (rows) that have $\geq 65\%$ non-zero cells and at least 20 samples (columns).
+`anchor_prop.py` will go through all of the SATC bin files and write relevant summary statistics about the anchor contingency tables to `anchor_summary.csv` and `anchor_filt_summary.csv`. The latter is a filtered version (see the Python file for specifics).
 
 We can optionally pass the path to `clean_metadata.tsv` and specify a covariate in that file in call arguments. This will produce a third file `anchor_filt_by_{covar}.csv` which will have the summary statistics for anchors that pass the above conditions AND have at least two different unique values of the specified covariate found in the set of samples used for SPLASH so that we do not run into numerical issues down the line.
 
@@ -233,55 +276,66 @@ While the program iterates through the bin files above, it also separates out th
 #### Usage
 `python [path to anchor_prop.py] --sp_dir [path to splash bin files] --bin_dir [path to satc sub-directory] --bin_key [path to anchor_bin_key.csv] --meta [path to clean_metadata.tsv] --covar [name of covariate] --output [output directory] --scratch [path to temporary directory for reading/writing files]`
 
-#### Example
-`python python_scripts/anchor_prop.py --sp_dir splash --bin_dir analyses/viana/2026_05_29/result_satc --bin_key analyses/viana/2026_05_29/anchor_bin_key.csv --meta data/viana/clean_metadata.tsv --covar date --output analyses/viana/2026_05_29 --scratch /scratch/arosenga`
+#### Example (Viana)
+`python python_scripts/anchor_prop_viana.py --sp_dir splash --bin_dir analyses/viana/2026_05_29/result_satc --bin_key analyses/viana/2026_05_29/anchor_bin_key.csv --meta data/viana/clean_metadata.tsv --covar date --output analyses/viana/2026_05_29 --scratch /scratch/arosenga/viana`
 
-One can optionally plot some of the summary statistics with `anchor_prop_plot.py`. 
+#### Example (Amman)
+`python python_scripts/anchor_prop_amman.py --sp_dir splash --bin_dir analyses/amman/2026_08_10/result_satc --bin_key analyses/amman/2026_08_10/anchor_bin_key.csv --meta data/amman/clean_metadata.tsv --covar date --output analyses/amman/2026_08_10 --scratch /scratch/arosenga/amman`
+
+*Note*: I had to make the filtering much more stringent due to the number of anchors in the Amman dataset. I've increased the number of unique samples to 50 (from 20).
+
+
+
+
+### Plotting Anchor Summary Statistics
+One can optionally plot some of the summary statistics with `anchor_prop_plot.py`.  **DOESN'T WORK ANYMORE BECAUSE I CHANGED THE OUTPUT OF THE PREVIOUS STEP (2026-08-11)**
 
 #### Usage
 `python [path to anchor_prop_plot.py] --output [output directory] --anchor_file [path to anchor_filt_summary.csv]`
 
-#### Example
+#### Example (Viana)
 `python python_scripts/anchor_prop_plot.py --output analyses/viana/2026_05_29 --anchor_file analyses/viana/2026_05_29/anchor_filt_summary.csv`
+
+#### Example (Amman)
+`python python_scripts/anchor_prop_plot.py --output analyses/amman/2026_08_10 --anchor_file analyses/amman/2026_08_10/anchor_filt_summary.csv`
+
+
 
 
 ### Anchor Filtering
-In this step, we filter the anchor-specific S(A)TC files to just the ones present in `anchor_filt_summary.csv` and copy them to our home directory. If desired (set `--clean_up`), we delete the temporary directory created in the `--scratch` directory to save space. 
+In this step, we filter the anchor-specific S(A)TC files to just the ones present in `anchor_filt_summary.csv` and copy them to our home directory. If desired (set `--clean_up`), we delete the temporary directory created in the `--scratch` directory to save space. This also creates a list as `anchor_list.txt` in the output directory. It lists all of the anchors we want to test as separate lines.
 
 #### Usage
 `python [path to satc_filt.py] --satc_dir [path to directory of anchor-specific S(A)TC files] --anchor_file [path to anchor_filt_summary.csv] --output [output directory] --clean_up`
 
-#### Example
-`python python_scripts/satc_filt.py --satc_dir /scratch/arosenga/anchor_satc --anchor_file analyses/viana/2026_05_29/anchor_filt_by_date.csv --output analyses/viana/2026_05_29`
+#### Example (Viana)
+`python python_scripts/satc_filt.py --satc_dir /scratch/arosenga/viana/anchor_satc --anchor_file analyses/viana/2026_05_29/anchor_filt_by_date.csv --output analyses/viana/2026_05_29`
 
-This example resulted in 9,282 anchors in the filtered list.
+This example resulted in 38,683 anchors in the filtered list.
+
+#### Example (Amman)
+`python python_scripts/satc_filt.py --satc_dir /scratch/arosenga/amman/anchor_satc --anchor_file analyses/amman/2026_08_10/anchor_filt_by_date.csv --output analyses/amman/2026_08_10`
+
+This example resulted in 23,730 anchors in the filtered list.
 
 
 ### Running Score Test
-With all of the anchor-specific S(A)TC files, we can run the score test on each anchor. To do this more easily, we will run this as a SLURM job array. This will run the score test on each anchor's table _separately_ and write the results to a .json file _separately_. Later steps will condense/summarize the run outputs to get a ranked list of anchors.
-
-First, we need a list of all of the anchors we want to test where each line is a separate anchor, which we can create one with `list_anchors.sh`. 
-
-#### Usage
-`bash [path to list_anchors.sh] -p [path to directory of anchor-specific S(A)TC files] -o [output directory]`
-
-#### Example
-`bash shell_scripts/list_anchors.sh -p "analyses/viana/2026_05_29/anchor_satc" -o "analyses/viana/2026_05_29"`
-
-
-We then run the score test with a shell script that submits a job array for 1000 lines of the passed anchor list as slurm job arrays. Each array then submits a separate job that runs `routines/splash_score_test.py` for one anchor in the provided anchor list. This is done with `all_anchors_job.sh`. 
-
-#### Usage
-`bash [path to all_anchors_test.sh] -a  [path to anchor list .txt in quotes] -d [path to data config .yaml in quotes] -m [path to model config .yaml in quotes] -o [output directory in quotes]`
-
-#### Example
-`bash shell_scripts/all_anchors_job.sh -a "analyses/viana/2026_05_19/test_anchors.txt" -d "data/configs/d_viana.yaml" -m "data/configs/m_viana.yaml" -o "analyses/viana/2026_05_19"`
-
-This will create thousands and thousands of output files, so to delete the ones corresponding to successful runs (i.e. the empty output files), we can run the following:
+We then run the score test with a shell script that submits a job array for 1000 lines of the passed anchor list as slurm job arrays. Each array then submits a separate job that runs `routines/splash_score_test.py` for one anchor in the provided anchor list. This is done with `all_anchors_job.sh`. This will create thousands and thousands of slurm output files, so to delete the ones corresponding to successful runs (i.e. the empty output files), we can run the following:
 
 `find . -type f -name '*.out' -size 0b -delete`
 
 **NOTE**: There may be a few anchor tables that run into problems. This is usually because there are too few samples, which leads to only one unique value across samples for the covariate associated with the random effect we are testing. I am not sure what is causing this because the filtering steps above should have caught this, but for now we can just ignore these anchors. 
+
+#### Usage
+`bash [path to all_anchors_test.sh] -a  [path to anchor list .txt in quotes] -d [path to data config .yaml in quotes] -m [path to model config .yaml in quotes] -o [output directory in quotes]`
+
+#### Example (Viana)
+`bash shell_scripts/all_anchors_job.sh -a "analyses/viana/2026_05_29/anchor_list.txt" -d "analyses/viana/2026_05_29/d_viana.yaml" -m "analyses/viana/2026_05_29/m_viana.yaml" -o "analyses/viana/2026_05_29" -n 200 -j 50`
+
+#### Example (Amman)
+`bash shell_scripts/all_anchors_job.sh -a "analyses/amman/2026_08_10/anchor_list.txt" -d "analyses/amman/2026_08_10/d_amman.yaml" -m "analyses/amman/2026_08_10/m_amman.yaml" -o "analyses/viana/2026_08_10"`
+
+
 
 
 ### Analyzing Results
@@ -290,13 +344,26 @@ We analyze the anchor-specific .json output with `json_summary.py`. This reads e
 #### Usage
 `python [path to json_summary.py] --json_dir [path to anchor .json files] --out_dir [output directory]`
 
-#### Example
-`python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/analyses/viana/2026_05_19/score_test/anchor_json --out_dir /home/arosenga/score-test/analyses/viana/2026_05_19/score_test`
+#### Example (Viana)
+`python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/analyses/viana/2026_05_29/score_test/anchor_json --out_dir /home/arosenga/score-test/analyses/viana/2026_05_29/score_test`
+
+#### Example (Amman)
+`python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test/anchor_json --out_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test`
+
+
+
 
 
 ---
 
-## Simulations
+
+
+
+
+
+
+
+
 
 
 
@@ -322,6 +389,16 @@ This is very fast (maybe 2-3 minutes).
 **NOTE**: We specify this routine as `score_var_comp` but the sub-directory will be `score_var_comp_emp_dist` since we are plotting the empirical distribution of the score component(s).
 
 
+
+
+
+
+
+
+
+
+
+
 ### One-Sided and Two-Sided Comparison
 In basically the same way as the previous routine, we can compare QQ-plots of the one- and two-sided score test statistics over many iterations and replicates. 
 
@@ -339,61 +416,6 @@ We plot the results with `routines/plot_routine.py`. This creates two QQ-plots s
 
 #### Example
 `python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r one_two_sided`
-
-
-### Power Analysis (Variance Components)
-We can explore the power of the one- or two-sided score tests over different values of the random effect(s) variance component(s). We only need one replicate because we need to construct entirely new datasets for each calculation of the test statistics.
-
-#### Usage
-`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "power_by_tau_sqr" [number of replicates per iteration]`
-
-#### Example
-`sbatch --array=1-100 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "power_by_var_comp" 1`
-
-We plot the results with `routines/plot_routine.py`. This creates a line plot with two lines: one for the power of the one-sided test (blue) and one for the power of the two-sided test (red). 
-
-#### Usage
-`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r power_by_var_comp`
-
-#### Example
-`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r power_by_var_comp`
-
-
-
-### Power Analysis (Sample Size)
-We can explore the power of the one- or two-sided score tests over different values of the number of samples (for fixed $\tau^2$ and number of targets). We only need one replicate because we need to construct entirely new datasets for each calculation of the test statistics.
-
-#### Usage
-`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "power_by_n_samps" [number of replicates per iteration]`
-
-#### Example
-`sbatch --array=1-100 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "power_by_n_samps" 1`
-
-We plot the results with `routines/plot_routine.py`. This creates a line plot with two lines: one for the power of the one-sided test (blue) and one for the power of the two-sided test (red). 
-
-#### Usage
-`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r power_by_n_samps`
-
-#### Example
-`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r power_by_n_samps`
-
-
-### Power Analysis (Number of Targets)
-We can explore the power of the one- or two-sided score tests over different values of the number of targets (for fixed $\tau^2$ and sample size). We only need one replicate because we need to construct entirely new datasets for each calculation of the test statistics.
-
-#### Usage
-`sbatch --array=1-[number of iterations] [path to routine.sh] [path to data config .yaml in quotes] [path to model config .yaml in quotes] "power_by_n_targs" [number of replicates per iteration]`
-
-#### Example
-`sbatch --array=1-100 slurm_scripts/routine.sh "data/configs/d_simul.yaml" "data/configs/m_simul.yaml" "power_by_n_targs" 1`
-
-We plot the results with `routines/plot_routine.py`. This creates a line plot with two lines: one for the power of the one-sided test (blue) and one for the power of the two-sided test (red). 
-
-#### Usage
-`python [path to plot_routine.py] -d [path to data config .yaml] -m [path to model config .yaml] -r power_by_n_targs`
-
-#### Example
-`python routines/plot_routine.py -d data/configs/d_simul.yaml -m data/configs/m_simul.yaml -r power_by_n_targs`
 
 
 
@@ -421,7 +443,7 @@ An alternative to the above procedure is to _not_ filter the anchors and to cond
 `python [path to make_satc.py] --sp_dir [path to splash bin files] --bin_dir [path to satc sub-directory] --scratch [path to scratch directory] --output [output directory]`
 
 #### Example
-`python python_scripts/make_satc.py --sp_dir splash --bin_dir analyses/viana/2026_05_19/result_satc --scratch /scratch/arosenga --output analyses/viana/2026_05_19`
+`python python_scripts/make_satc.py --sp_dir splash --bin_dir analyses/viana/2026_05_29/result_satc --scratch /scratch/arosenga --output analyses/viana/2026_05_29`
 
 
 The Leviathans each have their own `/scratch`, so we have to copy these S(A)TC files over to `/home` if we want to use a slurm job array. It is not very good to keep millions of files on `/home`, so we use a more complicated wrapper shell script to submit the array. 

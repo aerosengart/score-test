@@ -49,10 +49,7 @@ def compute_score_var_comp(
         scale_val = jnp.linalg.norm(scores)
     else:
         scale_val = 1
-    wrt_var_comp = jnp.squeeze(scores / scale_val)
-    
-    if np.isnan(wrt_var_comp):
-        doc.debug_sample(model)
-        raise Exception
+    wrt_var_comp = scores / scale_val
+
     return wrt_var_comp, scale_val
 

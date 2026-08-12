@@ -9,8 +9,6 @@
 
 source /home/arosenga/miniconda/bin/activate /home/arosenga/miniconda/envs/score-test
 
-
-
 ## don't pass other arguments if none passed
 if [ "$#" -ne 2 ]; then
     python routines/run_routine.py --cfg $1 --iter_id $SLURM_ARRAY_TASK_ID

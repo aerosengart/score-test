@@ -23,6 +23,7 @@ from model_module.dispatch import model_types
 ## some sort of issue with matplotlib, latex, and the unicode minus sign???
 #plt.rcParams['text.usetex'] = True
 plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams["font.size"] = 16
 
 
 ##----------------------------------------------------------------------------##
@@ -170,7 +171,7 @@ def plot_one_two_sided(d_config, m_config, reps):
     k = d_config['n_targs']
     plt_name = os.path.join(out_dir, f'{routine}.pdf')
 
-    plt.rcParams.update({'font.size': 8})
+    plt.rcParams.update({'font.size': 12})
     _, axs = plt.subplots(
         1, 2,
         tight_layout = True, 

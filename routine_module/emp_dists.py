@@ -147,7 +147,7 @@ def score_hist(d_config, m_config, reps):
     scores_arr = jnp.concatenate(results)
 
     ## get necessary quantities/names
-    dim = len(d_config['var_comp'])
+    dim = len(d_config['rd_effs']['sigma'])
     plt_name = os.path.join(out_dir, routine, 'score_var_comp.pdf')
 
     if dim == 1:

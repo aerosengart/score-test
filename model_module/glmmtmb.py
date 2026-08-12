@@ -193,7 +193,8 @@ def construct_data_frame(model, null_model = True):
     )
 
     ## components in model formula
-    fx_slopes = [f'fx_{str(x)}' for x in list(range(model.data.p - 1))]
+    p = model.data.x_arr.shape[1]
+    fx_slopes = [f'fx_{str(x)}' for x in list(range(p - 1))]
     
     ## combine into single data frame
     if null_model:

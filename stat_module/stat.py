@@ -50,6 +50,7 @@ def compute_score_stat(model, one_sided = False):
         middle    = info_fx_var,
         low_right = info_var
     )
+    
     ## find infimum if one-sided test. otherwise set to 0
     inf_val = 0
     if one_sided:
@@ -71,7 +72,7 @@ def compute_score_stat(model, one_sided = False):
         stat = jnp.matmul(
             jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
         )
-    test_stat = (jnp.squeeze(stat - inf_val))
+    test_stat = jnp.squeeze(stat - inf_val)
     return test_stat
 
 

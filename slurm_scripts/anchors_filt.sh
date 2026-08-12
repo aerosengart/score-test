@@ -18,4 +18,5 @@ source /home/arosenga/miniconda/bin/activate /home/arosenga/miniconda/envs/score
 anchor_idx=$(($SLURM_ARRAY_TASK_ID + $5))
 anchor=$(sed "${anchor_idx}q;d" $3)
 
-python routines/splash_score_test.py -d $1 -m $2 -a $anchor -o $4
+
+python routines/splash_score_test.py --d_config $1 --m_config $2 --anchor $anchor --output $4

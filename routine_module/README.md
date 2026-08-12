@@ -1,75 +1,122 @@
-# Simulation-Based Routines
-This sub-directory contains the functions needed to run simulation-based routines and plot the results.
+# Routine Module Overview
+We can run different simulation settings by creating a routine configuratin file. This file specifies the data and model configuration files to use and then dictates what sort of routine will be run and plotted. The routine script will create the output directory that is specified in the model configuration file. All results will be saved in this output directory. In addition, a sub-directory called `iter` will be created, which will contain a log file (`log.txt`) containing information about the replicate data and fitted models. The configuration files will also be copied into a sub-directory in the output directory for reproducibility. Results for each iteration will be labeled as `results_iter{IDX}.npz` and saved in the output directory. Results aggregated over iterations will be saved as `results.npz` and any plots will be saved as PDF, all in the output directory. 
 
-We have a few helper files that aid in avoiding code duplication and organize the workflow. Dispatch dictionaries are found in `dispatch.py`, which specify which particular functions to call when a user specifies a particular routine by its shortened name in a routine configuration file. The `doc.py` file contains all functions related to documenting a routine. This includes saving intermediate results, recording the routine specification, and ensuring the appropriate output sub-directories exist.
+The general format is as follows:
+
+```
+d_config: PATH TO DATA CONFIGURATION .YAML
+m_config: PATH TO MODEL CONFIGURATION .YAML
+routine:  NAME OF ROUTINE
+r_args:
+  ADDITIONAL ROUTINE ARGUMENTS
+```
+
+We then run the routine with the following command:
+
+`sbatch [path to routine.sh] [number of iterations] [path to routine configuration .yaml in quotes]`
+
+This will run the routine, save the results, and then plot the results in some appropriate way (detailed below in the specific routine sub-sections).
+
+We might also desire to re-plot some previously saved results. We can do this with a similar command:
+
+`bash [path to plot_routine.sh] [path to routine configuration .yaml in quotes]`
 
 ---
 
-## Empirical Distributions (`emp_dists.py`)
-This file implements routines that involve the empirical distribution of some quantity. The additional routine arguments include:
+# Error Analysis
+We can explore the type I error or type II error of the one- and two-sided score tests compared to OASIS over a grid of values for a provided parameter (power is evaluated automatically if we explore type II error). These simulations are implemented in `error_comps.py`. Currently, only varying the random effect(s) variance component(s), the number of samples, and the number of targets are implemented and have been run. Other parameters have been implemented but not tested. Below are the parameters that can be varied and the grid of values they take on:
 
-| Name      | Type         | Description     | 
-| :---      |    :---     | :---     | 
-| `reps` | non-negative `int` | Number of replicates to draw. | 
+- Number of samples (`n_samps`): $20, 50, 100, 500, 750, 1000$
+- Number of targets (`n_targs`): $10, 20, 50, 100, 200, 300, 400, 500, 750, 1000$
+- Negative binomial dispersion (`disp`): $1, 2, 5, 10, 20, 50, 100$
+- Random effects values (`rd_effs`): $1e-4, 1e-3, 1e-2, 0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 4.0$
+- Random effects variance components (`var`): $1e-4, 1e-3, 1e-2, 0.1, 0.2, 0.3, 0.4, 0.5, 1.0$
+- Fixed effects variance (`fx_effs_sigma`): $0.0, 1e-4, 1e-3, 1e-2, 0.1, 0.5, 1.0, 2.0$
 
-The resulting plot is a histogram (or grid of histograms if $q > 1$) of the coordinate(s) of the score vector evaluated at the model parameter values (estimated or fixed at true values) corresponding to the variance component ($\boldsymbol{\tau}^2$). The shape should be approximately symmetrical about zero and should also be approximately Gaussian. 
+This routine will repeatedly draw `reps` number of new datasets according to the data/model configuration. For each dataset, it computes the OASIS (optimized), one-sided score test, and two-sided score test. If there are no fixed effects (i.e. only a fixed intercept), then OASIS (asymptotic) will also be run. It then computes an estimate of the type I (or type II) error by computing the proportion of datasets for which we reject $H_0$ (or fail to reject $H_0$). It is very important to check that the data configuration is appropriate for the error type specified. We must draw data under $H_0$ to evaluate type I error and draw data under $H_1$ to evaluate type II error. We also only need to run one iteration because we need to construct entirely new datasets for each calculation of the test statistics; however, we can run more if we desire and the results will be averaged over iterations. 
 
+The plot that is constructed will be a line plot with the varied parameter along the $x$-axis and the error estimate (or power) on the $y$-axis. Note that the errors are only estimated at a grid of parameter values, and we interpolate between these points to create the lines. The blue line corresponds to the one-sided score test, and the red line corresponds to the two-sided score test. The green line corresponds to OASIS (optimized), and the purple line corresponds to OASIS (asymptotic). A $95\%$ confidence interval is also plotted as a shaded band around each line. These are computed via the Wilson score interval method for a binomial proportion confidence interval.
 
+**NOTE**: We _must_ fully specify the data configuration file with all simulation parameters even thought the parameter that is varied will NOT take on the value we pass in (It can be whatever; it just needs to be provided for instantiation). Also, there currently are very few checks implemented, so the burden of making sure the routine specification is compatible with the data/model (e.g. do not choose to vary `disp` with Poisson outcomes).
 
-## Test Statistic Comparisons (`stat_comps.py`)
-This file implements routines that involve comparing the empirical (null) distribution of the different test statistics. 
+## Usage and Example 
+### Usage
+The routine configuration file has the following format:
 
-### `score_lrt_comparison()`
-This function compares the one-sided score test and the likelihood ratio test. The additional routine arguments include:
+```
+d_config: PATH TO DATA CONFIGURATION .YAML
+m_config: PATH TO MODEL CONFIGURATION .YAML
+routine:  'err_comp'
+r_args:
+  param:    PARAMETER TO VARY (one of 'var_comp', 'n_samps', 'n_targs')
+  err_type: ERROR TYPE (one of 'I', 'II')
+  reps:     NUMBER OF REPLICATES
+  level:    SIGNIFICANCE LEVEL 
+```
 
-| Name      | Type         | Description     | 
-| :---      |    :---     | :---     | 
-| `reps` | non-negative `int` | Number of replicates to draw. | 
+### Example
+Below is an exmaple routine file:
 
-The resulting plot has two panels. The left panel shows the likelihood ratio test statistic empirical quantiles against $\bar{\chi}^2$ quantiles. The right panel shows the same but for the one-sided score test.
+```
+d_config: '/home/arosenga/score-test/routine_module/examples/d_err_comp.yaml'
+m_config: '/home/arosenga/score-test/routine_module/examples/m_err_comp.yaml'
+routine:  'err_comp'
+r_args:
+  param:    'n_samps'
+  err_type: 'I'
+  reps:     100
+  level:    0.05
+```
 
-### `one_two_sided()`
-This function compares the one- and two-sided score test statistics. The additional routine arguments include:
+We then run:
 
-| Name      | Type         | Description     | 
-| :---      |    :---     | :---     | 
-| `reps` | non-negative `int` | Number of replicates to draw. | 
+`sbatch slurm_scripts/routine.sh 1 "routine_module/examples/r_err_comp.yaml"`
 
-The resulting plot has two panels. The left panel shows the two-sided score test statistic empirical quantiles against $\bar{\chi}^2$ quantiles. The right panel shows the same but for the one-sided score test.
+To re-plot the results:
 
+`bash shell_scripts/plot_routine.sh "routine_module/examples/r_err_comp.yaml"`
 
+---
 
-## Sensitivity Plots (`stat_sens.py`)
-This file implements routines that evaluate the sensitivity of the score test statistic to errors in estimation of different model parameters. The additional routine arguments include:
+# Empirical Distribution of Score
+We can plot the empirical distribution of the score vector by simulating many datasets with the same data-generating mechanism and plotting a histogram of the score vector components evaluated under $H_0$ (so be sure to generate data under $H_0$!). If the random effects have dimension greater than one, then the resulting plot will have multiple panels. Each one will correspond to coordinate of the variance component vector.
 
-| Name      | Type         | Description     | 
-| :---      |    :---     | :---     | 
-| `reps` | non-negative `int` | Number of replicates to draw. | 
-| `param` | `str` | Parameter to jitter. Value must be one of 'fx_effs' (fixed effects coefficients) or 'disp' (negative binomial dispersion). |
-| `other_known` | `bool` | Whether the other model parameters are fixed at their true values or not. | 
+**NOTE**: We specify this routine as `score_var_comp` but the sub-directory will be `score_var_comp_emp_dist` since we are plotting the empirical distribution of the score component(s).
 
-Estimation error is simulated by adding jitter (some small value) to the true values and using that as the model parameter value. The same value is added to _all_ of the fixed effects coefficients. 
+## Usage and Example
+### Usage
+The general format for the routine configuration file is:
 
+```
+d_config: PATH TO DATA CONFIGURATION .YAML
+m_config: PATH TO MODEL CONFIGURATION .YAML
+routine:  'score_var_comp'
+r_args:
+  reps:   NUMBER OF REPLICATES
+```
 
+### Example
+Below is an example routine file:
 
-## Test Error Comparisons (`error_comps.py`)
-This file implements routines that compare the Type I or Type II error of `OASIS` and our score test.
+```
+d_config: 'routine_module/examples/d_score_var_comp.yaml'
+m_config: 'routine_module/examples/m_score_var_comp.yaml'
+routine:  'score_var_comp'
+r_args:
+  reps:   100
+```
 
-For a Type I error comparison, we simulate data under $H_0$ repeatedly and compute the fraction of replicates where $H_0$ is rejected (at whatever level $\alpha$ specified in the routine configuration dictionary). For a Type II error comparison, we simlate data under $H_1$ repeatedly and compute the fraction of replicates where we fail to reject $H_0$ (at level $\alpha$). If the routine is run with multiple iterations, then the mean fraction across iterations will be plotted.
+Then we run:
 
-The additional routine arguments include:
+`sbatch slurm_scripts/routine.sh 1 "routine_module/examples/r_score_var_comp.yaml"`
 
-| Name      | Type         | Description     | 
-| :---      |    :---     | :---     | 
-| `reps` | non-negative `int` | Number of replicates to draw. | 
-| `level` | positive `float` | Test level. Value must be in $(0, 1)$. | 
-| `err_type` | `str` | Error type. Value must be one of 'I' or 'II'. |
-| `param` | `str` | Parameter to vary along x-axis. Value must be one of 'n_samps' (number of samples/columns), 'n_targs' (number of targets/rows), or 'disp' (negative binomial dispersion parameter). |
+To re-plot the results:
 
-The resulting plot is a line plot where the values of `param` used are along the x-axis, and the estimated error is plotted along the y-axis. If the null model has only a fixed intercept, then the line plot will have four lines corresponding to the $p$-value bound from the original OASIS, the asymptotic $p$-value from OASIS, and the $p$-values from the one- and two-sided score tests. If the null model includes fixed slope(s), then there will only be three lines: OASIS-perp and the one- and two-sided score tests. 
+`bash shell_scripts/plot_routine.sh "routine_module/examples/r_score_var_comp.yaml"`
 
+---
 
+# TODO
 
-
-
-
+- Test statistic comparisons: `stat_comps.py`
+- Test statistic sensitivity analysis: `stat_sens.py`

@@ -56,7 +56,7 @@ class Data(simul_data.Data):
 
         ARGS: None
         RAISES: None
-        RETURNS: two jnp.arrays --- target-specific fixed effects covariates, random effects covariates
+        RETURNS: two jnp.arrays --- target-specific fixed effects covariates, random effects covariates and two None
         """
         ## start with intercept
         x_cols = [jnp.ones((self.n_samps, 1))]
@@ -92,7 +92,7 @@ class Data(simul_data.Data):
                     row = self.n_samps,
                     col = 1,
                     levels = int(re.sub(r"\D", "", self.x_types[i])),
-                    rng   = self.rng,
+                    rng   = self.rng
                 )
             x_cols.append(x_i)
         ## no random intercept
@@ -104,7 +104,7 @@ class Data(simul_data.Data):
                     col   = 1,
                     mu    = self.z_mu,
                     sigma = self.z_sigma,
-                    rng   = self.rng,
+                    rng   = self.rng
                 )
             elif self.z_types[i] == 'time_reg':
                 ## linear trend/time --- regular intervals
@@ -127,12 +127,12 @@ class Data(simul_data.Data):
                     row = self.n_samps,
                     col = 1,
                     levels = int(re.sub(r"\D", "", self.z_types[i])),
-                    rng   = self.rng,
+                    rng   = self.rng
                 )
             z_cols.append(z_i)
         x_arr = jnp.concatenate(x_cols, axis = 1)
         z_arr = jnp.concatenate(z_cols, axis = 1)
-        return x_arr, z_arr
+        return x_arr, z_arr, None, None
 
     def draw_effs(self) -> jnp.array:
         """Draw coefficients.
@@ -191,9 +191,9 @@ class Data(simul_data.Data):
             ## update number of samples to be difference in previous and current
             self.n_samps = diff
             ## update coefficient arrays 
-            x_arr, z_arr = self.draw_covars()
+            x_arr, z_arr, _, _ = self.draw_covars()
             ## uncenter because they will be recentered with added data
-            old_x, old_z = self.get_covars(ctr = False)
+            old_x, old_z, _, _ = self.get_covars(ctr = False)
             new_x = jnp.concatenate(
                 [old_x, x_arr], axis = 0
             )
@@ -225,7 +225,7 @@ class Data(simul_data.Data):
         elif self.n_samps > n_samps:
             ## new number of samples is smaller than before so subset data
             ## uncenter the data because it will be re-centered in set_covars()
-            new_x, new_z = self.get_covars(ctr = False)
+            new_x, new_z, _, _ = self.get_covars(ctr = False)
             self.set_covars(new_x[:n_samps, :], new_z[:n_samps, :])
             new_col_sums = self.col_sums[:n_samps]
             new_offsets  = self.offsets[:n_samps]

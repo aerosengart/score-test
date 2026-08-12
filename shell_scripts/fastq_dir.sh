@@ -38,7 +38,7 @@ mkdir -p "$output_dir";
 ## get list of subdirectories to extract from
 current=$(pwd);
 cd "$base_path";
-find -maxdepth 1 -name "*SRR*" -type d | sed -e 's/[\.\/]//g' > temp.txt;
+find -maxdepth 1 -name "*RR*" -type d | sed -e 's/[\.\/]//g' > temp.txt;
 cd "$current";
 
 while read -u 9 line; 

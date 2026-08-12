@@ -13,6 +13,4 @@ source /home/arosenga/miniconda/bin/activate /home/arosenga/miniconda/envs/score
 anchor_idx=$(($SLURM_ARRAY_TASK_ID + $5))
 anchor=$(sed "${anchor_idx}q;d" $3)
 
-
-
 python routines/run_routine.py -d $1 -m $2 -a $anchor -o $4

@@ -1,8 +1,5 @@
 """
 Single iteration routines for assessing Type I/II error of tests.
-
-Methods:
-    - type_i_error_by_n_samps();
 """
 
 import os
@@ -15,6 +12,7 @@ import jax.numpy         as jnp
 import numpy             as np
 
 from tqdm        import tqdm
+from statsmodels.stats.proportion import proportion_confint
 
 from routine_module  import doc
 from stat_module import score, helpers, stat
@@ -103,6 +101,33 @@ def compute_type_i_err(p_vals_arr, level, reps):
 def compute_type_ii_err(p_vals_arr, level, reps):
     """Fail to reject H0 when not true."""
     return (p_vals_arr > level).sum(axis = 0) / reps
+
+def compute_type_i_err_bounds(errs_arr, level, reps):
+    ## errs_arr is list of type I error rates (multiply by reps to get count)
+    obs = [x * reps for x in errs_arr]
+    lbs = []
+    ubs = []
+    for i in range(len(obs)):
+        lb, ub = proportion_confint(
+            obs[i], reps, alpha = level, method = 'wilson'
+        )
+        lbs += [float(lb)]
+        ubs += [float(ub)]
+    return lbs, ubs
+
+def compute_type_ii_err_bounds(errs_arr, level, reps):
+    ## errs_arr is list of type II error rates (multiply by reps to get count)
+    obs = [x * reps for x in errs_arr]
+    lbs = []
+    ubs = []
+    for i in range(len(obs)):
+        lb, ub = proportion_confint(
+            obs[i], reps, alpha = level, method = 'wilson'
+        )
+        lbs += [float(lb)]
+        ubs += [float(ub)]
+    return lbs, ubs
+
 
 def check_type_i_settings(d_config, m_config, param):
     """Check that the data simulation scheme is appropriate for Type I"""
@@ -235,7 +260,8 @@ def error_comparison(
     data = data_types[d_config['outcome']](d_config)
     data.resample()
 
-    for r in tqdm(range(reps)):
+    for r in tqdm(range(reps)): 
+        data.resample() ## added this line 16-07-2026
         data.set_debug(iter = '', rep = str(r), routine = routine, seed = data.seed)
         for i in range(len(x_axis_vals)):
             update_param_func(data, x_axis_vals[i])
@@ -345,10 +371,16 @@ def process_results(dir_files, out_dir):
     two_errs   = jnp.mean(two_errs, axis = 1)
     return x_axis_vals, oasis_errs, one_errs, two_errs, None
 
+
 def plot_error_comparison(d_config, m_config, err_type, param, level, reps):
     """Save line plot of errors."""
     ## get routine specifics by parameter being varied
     routine = f'type_{err_type}_error_by_{param}'
+    
+    if err_type == 'I':
+        bounds_func = compute_type_i_err_bounds
+    else:
+        bounds_func = compute_type_ii_err_bounds
 
     ## read all results from output directory 
     out_dir = doc.routine_dir(d_config, m_config, routine)
@@ -361,7 +393,7 @@ def plot_error_comparison(d_config, m_config, err_type, param, level, reps):
         dir_files = dir_files,
         out_dir   = out_dir
     )
-    
+
     ## get necessary quantities/names
     plt_name = os.path.join(out_dir, f'{routine}.pdf')
     plt.rcParams.update({'font.size': 8})
@@ -374,12 +406,39 @@ def plot_error_comparison(d_config, m_config, err_type, param, level, reps):
     ## level alpha line
     axs.axline((0, level), slope = 0, color = 'black', linestyle = 'dotted', label = r'$\alpha$')
 
+    oasis_lb, oasis_ub = bounds_func(
+        errs_arr = oasis_orig,
+        level = level,
+        reps = reps
+    )
+    one_lb, one_ub = bounds_func(
+        errs_arr = one_sided,
+        level = level,
+        reps = reps
+    )
+    two_lb, two_ub = bounds_func(
+        errs_arr = two_sided,
+        level = level,
+        reps = reps
+    )
+
+    print(one_lb, one_ub)
+
     ## plot results
     axs.plot(x_axis_vals, oasis_orig, color = 'green', label = 'OASIS')
+    axs.fill_between(x_axis_vals, oasis_lb, oasis_ub, color = 'green', alpha = 0.1)
     axs.plot(x_axis_vals, one_sided, color = 'blue', label = 'One-Sided')
+    axs.fill_between(x_axis_vals, one_lb, one_ub, color = 'blue', alpha = 0.1)
     axs.plot(x_axis_vals, two_sided, color = 'red', label = 'Two-Sided')
+    axs.fill_between(x_axis_vals, two_lb, two_ub, color = 'red', alpha = 0.1)
     try:
+        asymp_lb, asymp_ub = bounds_func(
+            errs_arr = asymp,
+            level = level,
+            reps = reps
+        )
         axs.plot(x_axis_vals, asymp, color = 'purple', label = 'OASIS (asymp.)')
+        axs.fill_between(x_axis_vals, asymp_lb, asymp_ub, color = 'purple', alpha = 0.1)
     except:
         pass
 
@@ -391,6 +450,7 @@ def plot_error_comparison(d_config, m_config, err_type, param, level, reps):
     plt.tight_layout()
     plt.savefig(plt_name)
     plt.close()
+    print(plt_name)
 
     if err_type == 'II':
         ## also plot as power if Type II error
@@ -407,18 +467,30 @@ def plot_error_comparison(d_config, m_config, err_type, param, level, reps):
         oasis_orig = [1 - x for x in oasis_orig]
         one_sided  = [1 - x for x in one_sided]
         two_sided  = [1 - x for x in two_sided]
+        oasis_lb = [1 - x for x in oasis_lb]
+        oasis_ub = [1 - x for x in oasis_ub]
+        one_lb = [1 - x for x in one_lb]
+        one_ub = [1 - x for x in one_ub]
+        two_lb = [1 - x for x in two_lb]
+        two_ub = [1 - x for x in two_ub]
 
         ## plot results
         axs.plot(x_axis_vals, oasis_orig, color = 'green', label = 'OASIS')
+        axs.fill_between(x_axis_vals, oasis_lb, oasis_ub, color = 'green', alpha = 0.1)
         axs.plot(x_axis_vals, one_sided, color = 'blue', label = 'One-Sided')
+        axs.fill_between(x_axis_vals, one_lb, one_ub, color = 'blue', alpha = 0.1)
         axs.plot(x_axis_vals, two_sided, color = 'red', label = 'Two-Sided')
+        axs.fill_between(x_axis_vals, two_lb, two_ub, color = 'red', alpha = 0.1)
 
         ## level alpha line
         axs.axline((0, level), slope = 0, color = 'black', linestyle = 'dotted', label = r'$\alpha$')
 
         try:
             asymp = [1 - x for x in asymp]
+            asymp_lb = [1 - x for x in asymp_lb]
+            asymp_ub = [1 - x for x in asymp_ub]
             axs.plot(x_axis_vals, asymp, color = 'purple', label = 'OASIS (asymp.)')
+            axs.fill_between(x_axis_vals, asymp_lb, asymp_ub, color = 'green', alpha = 0.1)
         except:
             pass
 
@@ -432,7 +504,11 @@ def plot_error_comparison(d_config, m_config, err_type, param, level, reps):
         plt.close()
 
 
-def plot_grid_error_comp(dir, err_type, param, int_only = False):
+
+
+
+
+def plot_grid_error_comp(dir, err_type, param, reps = 100, int_only = False):
     if int_only:
         results_func = process_results_intercept_only
     else:
@@ -524,7 +600,6 @@ def plot_grid_error_comp(dir, err_type, param, int_only = False):
             
             ## level alpha line
             axs[row, col].axline((0, 0.05), slope = 0, color = 'black', linestyle = 'dotted', label = r'$\alpha$')
-
 
             oasis_orig = [1 - x for x in oasis_orig]
             one_sided = [1 - x for x in one_sided]

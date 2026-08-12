@@ -18,5 +18,6 @@ parser.add_argument("--sra_bin", type = str, help = "path of directory with SRA 
 args = parser.parse_args()
 
 for sra in os.listdir(args.sra_dir):
-  if sra.startswith('SR'):
+  print(sra)
+  if sra.startswith('SR') or sra.startswith('ER'):
     subprocess.run([os.path.join(args.sra_bin, "fasterq-dump"), "--split-3", os.path.join(args.sra_dir, sra), "-O", os.path.join(args.sra_dir, sra)])

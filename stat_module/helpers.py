@@ -190,7 +190,7 @@ def compute_infimum(
     """
     ## objective function
     dims = test_p + q
-    if dims == 1:
+    if dims == 1 and not hasattr(score, 'shape'):
         score = jnp.array([score])
     q_arr = np.array(-jnp.matmul(schur_inv, score), dtype = float)
     p_arr = np.array(schur_inv, dtype = float)

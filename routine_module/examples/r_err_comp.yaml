@@ -1,0 +1,8 @@
+d_config: '/home/arosenga/score-test/routine_module/examples/d_err_comp.yaml'
+m_config: '/home/arosenga/score-test/routine_module/examples/m_err_comp.yaml'
+routine: 'err_comp'
+r_args:
+  param: 'n_samps'
+  err_type: 'I'
+  reps: 100
+  level: 0.05

@@ -34,13 +34,15 @@ class Data(data.Data):
         ## covariate types
         self.x_types = config['x']['types']
         self.z_types = config['z']['types']
-        ## number of effects
-        self.p = len(self.x_types)
-        self.q = len(self.z_types)
-
+        self.x_dummies = config['x']['dummies']
+        self.z_dummies = config['z']['dummies']
         ## set covariate arrays
-        x_arr, z_arr = self.extract_covars()
-        self.set_covars(x_arr, z_arr)
+        x_arr, z_arr, x_cols, z_cols = self.extract_covars()
+        self.set_covars(x_arr, z_arr, x_cols, z_cols)
+        ## number of effects
+        self.p = self.x_arr.shape[1] + 1 ## intercept always included!
+        self.q = self.z_arr.shape[1]
+
 
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##
@@ -53,12 +55,18 @@ class Data(data.Data):
         RAISES:
         RETURNS:
         """
-        coo_arr = sps.coo_array(
-            (np.array(self.counts), 
-            (np.array(self.targ_idx) - 1, np.array(self.samp_idx) - 1)),
-            (self.n_targs, self.n_samps)
+        # csc_arr = sps.coo_array(
+        #     (np.array(self.counts), 
+        #     (np.array(self.targ_idx) - 1, np.array(self.samp_idx) - 1)),
+        #     (self.n_targs, self.n_samps)
+        # ).tocsc()
+        # return csc_arr
+        y_arr = helpers.sparse_rep_to_table(
+            row_idx = self.targ_idx,
+            col_idx = self.samp_idx,
+            counts  = self.counts
         )
-        return coo_arr.tocsc()
+        return y_arr
     
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
@@ -85,25 +93,43 @@ class Data(data.Data):
         x_pd, z_pd = helpers.construct_metadata(
             fx_covars     = self.x_types,
             rd_covars     = self.z_types,
+            fx_dummies    = self.x_dummies,
+            rd_dummies    = self.z_dummies,
             metadata_file = self.metadata_file
         )
 
         ## filter to relevant samples in SAME ORDER as SATC file
+        ## becomes sample by covariate arrays
         x_pd_filt = x_pd.set_index('splash_id').reindex(self.samples).reset_index()
         z_pd_filt = z_pd.set_index('splash_id').reindex(self.samples).reset_index()
 
-        ## remove id columns and convert to numeric
+        ## filter to columns that are not all zero (can happen if using dummies)
+        if x_pd_filt.shape[-1] > 2:
+            x_col_sums = x_pd_filt.iloc[:, 2:].sum(axis = 0)
+            zero_x_col_sums = x_col_sums.index[x_col_sums == 0].tolist()
+            x_pd_filt = x_pd_filt.drop(columns = zero_x_col_sums)
+        if z_pd_filt.shape[-1] > 2:
+            z_col_sums = z_pd_filt.iloc[:, 2:].sum(axis = 0)
+            zero_z_col_sums = z_col_sums.index[z_col_sums == 0].tolist()
+            z_pd_filt = z_pd_filt.drop(columns = zero_z_col_sums)
+
+        ## remove zero sum columns
+        x_cols = x_pd_filt.columns
+        z_cols = z_pd_filt.columns
+
+        ## remove id columns 
         x_pd_filt = x_pd_filt.drop(columns = ['splash_id', 'srr'])
         z_pd_filt = z_pd_filt.drop(columns = ['splash_id', 'srr'])
 
-        ## add intercepts
+        ## convert to array
         x_arr = jnp.array(x_pd_filt)
         z_arr = jnp.array(z_pd_filt)
+
+        ## add intercepts
         if x_arr.shape[1] == 0:
             ## if no target-specific fixed slopes
             x_arr = jnp.ones((self.n_samps, 1))
         else:
             x_arr = jnp.concatenate([jnp.ones((self.n_samps, 1)), x_arr], axis = 1)
-
-        return x_arr, z_arr
+        return x_arr, z_arr, x_cols, z_cols
     

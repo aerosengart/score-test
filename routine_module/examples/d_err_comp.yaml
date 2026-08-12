@@ -1,0 +1,19 @@
+outcome: neg_bin
+seed: 7647766
+n_samps: 50 ## will be varied      
+n_targs: 500        
+fx_effs: 
+  mu: 0.5
+  sigma: 1.0
+rd_effs:
+  mu: 0.0
+  sigma: [0.0]
+x: 
+  center: False
+  types: []
+z:
+  center: True
+  types: ['time_reg']
+disp:
+  mu: 2.0
+  sigma: 0.0

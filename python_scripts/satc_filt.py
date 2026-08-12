@@ -27,6 +27,8 @@ args = parser.parse_args()
 anch_satc_dir = os.path.join(args.output, 'anchor_satc')
 if not os.path.isdir(anch_satc_dir):
     os.makedirs(anch_satc_dir)
+## list of anchors for score test
+anch_list_file = os.path.join(args.output, 'anchor_list.txt')
 
 ## move anchors in filtered list to home directory
 with open(args.anchor_file, 'r') as anch_file:
@@ -41,6 +43,9 @@ with open(args.anchor_file, 'r') as anch_file:
              os.path.join(args.satc_dir, f'{anchor}.txt'), 
              anch_satc_file]
         )
+        with open(anch_list_file, 'a') as list_file:
+            list_file.write(f'{anchor}\n')
+
 
 ## delete the satc_dir (so many files and we no longer need them)
 if args.clean_up:
