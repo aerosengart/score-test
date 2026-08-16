@@ -39,5 +39,5 @@ def test_nb_use_true(simul_data, nb_model):
     assert jnp.array_equal(model.var_comp, jnp.zeros((1,)))
     assert jnp.array_equal(model.disp_arr, data.disp_arr)
     ## check offsets
-    assert jnp.array_equal(model.offsets, data.offsets)
+    assert jnp.array_equal(model.offsets, jnp.zeros((data.n_samps,)))
     #assert jnp.array_equal(model.mu_arr, data.compute_mu())

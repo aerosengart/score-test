@@ -11,9 +11,11 @@ rd_effs:
 x: 
   center: False
   types: []
+  dummy: []
 z:
   center: True
   types: ['time_reg']
+  dummy: [False]
 disp:
   mu: 2.0
   sigma: 0.0

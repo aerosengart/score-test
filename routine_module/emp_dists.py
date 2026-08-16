@@ -46,7 +46,7 @@ def score_var_comp_emp_dist(
     data = data_types[d_config['outcome']](d_config)
     data.resample()
     ## initialize
-    scores_arr = jnp.zeros((data.q, reps)) 
+    scores_arr = jnp.zeros((data.z_arr.shape[-1], reps)) 
     routine = 'score_var_comp_emp_dist'
     ## get plot name and document routine
     out_dir = doc.routine_dir(d_config, m_config, routine)
@@ -93,7 +93,7 @@ def score_var_comp_by_disp_emp_dist(
     ## initialize
     disp_vals = [-0.5, -0.25, -0.1, -0.05, 0.0, \
                   0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
-    scores_arr = jnp.zeros((data.q, len(disp_vals), reps)) 
+    scores_arr = jnp.zeros((data.z_arr.shape[-1], len(disp_vals), reps)) 
     routine = 'score_var_comp_by_disp_emp_dist'
     ## get plot name and document routine
     out_dir = doc.routine_dir(d_config, m_config, routine)

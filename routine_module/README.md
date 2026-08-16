@@ -107,12 +107,47 @@ r_args:
 ```
 
 Then we run:
-
 `sbatch slurm_scripts/routine.sh 1 "routine_module/examples/r_score_var_comp.yaml"`
 
 To re-plot the results:
-
 `bash shell_scripts/plot_routine.sh "routine_module/examples/r_score_var_comp.yaml"`
+
+---
+
+# Empirical Distribution of Score Test Statistics
+We can compare the empirical distribution of the one- and two-sided score test statistics by simulating many datasets with the same data-generating mechanism and plotting the empirical quantiles of the results against the theoretical quantiles. The two-sided score test has a $\chi^2_q$ asymptotic distribution under $H_0$, and the one-sided test has a $\bar{\chi}^2$ distribution.
+
+The resulting plot will be two side-by-side QQ plots. The left-hand panel shows the two-sided score test in red and the right-hand panel shows the one-sided score test in blue. We recommend running more than 1 iteration for this plot to get an idea of whether the quantiles are consistently too small or too large. 
+
+## Usage and Example
+### Usage
+The general format for the routine configuration file is:
+
+```
+d_config: PATH TO DATA CONFIGURATION .YAML
+m_config: PATH TO MODEL CONFIGURATION .YAML
+routine:  'one_two_sided'
+r_args:
+  reps:   NUMBER OF REPLICATES
+```
+
+### Example
+Below is an example routine file:
+
+```
+d_config: 'routine_module/examples/d_one_two_sided.yaml'
+m_config: 'routine_module/examples/m_one_two_sided.yaml'
+routine:  'one_two_sided'
+r_args:
+  reps:   100
+```
+
+Then we run:
+`sbatch slurm_scripts/routine.sh 20 "routine_module/examples/r_one_two_sided.yaml"`
+
+To re-plot the results:
+`bash shell_scripts/plot_routine.sh "routine_module/examples/r_one_two_sided.yaml"`
+
 
 ---
 

@@ -20,8 +20,8 @@ class Data(scenario_data.Data):
         self.outcome = 'multinom'
         self.x_types = []
         self.z_types = ['time_reg']
-        self.p = 1
-        self.q = 1
+        # self.p = 1
+        # self.q = 1
 
         ## set corruption value
         self.set_corrupt(float(config['corruption']))

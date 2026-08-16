@@ -165,31 +165,32 @@ title_dispatch = {
 x_lab_dispatch = {
     'n_samps': 'Number of Samples',
     'n_targs': 'Number of Targets',
-    'disp':    r'Dispersion Parameter ($\gamma$)',
-    'rd_effs': r'Random Effects ($\beta$)',
-    'var': r'Variance Component ($\tau^2$)',
-    'corrupt': r'Corruption ($\epsilon$)',
-    'fx_effs_sigma': 'Fixed Effects Variance',
+    # 'disp':    r'Dispersion Parameter ($\gamma$)',
+    # 'rd_effs': r'Random Effects ($\beta$)',
+    # 'var': r'Variance Component ($\tau^2$)',
+    # 'corrupt': r'Corruption ($\epsilon$)',
+    # 'fx_effs_sigma': 'Fixed Effects Variance',
 }
 
 x_axis_vals_dispatch = {
-    'n_samps': [20, 50, 100, 200, 500, 750, 1000],
-    'n_targs': [10, 20, 50, 100, 200, 300, 400, 500, 750, 1000],
-    'disp':    [1, 2, 5, 10, 20, 50, 100],
-    'rd_effs': [1e-4, 1e-3, 1e-2, 0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 4.0],
-    'var':     [1e-4, 1e-3, 1e-2, 0.1, 0.2, 0.3, 0.4, 0.5, 1.0], ## tau_sqr
-    'corrupt': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-    'fx_effs_sigma': [0.0, 1e-4, 1e-3, 1e-2, 0.1, 0.5, 1.0, 2.0]
+    ## go backwards so can remove samples instead of adding more
+    'n_samps': [1000, 750, 500, 200, 100, 50, 20], 
+    'n_targs': [1000, 750, 500, 400, 300, 200, 100, 50, 20, 10],
+    # 'disp':    [1, 2, 5, 10, 20, 50, 100],
+    # 'rd_effs': [1e-4, 1e-3, 1e-2, 0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 4.0],
+    # 'var':     [1e-4, 1e-3, 1e-2, 0.1, 0.2, 0.3, 0.4, 0.5, 1.0], ## tau_sqr
+    # 'corrupt': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+    # 'fx_effs_sigma': [0.0, 1e-4, 1e-3, 1e-2, 0.1, 0.5, 1.0, 2.0]
 }
 
 update_dispatch = {
     'n_samps': update_n_samps,
     'n_targs': update_n_targs,
-    'disp':    update_disp,
-    'rd_effs': update_rd_effs,
-    'var':     update_var_comp,
-    'corrupt': update_corruption,
-    'fx_effs_sigma': update_fx_effs_sigma,
+    # 'disp':    update_disp,
+    # 'rd_effs': update_rd_effs,
+    # 'var':     update_var_comp,
+    # 'corrupt': update_corruption,
+    # 'fx_effs_sigma': update_fx_effs_sigma,
 }
 
 error_dispatch = {
@@ -421,8 +422,6 @@ def plot_error_comparison(d_config, m_config, err_type, param, level, reps):
         level = level,
         reps = reps
     )
-
-    print(one_lb, one_ub)
 
     ## plot results
     axs.plot(x_axis_vals, oasis_orig, color = 'green', label = 'OASIS')

@@ -41,7 +41,7 @@ o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N
 \end{aligned}
 $$
 
-where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samps`), respectively. Note that, when run on simulated data, the data-generating mechanism may or may not include this offset term in the linear predictor (see [here](#simulated-data)). (_include why this is okay?_)
+where $N_t$ and $N_s$ are the number of targets (`n_targs`) and samples (`n_samps`), respectively. Note that, when run on simulated data, the data-generating mechanism does not include this offset term in the linear predictor (see [here](#simulated-data)). (_include why this is okay?_)
 
 The class attributes for the negative binomial model include:
 

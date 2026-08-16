@@ -17,13 +17,11 @@ class Data():
     ## ---------------------------------------------------------------------- ##
     ## GETTERS / SETTERS                                                      ##
     ## ---------------------------------------------------------------------- ##
-    def set_covars(self, x_arr, z_arr, x_cols = None, z_cols = None):
-        """Setter for covariate arrays."""
+    def set_covars(self, x_arr, z_arr, x_cols, z_cols):
+        """Setter for covariate arrays and column names."""
         ## column names
-        if x_cols is not None:
-            self.x_col_names = x_cols
-        if z_cols is not None:
-            self.z_col_names = z_cols
+        self.x_col_names = x_cols
+        self.z_col_names = z_cols
         ## column values
         if self.ctr_x:
             self.x_ctr_vals = jnp.mean(x_arr, axis = 0)
@@ -38,18 +36,21 @@ class Data():
             self.z_ctr_vals = jnp.zeros((z_arr.shape[1],))
             self.z_arr = z_arr
     
+
     def set_tab_vals(self, targ_idx, samp_idx, counts):
-        """Setter for covariate arrays."""
+        """Setter for non-zero counts and their row (target) and column (sample) indices."""
         self.targ_idx = targ_idx
         self.samp_idx = samp_idx
         self.counts   = counts
 
+
     def set_rel_idx(self, rel_targs, rel_samps):
-        """Compute and set relevant targets (rows that do not sum to 0) and samples. Subtract 1 for 1-indexing."""
+        """Setter for relevant target/sample indices and number of relevant targets/samples."""
         self.rel_targs = rel_targs
         self.rel_samps = rel_samps
         self.n_rel_targs = sum(self.rel_targs)
         self.n_rel_samps = sum(self.rel_samps)
+
 
     def get_covars(self, ctr = False):
         """Getter for covariate arrays.
@@ -62,6 +63,8 @@ class Data():
         """
         if ctr:
             return self.x_arr, self.z_arr, self.x_col_names, self.z_col_names
-        unctr_x = self.x_arr + jnp.tile(self.x_ctr_vals, (self.x_arr.shape[0], 1))
-        unctr_z = self.z_arr + jnp.tile(self.z_ctr_vals, (self.z_arr.shape[0], 1))
+        unctr_x = self.x_arr \
+            + jnp.tile(self.x_ctr_vals, (self.x_arr.shape[0], 1))
+        unctr_z = self.z_arr \
+            + jnp.tile(self.z_ctr_vals, (self.z_arr.shape[0], 1))
         return unctr_x, unctr_z, self.x_col_names, self.z_col_names

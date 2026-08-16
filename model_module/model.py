@@ -18,6 +18,7 @@ class Model():
         """
         ## save data
         self.data = data
+
         ## model housekeeping
         self.outcome      = config['outcome']
         self.scale        = config['scale']
@@ -25,8 +26,9 @@ class Model():
         self.debug        = config['debug']
 
         ## !! these are not the MLEs --- they are the values under H0 !!
-        self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, self.data.q)))
-        self.set_var_comp(jnp.zeros((self.data.q)))
+        q = self.data.z_arr.shape[-1]
+        self.set_rd_effs_arr(jnp.zeros((self.data.n_targs, q)))
+        self.set_var_comp(jnp.zeros((q)))
 
     ## ---------------------------------------------------------------------- ##
     ## GETTERS/SETTERS                                                        ##

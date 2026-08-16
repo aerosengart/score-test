@@ -218,7 +218,8 @@ def random_covar_wrt_var_comp_j(
     RETURNS:
         jnp.array; first order partial derivatives of covariance matrix (q x q)
     """
-    q_zeros = jnp.zeros((model.data.q, model.data.q))
+    q = model.data.z_arr.shape[-1]
+    q_zeros = jnp.zeros((q, q))
     covar_deriv = q_zeros.at[j, j].set(1)
     return covar_deriv
 

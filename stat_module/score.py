@@ -22,13 +22,14 @@ def compute_score_var_comp(
     RAISES:
         NONE
     """
-    scores = jnp.zeros((model.data.q))
+    q = model.data.z_arr.shape[-1]
+    scores = jnp.zeros((q))
 
     ## initial computations
     resid_vals     = model.compute_resid()
     xi_vals        = intermed.compute_xi(model)
     delta_inv_omega_vals = intermed.compute_delta_inv_omega(model)
-    for idx in range(model.data.q):
+    for idx in range(q):
         ## (n_samps, n_samps) --- same for all targets
         a_j_arr = intermed.compute_a_j(model, j = idx)
 

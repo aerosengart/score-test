@@ -118,7 +118,7 @@ def construct_c_vec_list(data):
     """
     ## initialize list of c vectors
     c_vec_list = []
-    x_arr, _ = data.get_covars(ctr = False)
+    x_arr, _, _, _ = data.get_covars(ctr = False)
     ## just do a loop because i am lazy right now --- do NOT include intercept
     for j in range(len(data.x_types)):
         if data.x_types[j] == 'cont':

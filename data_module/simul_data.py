@@ -23,28 +23,11 @@ class Data(data.Data):
         ## initialize parent class
         super().__init__(config)
 
-        ## debugging dictionary
-        self.debug = {
-            'iter':    None,
-            'rep':     None,
-            'routine': None,
-            'seed': None
-        }
-
+        ## initialize debugging dictionary
+        self.set_debug(None, None, None, None)
+        
         ## parse configuration file attributes
         self.parse_config(config)
-
-        ## set column sums: (n_samps,), (n_samps)
-        col_sums, offsets = self.draw_col_sums()
-        self.set_col_sums(col_sums, offsets)
-
-        ## set covariates: (n_samps, p), (n_samps, q)
-        x_arr, z_arr, x_names, z_names = self.draw_covars()
-        self.set_covars(x_arr, z_arr, x_names, z_names)
-        
-        # ## initialize column names (not used for simulated data right now)
-        # self.x_col_names = None
-        # self.z_col_names = None
 
     ## ---------------------------------------------------------------------- ##
     ## COMPUTATIONS                                                           ##
@@ -70,6 +53,21 @@ class Data(data.Data):
         self.set_tab_vals(targ_idx, samp_idx, counts)
         self.set_rel_idx(rel_targs, rel_samps)
 
+
+
+    ## ---------------------------------------------------------------------- ##
+    ## GETTERS                                                                ##
+    ## ---------------------------------------------------------------------- ##
+    def get_effs(self):
+        """Getter for coefficients arrays.
+        
+        ARGS: None
+        RAISES: None
+        RETURNS: 
+            two jax.numpy arrays; fx_effs_arr and rd_effs_arr
+        """
+        return self.fx_effs_arr, self.rd_effs_arr
+
     ## ---------------------------------------------------------------------- ##
     ## SETTERS                                                                ##
     ## ---------------------------------------------------------------------- ##
@@ -77,10 +75,14 @@ class Data(data.Data):
         """Set dispersion parameters array."""
         self.disp_arr = disp_arr
 
-    def set_col_sums(self, col_sums, offsets):
-        """Setter for column sums and offsets."""
-        self.col_sums = col_sums
-        self.offsets  = offsets
+    # def set_col_sums(self, col_sums, offsets):
+    #     """Setter for column sums and offsets."""
+    #     self.col_sums = col_sums
+    #     self.offsets  = offsets
+
+    def set_offsets(self, offsets):
+        """Setter for GLM offsets."""
+        self.offsets = offsets
 
     def set_effs(self, fx_effs_arr, rd_effs_arr):
         """Set coefficient arrays."""
@@ -95,6 +97,7 @@ class Data(data.Data):
             'routine': routine,
             'seed': seed,
         }
+
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##

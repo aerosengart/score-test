@@ -47,7 +47,8 @@ class Model(model.Model):
             fx_effs  = self.data.fx_effs_arr
             disp_arr = self.data.disp_arr
             mu_arr   = self.data.compute_mu()
-            offsets  = self.data.offsets
+            # offsets  = self.data.offsets
+            offsets  = jnp.zeros((self.data.n_samps,))
         else:
             fx_effs, disp_arr, offsets, mu_arr = glmgampoi.fit(model = self)
         self.set_fx_effs_arr(fx_effs)

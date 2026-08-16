@@ -11,12 +11,12 @@ rd_effs:
 x: 
   center: False
   types: ['batch_2']
-  dummies: [False]
+  dummy: [False]
   mu: 0.0
   sigma: 1.0
 z:
   center: True
   types: ['time_reg']
-  dummies: [False]
+  dummy: [False]
   mu: 0.0
   sigma: 1.0

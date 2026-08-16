@@ -34,14 +34,15 @@ class Data(data.Data):
         ## covariate types
         self.x_types = config['x']['types']
         self.z_types = config['z']['types']
-        self.x_dummies = config['x']['dummies']
-        self.z_dummies = config['z']['dummies']
+        self.x_dummy = config['x']['dummy']
+        self.z_dummy = config['z']['dummy']
         ## set covariate arrays
         x_arr, z_arr, x_cols, z_cols = self.extract_covars()
         self.set_covars(x_arr, z_arr, x_cols, z_cols)
-        ## number of effects
-        self.p = self.x_arr.shape[1] + 1 ## intercept always included!
-        self.q = self.z_arr.shape[1]
+
+        # self.p = self.x_arr.shape[1] + 1 ## intercept always included!
+        ## dimension of random effects
+        # self.q = self.z_arr.shape[1]
 
 
     ## ---------------------------------------------------------------------- ##
@@ -93,8 +94,8 @@ class Data(data.Data):
         x_pd, z_pd = helpers.construct_metadata(
             fx_covars     = self.x_types,
             rd_covars     = self.z_types,
-            fx_dummies    = self.x_dummies,
-            rd_dummies    = self.z_dummies,
+            fx_dummy    = self.x_dummy,
+            rd_dummy    = self.z_dummy,
             metadata_file = self.metadata_file
         )
 
@@ -103,7 +104,7 @@ class Data(data.Data):
         x_pd_filt = x_pd.set_index('splash_id').reindex(self.samples).reset_index()
         z_pd_filt = z_pd.set_index('splash_id').reindex(self.samples).reset_index()
 
-        ## filter to columns that are not all zero (can happen if using dummies)
+        ## filter to columns that are not all zero (can happen if using dummy)
         if x_pd_filt.shape[-1] > 2:
             x_col_sums = x_pd_filt.iloc[:, 2:].sum(axis = 0)
             zero_x_col_sums = x_col_sums.index[x_col_sums == 0].tolist()

@@ -205,7 +205,7 @@ def construct_data_frame(model, null_model = True):
         )
     else:
         ## model under H1 -> random effects included
-        rd_slopes = [f'rd_{str(x)}' for x in list(range(model.data.q))]
+        rd_slopes = [f'rd_{str(x)}' for x in list(range(model.data.z_arr.shape[-1]))]
         data_arr = pd.DataFrame(
             jnp.concatenate([resp_np, x_np, z_np, targ_idx_np], axis = 1)
         )
@@ -415,7 +415,7 @@ def extract_rd(model, fit) -> jnp.array:
         coef_df = ro.conversion.get_conversion().rpy2py(rd_effs_modes)
 
     ## initialize
-    rd_effs_vals = jnp.zeros((model.data.n_targs, model.data.q))
+    rd_effs_vals = jnp.zeros((model.data.n_targs, model.data.z_arr.shape[-1]))
     col_names = coef_df.columns
 
     for eff_idx in range(len(col_names)):
@@ -464,8 +464,8 @@ def extract_coefs(model, fit, null_model):
                 var_corr
             )
     else:
-        rd_effs_vals = jnp.zeros((model.data.n_targs, model.data.q))
-        rd_sd = jnp.empty((model.data.q))
+        rd_effs_vals = jnp.zeros((model.data.n_targs, model.data.z_arr.shape[-1]))
+        rd_sd = jnp.empty((model.data.z_arr.shape[-1]))
     return {'fx_effs': fx_effs_estims, 
             'rd_effs': rd_effs_vals, 
             'disp': jnp.array(disp), 

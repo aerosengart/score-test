@@ -153,9 +153,9 @@ def compute_info(
         three jax.numpy arrays; the upper left block of the information matrix under H0 corresponding to the fixed effects covariances (p*, p*), the rightmost "rectangle" block corresponding to the covariances of the fixed effects and variance components (p*, q), the lower right block corresopnding to the variance components covariances (q, q)
     RAISES: None
     """
-    q = model.data.q
+    q = model.data.z_arr.shape[-1]
     ## initializations
-    p = model.data.x_arr.shape[1]
+    p = model.data.x_arr.shape[-1]
     info_fx_var = jnp.zeros((model.data.n_targs, p, q))
     info_var = jnp.zeros((q, q))
 

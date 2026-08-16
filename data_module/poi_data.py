@@ -23,7 +23,6 @@ class Data(custom_data.Data):
         """Compute and return linear predictor."""
         return jnp.exp(self.compute_eta())
 
-
     ## ---------------------------------------------------------------------- ##
     ## GETTERS / SETTERS                                                      ##
     ## ---------------------------------------------------------------------- ##

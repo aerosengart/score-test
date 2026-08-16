@@ -37,3 +37,24 @@ def test_splash_fx_targ_int_rd_slope(splash_data):
     z_arr_by_hand = jnp.array([0, 1, 2, 1, 2, 0])
     assert jnp.array_equal(data.x_arr[:, 1], x_arr_by_hand)
     assert jnp.array_equal(data.z_arr[:, 0], z_arr_by_hand)
+
+
+
+def test_splash_fx_targ_int_rd_slope_dummy(splash_data):
+    data = splash_data('tests/data/splash_data_dummy.yaml', 'test_anchor')
+
+    ## check dimensions
+    n_samps = data.n_samps
+    n_targs = data.n_targs
+    assert n_samps == 6
+    assert n_targs == 9
+    ## data dimensions
+    assert data.x_arr.shape == (n_samps, 2)
+    assert data.z_arr.shape == (n_samps, 2)
+    assert len(data.targ_idx) == len(data.samp_idx) == len(data.counts)
+    ## data values
+    assert jnp.array_equal(data.x_arr[:, 0], jnp.ones((n_samps,)))
+    x_arr_by_hand = jnp.array([1, 0, 0, 1, 0, 1])
+    z_arr_by_hand = jnp.array([[0, 0], [1, 0], [0, 1], [1, 0], [0, 1], [0, 0]])
+    assert jnp.array_equal(data.x_arr[:, 1], x_arr_by_hand)
+    assert jnp.array_equal(data.z_arr, z_arr_by_hand)

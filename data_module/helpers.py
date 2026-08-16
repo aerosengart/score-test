@@ -11,7 +11,6 @@ import pandas     as pd
 import numpy      as np
 import scipy.sparse   as sps
 
-
 ## ---------------------------------------------------------------------- ##
 ## SAMPLERS                                                               ##
 ## ---------------------------------------------------------------------- ##
@@ -35,25 +34,30 @@ def draw_gaussian_arr(row, col, rng, mu = 0.0, sigma = 0.0):
     ))
 
 
-def draw_factor_arr(row, col, levels, rng, covar = None):
+def draw_factor_arr(row, levels, rng, covar = None):
     """
     Draw an array of factor level indicators of the specified shape. Values of the returned array will be integers sampled from {0, 1, 2, ..., levels - 1}.
     
     ARGS:
         row    - int; number of rows
-        col    - int; number of columns
         levels - int; number of levels of factor
         rng    - numpy random number generator
         covar  - str; name of covariate (if dummified)
     RAISES: None
-    RETURNS: jnp.array (row, col) 
+    RETURNS: 
+        jnp.array (row, 1) and list (1,) if levels <= 2
+        jnp.array (row, levels - 1) and list (levels - 1,) if levels > 2
     """
     level_list = range(levels)
-    x_levels = jnp.asarray(rng.choice(level_list, size = row * col))
-    factor_vals = jnp.reshape(x_levels, (row, col))
+    x_levels = jnp.asarray(rng.choice(level_list, size = row))
     if levels > 2:
-        factor_vals = pd.get_dummies(factor_vals, prefix = covar, drop_first = True)
-    return factor_vals
+        factor_vals = pd.get_dummies(x_levels, prefix = covar, drop_first = True)
+        names = factor_vals.columns.tolist()
+        factor_vals = jnp.array(factor_vals)
+    else:
+        factor_vals = jnp.reshape(x_levels, (row, 1))
+        names = covar
+    return factor_vals, names
 
 def draw_time_arr(row, col, reg_int, rng):
     """
@@ -168,8 +172,8 @@ def satc_to_sparse_rep(
 def construct_metadata(
         fx_covars:     list, 
         rd_covars:     list, 
-        fx_dummies:    list,
-        rd_dummies:    list,
+        fx_dummy:      list,
+        rd_dummy:      list,
         metadata_file: str
     ):
     """
@@ -178,8 +182,8 @@ def construct_metadata(
     ARGS:
         fx_covars     - list; covariates to include as target-specific fixed effects covariates
         rd_covars     - list; covariates to include as random effects covariates
-        fx_dummies    - list; bools for which covariates need dummies
-        rd_covars     - list; bools for which covariates need dummies
+        fx_dummy      - list; bools for which covariates need dummy
+        rd_dummy      - list; bools for which covariates need dummy
         metadata_file - str; path to clean_metadata.tsv 
     RAISES: None
     RETURNS: three pandas DataFrames 
@@ -196,26 +200,11 @@ def construct_metadata(
     ## cast types
     x_cov_arr = x_cov_arr.astype({'srr': 'str', 'splash_id': 'str'})
     z_cov_arr = z_cov_arr.astype({'srr': 'str', 'splash_id': 'str'})
-    ## to dummies if desired
-    fx_dum = np.array(fx_covars)[fx_dummies].tolist()
-    rd_dum = np.array(rd_covars)[rd_dummies].tolist()
+    ## to dummy if desired
+    fx_dum = np.array(fx_covars)[fx_dummy].tolist()
+    rd_dum = np.array(rd_covars)[rd_dummy].tolist()
     ## drop first
     x_cov_dum = pd.get_dummies(x_cov_arr, prefix = fx_dum, columns = fx_dum, drop_first = True)
     z_cov_dum = pd.get_dummies(z_cov_arr, prefix = rd_dum, columns = rd_dum, drop_first = True)
     return x_cov_dum, z_cov_dum
     
-
-def check_attrbs(data):
-    """Check data attributes are compatible."""
-    assert hasattr(data, 'fx_effs_mu')
-    assert hasattr(data, 'fx_effs_sigma')
-    assert hasattr(data, 'rd_effs_mu')
-    assert hasattr(data, 'rd_effs_sigma')
-    if 'cont' in data.x_types:
-        assert hasattr(data, 'x_mu')
-        assert hasattr(data, 'x_sigma')
-    if 'cont' in data.z_types:
-        assert hasattr(data, 'z_mu')
-        assert hasattr(data, 'z_sigma')
-
-

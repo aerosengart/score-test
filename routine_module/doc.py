@@ -22,12 +22,13 @@ def log_configs(r_path, out_dir):
     shutil.copy(r_config['m_config'], os.path.join(save_dir, 'm_config.yaml'))
 
 
-def output_directory_path(d_config, m_config):
+def output_directory_path(d_config, m_config, dims = False):
     """Construct appropriate sub-directory for output.
 
     ARGS:
         d_config - data configuration dictionary
         m_config - model configuration dictionary
+        dims     - whether to include data dimensions in path name
     RAISES:
         None
     RETURNS:
@@ -51,11 +52,12 @@ def output_directory_path(d_config, m_config):
     ## fixed part
     fx_part = f'fx_p{p}_'
     ## random part
-    rd_part = f'rd_q{q}_'
-    ## dimension part
-    dim_part = f'samps{n}_targs{k}'
+    rd_part = f'rd_q{q}'
     ## concatenate
-    sub_dir = data_dist + model_dist + fx_part + rd_part + dim_part
+    sub_dir = data_dist + model_dist + fx_part + rd_part
+    ## dimension part, if desired
+    if dims:
+        sub_dir += f'_samps{n}_targs{k}'
 
     sub_dir = os.path.join(m_config['out_dir'], sub_dir)
     return sub_dir

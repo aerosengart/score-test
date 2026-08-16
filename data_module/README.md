@@ -68,12 +68,12 @@ Instantiation requires passing `config`, which is a `dict` specifying the data c
 | Name      | Type         | Description     | Source | 
 | :---        |    :---     | :---     | :--- |
 | `debug` | `dict` | Dictionary of debugging information (iteration number, replicate number, routine name). | - |
-| `col_sums` | `jax.numpy.array` | Sampled column sums (ONLY USED FOR MULTINOMIAL DATA). | Sampled. |
-| `offsets`  | `jax.numpy.array` | Offsets (computation described later). | Computed. |
+<!-- | `col_sums` | `jax.numpy.array` | Sampled column sums (ONLY USED FOR MULTINOMIAL DATA). | Sampled. | -->
+<!-- | `offsets`  | `jax.numpy.array` | Offsets (computation described later). | Computed. | -->
 | `x_arr` | `jax.numpy.array` | Fixed effects covariates. | Sampled. |
 | `z_arr` | `jax.numpy.array` | Random effects covariates. | Sampled. |
-| `x_col_names` | `list` | ? | Computed. |
-| `z_col_names` | `list` | ? | Computed. |
+| `x_col_names` | `list` | Names of columns in `x_arr`. | Computed. |
+| `z_col_names` | `list` | Names of columns in `z_arr`. | Computed. |
 
 It has a couple of methods that can be called.
 
@@ -110,14 +110,12 @@ Instantiation requires passing `config`, which is a `dict` specifying the data c
 | `z_types` | `list` of `str` | The type of covariate associated with the random slopes. | Configuration file. | — |
 | `x_dummy` | `list` of `bool` | Whether each covariate should be made into dummy variables. Must match length of `x_types`. | Configuration file. | — |
 | `z_dummy` | `list` of `bool` | Whether each covariate should be made into dummy variables. Must match length of `z_types`. | Configuration file. | — |
-| `p` | positive `int` | Number of fixed effects (including intercept but excluding dummy variables). | Computed. |
-| `q` | positive `int` | Number of random effects (excluding dummy variables). | Computed. |
 | `fx_effs_mu` | `float` | Mean for fixed effects coefficients (`fx_effs_arr`). | Configuration file. | $$\alpha_\mu$$ |
 | `fx_effs_sigma` | positive `float` | Standard deviation for fixed effects coefficients (`fx_effs_arr`). | Configuration file. | $$\alpha_\sigma$$ |
 | `rd_effs_mu` | `float` | Mean for random effects coefficients (`rd_effs_arr`). | Configuration file. | $$\beta_\mu$$ |
 | `rd_effs_sigma` | positive `float` | Standard deviation for random effects coefficients (`rd_effs_arr`). | Configuration file. | $$\beta_\sigma$$ |
-| `col_sums_low` | positive `int` | Lower bound for column sum sampling. | Configuration file or $1$. | - |
-| `col_sums_high` | positive `int` | Upper bound for column sum sampling. | Configuration file or $1$. | - |
+<!-- | `col_sums_low` | positive `int` | Lower bound for column sum sampling. | Configuration file or $1$. | - |
+| `col_sums_high` | positive `int` | Upper bound for column sum sampling. | Configuration file or $1$. | - | -->
 
 There are also some optional attributes to specify in the configuration file. These have to do with sampling continuous covariates. 
 
@@ -146,7 +144,7 @@ where $\boldsymbol{\alpha}_i$ is the vector of fixed effects coefficients, $\mat
 ### `draw_effs()`
 This method samples the fixed and random effect coefficients. Both arrays are drawn with cells that are i.i.d. Gaussian with mean and standard deviation specified by `fx_effs_mu`, `rd_effs_mu`, `fx_effs_sigma`, and `rd_effs_sigma`.
 
-### `draw_col_sums()`
+<!-- ### `draw_col_sums()`
 This method samples column sums for each column of the target-sample table and then computes the appropriate offsets. If the outcome distribution of the child class is Poisson (`poi`) or negative binomial (`neg_bin`), or if the attributes `col_sums_low` and `col_sums_high` are equal, then this method will force all of the column sums to be one and all of the offsets to be zero (in essence, no offsets are included). 
 
 If not, then the column sums are samples uniformly on the interval [`col_sums_low`, `col_sums_high`] with replacement. The offsets are computed as:
@@ -157,7 +155,7 @@ o_j &= \frac{\log\left( \sum_{i = 1}^{N_t} y_{i,j} \right)}{\exp\left(\frac{1}{N
 \end{aligned}
 $$
 
-**Note:** The column sums that are returned are _NOT_ the true column sums unless the outcome distribution requires column sums (e.g. multinomial distribution). The true column sums are not relevant and depend on the random sampling of $y_{i,j}$ later on. 
+**Note:** The column sums that are returned are _NOT_ the true column sums unless the outcome distribution requires column sums (e.g. multinomial distribution). The true column sums are not relevant and depend on the random sampling of $y_{i,j}$ later on.  -->
 
 ### `draw_covars()`
 This method samples the covariate arrays `x_arr` and `z_arr` according to the types specified in `x_types` and `z_types`.
@@ -207,6 +205,9 @@ rd_slopes: 1
 fx_effs: 
   mu: 0.0
   sigma: 1.0
+rd_effs:
+  mu: 0.0
+  sigma: [0.0]
 x: 
   mu: 0.5
   sigma: 1.0
@@ -216,7 +217,6 @@ z:
 disp:
   mu: 1.0
   sigma: 0.0
-var_comp: [0.0]
 ```
 
 That is, we sample i.i.d. negative binomial observations with the linear predictors given by:

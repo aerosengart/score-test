@@ -117,7 +117,7 @@ def test_stat_sensitivity(
         model = model_types[m_config['outcome']](m_config, data)
         ## update debugging dictionary
         if m_config['debug'] == 'full':
-            doc.debug_sample(model = model)
+            doc.save_rep(model, d_config, m_config, sub_dir = f'n_samps_{str(value_grid[i])}')
         for k in range(len(x_axis_vals)):
             ## jitter the appropriate parameters
             jitter_func(model = model, jitter_vals = x_axis_vals[k])

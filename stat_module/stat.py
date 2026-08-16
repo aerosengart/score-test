@@ -34,6 +34,7 @@ def compute_score_stat(model, one_sided = False):
     RAISES:
         None
     """
+    q = model.data.z_arr.shape[-1]
     ## compute score
     score_val, scale_val = score.compute_score_var_comp(
         model, 
@@ -59,14 +60,14 @@ def compute_score_stat(model, one_sided = False):
                 score     = score_val,
                 schur_inv = schur_inv,
                 test_p    = 0,
-                q         = model.data.q
+                q         = q
             )
 
         except:
             raise Exception("didn't work :(")
     
     ## compute stat
-    if model.data.q == 1:
+    if q == 1:
         stat = score_val**2 * schur_inv
     else:
         stat = jnp.matmul(
