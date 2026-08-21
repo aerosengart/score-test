@@ -140,8 +140,8 @@ for i in tqdm(range(len(bin_files))):
                         valid_targs += [idx]
                         ## write SAMPLE TARGET COUNT to anchor-specific SATC file if target is valid
                         with open(os.path.join(scratch_dir, f'{anchor}.txt'), 'a') as f:
-                            for i in range(len(targ_samples)):
-                                f.write(f'{targ_samples[i]} {targ} {counts[i]}\n')
+                            for j in range(len(targ_samples)):
+                                f.write(f'{targ_samples[j]} {targ} {counts[j]}\n')
 
                 ## get unique sample IDs
                 unique_samples = set(anchor_samples)

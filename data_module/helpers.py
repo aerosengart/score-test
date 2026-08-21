@@ -206,5 +206,8 @@ def construct_metadata(
     ## drop first
     x_cov_dum = pd.get_dummies(x_cov_arr, prefix = fx_dum, columns = fx_dum, drop_first = True)
     z_cov_dum = pd.get_dummies(z_cov_arr, prefix = rd_dum, columns = rd_dum, drop_first = True)
-    return x_cov_dum, z_cov_dum
+    ## need to drop duplicates because sometimes same srr/z pair is unique but srr/x pair is not
+    x_cov_df = x_cov_dum.drop_duplicates()
+    z_cov_df = z_cov_dum.drop_duplicates()
+    return x_cov_df, z_cov_df
     

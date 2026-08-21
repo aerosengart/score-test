@@ -202,8 +202,10 @@ def compute_a_j(
         model,
         j = j
     )
-    z_j = jnp.expand_dims(model.data.z_arr[:, j], 1)
-    return jnp.matmul(jnp.matmul(z_j, D_var_comp_j), jnp.transpose(z_j))
+    #z_j = jnp.expand_dims(model.data.z_arr[:, j], 1)
+    z_arr = model.data.z_arr
+    #return jnp.matmul(jnp.matmul(z_j, D_var_comp_j), jnp.transpose(z_j))
+    return jnp.matmul(jnp.matmul(z_arr, D_var_comp_j), jnp.transpose(z_arr))
 
 def random_covar_wrt_var_comp_j(
         model,

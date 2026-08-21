@@ -1,0 +1,22 @@
+outcome: poi
+seed: 7647766
+n_samps: 100
+n_targs: 100
+fx_effs: 
+  mu: 1.0
+  sigma: 0.5
+rd_effs:
+  mu: 0.0
+  sigma: [0.0]
+x: 
+  center: False
+  types: ['batch_2']
+  dummy: [False]
+  mu: 0.0
+  sigma: 1.0
+z:
+  center: True
+  types: ['time_reg']
+  dummy: [False]
+  mu: 0.0
+  sigma: 1.0

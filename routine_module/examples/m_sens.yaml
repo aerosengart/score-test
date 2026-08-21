@@ -1,0 +1,6 @@
+outcome:     'neg_bin'
+use_true:    True    
+scale:       True       ## scale score/information
+debug:       'error'
+global_disp: False
+out_dir:     'routine_module/examples/output'

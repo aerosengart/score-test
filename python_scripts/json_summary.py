@@ -17,28 +17,29 @@ from scipy.stats import false_discovery_control as fdc
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--json_dir", type = str, help = "path of directory with anchor .json files")
+parser.add_argument("--splash_out_dir", type = str, help = "path of directory with SPLASH output")
 parser.add_argument("--out_dir", type = str, help = "output directory")
 args = parser.parse_args()
 
 out_file = os.path.join(args.out_dir, 'anchor_score_test_summary.csv')
-with open(out_file, 'w') as out:
-    out.write('anchor,one_sided_test_stat,two_sided_test_stat,one_sided_p_val,two_sided_p_val\n')
-    for f in os.listdir(args.json_dir):
-        if f.endswith('.json'):
-            f_path = os.path.join(args.json_dir, f)
-            ## read json
-            file = open(f_path)
-            json_str = file.read()
-            file.close()
-            json_obj = json.loads(json_str)
-            ## extract relevant information
-            anchor = os.path.splitext(f)[0]
-            one_sided_t = float(json_obj['test']['one_side'])
-            two_sided_t = float(json_obj['test']['two_side'])
-            one_sided_p = float(json_obj['test']['one_side_p'])
-            two_sided_p = float(json_obj['test']['two_side_p'])
-            ## write to file
-            out.write(f'{anchor},{one_sided_t},{two_sided_t},{one_sided_p},{two_sided_p}\n')
+# with open(out_file, 'w') as out:
+#     out.write('anchor,one_sided_test_stat,two_sided_test_stat,one_sided_p_val,two_sided_p_val\n')
+#     for f in os.listdir(args.json_dir):
+#         if f.endswith('.json'):
+#             f_path = os.path.join(args.json_dir, f)
+#             ## read json
+#             file = open(f_path)
+#             json_str = file.read()
+#             file.close()
+#             json_obj = json.loads(json_str)
+#             ## extract relevant information
+#             anchor = os.path.splitext(f)[0]
+#             one_sided_t = float(json_obj['test']['one_side'])
+#             two_sided_t = float(json_obj['test']['two_side'])
+#             one_sided_p = float(json_obj['test']['one_side_p'])
+#             two_sided_p = float(json_obj['test']['two_side_p'])
+#             ## write to file
+#             out.write(f'{anchor},{one_sided_t},{two_sided_t},{one_sided_p},{two_sided_p}\n')
 
 ## add BY corrected p-values
 file_conts = pd.read_csv(out_file)
@@ -51,3 +52,16 @@ file_conts['two_sided_p_val_by'] = fdc(
     method = 'by'
 )
 file_conts.to_csv(out_file, index = False)
+
+## write only significant at alpha 0.05
+out_file = os.path.join(args.out_dir, 'anchor_score_test_summary_signf.csv')
+signf_file_conts = file_conts.loc[
+    (file_conts['two_sided_p_val_by'] <= 0.05) | (file_conts['one_sided_p_val_by'] <= 0.05)
+]
+signf_file_conts = signf_file_conts.sort_values(by = ['one_sided_p_val_by'])
+
+## join significant anchor with SPLASH output 
+splash_output = os.path.join(args.splash_out_dir, 'result.after_correction.all_anchors.tsv')
+splash_df = pd.read_csv(splash_output, sep = '\t', low_memory = False)
+signf_join = signf_file_conts.merge(splash_df, how = 'left', on = 'anchor')
+signf_join.to_csv(out_file, index = False)

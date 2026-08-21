@@ -36,12 +36,8 @@ def output_directory_path(d_config, m_config, dims = False):
     """
     n = str(d_config['n_samps'])
     k = str(d_config['n_targs'])
-    if 'fx_slopes' in d_config.keys():
-        p = str(1 + d_config['fx_slopes'])
-        q = str(d_config['rd_slopes'])
-    else:
-        p = str(1 + len(d_config['x']['types']))
-        q = str(len(d_config['z']['types']))
+    p = str(1 + len(d_config['x']['types']))
+    q = str(len(d_config['rd_effs']['sigma']))
 
     ## data outcome distribution
     data_dist = 'd{}_'.format(d_config['outcome'])

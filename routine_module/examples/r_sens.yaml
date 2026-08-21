@@ -1,0 +1,7 @@
+d_config: 'routine_module/examples/d_sens.yaml'
+m_config: 'routine_module/examples/d_sens.yaml'
+routine: 'sensitivity_fig'
+r_args:
+  param: 'disp'
+  reps: 100
+  other_known: True

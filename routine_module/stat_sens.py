@@ -33,8 +33,11 @@ def set_fx_effs_jitter(model, jitter_vals):
     model.set_fx_effs_arr(fx_effs_arr)
 
 def set_disp_jitter(model, jitter_vals):
-    ## jitter the dispersion
-    disp_arr = model.data.disp_arr + jitter_vals
+    ## fully set dispersion (not jitter)
+    # if model.data.outcome == 'poi':
+    disp_arr = jnp.ones(model.data.disp_arr.shape) * jitter_vals
+    # else:
+        # disp_arr = model.data.disp_arr + jitter_vals
     ## overwrite model MLE with jittered array
     model.set_disp_arr(disp_arr)
 
@@ -48,12 +51,12 @@ jitter_dispatch = {
 
 x_axis_vals_dispatch = {
     'fx_effs': [-1, -0.1, -0.05, -0.01, 0.0, 0.01, 0.05, 0.1, 1],
-    'disp':    [-0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
+    'disp':    [-0.8, -0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
 }
 
 title_dispatch = {
-    'fx_effs': 'QQ Plots of Test Statistics with Jittered Fixed Effects',
-    'disp': r'QQ Plots of Test Statistics with Jittered Dispersion ($\gamma$)'
+    'fx_effs': 'QQ Plots of Test Statistics over Jittered Fixed Effects',
+    'disp': r'QQ Plots of Test Statistics over Dispersion ($\gamma$)'
 }
 ##----------------------------------------------------------------------------##
 ## Computations                                                               ##
@@ -88,7 +91,6 @@ def test_stat_sensitivity(
     
     ## update seed for iteration
     d_config['seed'] = int(d_config['seed']) + iter_id
-
     ## need to adjust model config so copy
     m_config['use_true'] = other_known
     ## routine name
@@ -100,11 +102,9 @@ def test_stat_sensitivity(
     out_dir = doc.routine_dir(d_config, m_config, routine)
     ## instantiate data
     data = data_types[d_config['outcome']](d_config)
-
     ## routine settings
     x_axis_vals = x_axis_vals_dispatch[param]
     jitter_func = jitter_dispatch[param]
-
     ## initialize
     one_sided = jnp.zeros((reps, len(x_axis_vals)))
     two_sided = jnp.zeros((reps, len(x_axis_vals)))
@@ -115,10 +115,10 @@ def test_stat_sensitivity(
         data.resample()
         ## build model
         model = model_types[m_config['outcome']](m_config, data)
-        ## update debugging dictionary
-        if m_config['debug'] == 'full':
-            doc.save_rep(model, d_config, m_config, sub_dir = f'n_samps_{str(value_grid[i])}')
         for k in range(len(x_axis_vals)):
+            ## update debugging dictionary
+            if m_config['debug'] == 'full':
+                doc.save_rep(model, d_config, m_config, sub_dir = f'n_samps_{str(x_axis_vals[k])}')
             ## jitter the appropriate parameters
             jitter_func(model = model, jitter_vals = x_axis_vals[k])
             ## compute score test
@@ -147,7 +147,6 @@ def qq_jitter_grid(d_config, m_config, param, reps, other_known):
         routine = f'test_stat_{param}_sens_others_known'
     else:
         routine = f'test_stat_{param}_sens'
-    jitter_vals = jitter_dispatch[param]
 
     ## read all results from output directory
     out_dir = doc.routine_dir(d_config, m_config, routine)
@@ -161,14 +160,6 @@ def qq_jitter_grid(d_config, m_config, param, reps, other_known):
         ## expand dims because we want to create a 2D array
         one_sided.append(jnp.expand_dims(iter_res['one_sided_stats'], 1))
         two_sided.append(jnp.expand_dims(iter_res['two_sided_stats'], 1))
-
-    ## save full results
-    jnp.savez(
-        os.path.join(out_dir, f'results.npz'),
-        x_axis_vals     = x_axis_vals,
-        one_sided_stats = one_sided,
-        two_sided_stats = two_sided
-    )
 
     ## join together results (reps, iters, # jitter vals)
     one_sided_stats = jnp.concatenate(one_sided, axis = 1)
@@ -204,7 +195,7 @@ def qq_jitter_grid(d_config, m_config, param, reps, other_known):
             ## compute quantiles
             one_sided_qs = np.quantile(one_sided_stats[:, i, l], quantiles)
             two_sided_qs = np.quantile(two_sided_stats[:, i, l], quantiles)
-            
+
             ## plot two-sided stats
             axs[l, 0].axline((0, 0), slope = 1, color = 'black', linestyle = 'dotted')
             axs[l, 0].plot(chisqr_qs, two_sided_qs, color = 'red', alpha = 0.3)

@@ -33,6 +33,13 @@ bash shell_scripts/ids.sh
   -o "data/amman"
 ```
 
+#### Example (Jahn)
+```
+bash shell_scripts/ids.sh 
+  -b "PRJEB44932" 
+  -o "data/jahn"
+```
+
 
 ## Retrieve metadata for BioSamples
 Next, we must retrieve the metadata associated with the BioSamples using Entrez Direct. 
@@ -80,6 +87,20 @@ python python_scripts/metadata.py
   --bsl data/amman/ids.txt 
   --head data/amman/headers.tsv 
   --output data/amman 
+  --european
+```
+
+#### Example (Jahn)
+```
+esearch -db biosample -query ERS22145015 | esummary | xtract -pattern DocumentSummary -element Attribute@attribute_name
+```
+[_copy output of previous command to create headers.tsv_]
+```
+python python_scripts/metadata.py 
+  --sh_dir shell_scripts 
+  --bsl data/jahn/ids.txt 
+  --head data/jahn/headers.tsv 
+  --output data/jahn 
   --european
 ```
 
@@ -134,6 +155,19 @@ python python_scripts/filter_amman.py
   --max_date 2021-03-31
 ```
 
+#### Example (Jahn)
+There are a lot of samples in this dataset, and we want to test our method where there is a signal. We subset to the time period between 2020-11-01 and 2021-02-01, which is approximate the time frame covered in Fig. 2 of Jahn et al. We also subset to Zurich (ZH) and Lausanne (VD) sites.
+
+```
+python python_scripts/filter_jahn.py 
+  --meta data/jahn/metadata.tsv 
+  --ids data/jahn/ids.txt 
+  --output data/jahn
+  --min_date 2020-11-01 
+  --max_date 2021-02-01
+```
+
+
 
 ## Retrieve sequences
 We then fetch the SRA accessions for the samples specified in `input_samples.txt` in FASTQ format. This requires specifying the path to the `bin` directory of your local installation of the SRA Toolkit as well as the path to the directory of python scripts (`fetch.sh` calls `python_scripts/fastq.py`, which itself uses the SRA Toolkit to dump the data as FASTQ). This creates a separate `/srr` in the output directory, which contains a sub-directory for each sample containing the sample .sra and .fastq file(s). 
@@ -180,6 +214,20 @@ bash shell_scripts/fetch.sh
 
 bash shell_scripts/fastq_dir.sh 
   -p /scratch/arosenga/amman/srr 
+  -o fastq
+```
+
+#### Example (Jahn)
+Saving to `/scratch` for space/speed. 
+```
+bash shell_scripts/fetch.sh 
+  -b ../ww-seq/sra/bin 
+  -p python_scripts 
+  -f data/jahn/input_samples.txt 
+  -o /scratch/arosenga/jahn
+
+bash shell_scripts/fastq_dir.sh 
+  -p /scratch/arosenga/jahn/srr 
   -o fastq
 ```
 
@@ -238,6 +286,10 @@ mv ../../../analyses/viana/splash_run.sh ../../../analyses/viana/2026_05_29
 #### Example (Amman)
 `bash /home/arosenga/score-test/analyses/amman/2026_08_10/splash_run.sh`
 
+#### Example (Jahn)
+First, move to the directory of FASTQ files.
+`cd /scratch/arosenga/jahn/fastq`
+`bash /home/arosenga/score-test/analyses/jahn/2026_08_19/splash_run.sh`
 
 
 ## $C_j$ Analysis
@@ -276,6 +328,15 @@ python python_scripts/clean_metadata_amman.py
   --output data/amman
 ```
 
+#### Example (Jahn)
+```
+python python_scripts/clean_metadata_jahn.py 
+  --meta data/jahn/metadata_filt.tsv 
+  --id_key analyses/jahn/2026_08_19/sample_name_to_id.mapping.txt 
+  --output data/jahn
+```
+
+
 ---
 
 # Contingency Table Analysis
@@ -307,7 +368,13 @@ python python_scripts/anchor_bin_key.py
   --output analyses/amman/2026_08_10
 ```
 
-
+#### Example (Jahn)
+```
+python python_scripts/anchor_bin_key.py 
+  --sp_dir splash 
+  --bin_dir analyses/jahn/2026_08_19/result_satc 
+  --output analyses/jahn/2026_08_19
+```
 
 
 ## Anchor Summary Statistics
@@ -353,31 +420,20 @@ python python_scripts/anchor_prop_amman.py
   --scratch /scratch/arosenga/amman
 ```
 
-
-## Plotting Anchor Summary Statistics
-One can optionally plot some of the summary statistics with `anchor_prop_plot.py`.  **DOESN'T WORK ANYMORE BECAUSE I CHANGED THE OUTPUT OF THE PREVIOUS STEP (2026-08-11)**
-
-#### Usage
-```
-python [path to anchor_prop_plot.py] 
-  --output [output directory] 
-  --anchor_file [path to anchor_filt_summary.csv]
-```
-
-#### Example (Viana)
-```
-python python_scripts/anchor_prop_plot.py 
-  --output analyses/viana/2026_05_29 
-  --anchor_file analyses/viana/2026_05_29/anchor_filt_summary.csv
-```
-
 #### Example (Amman)
 ```
-python python_scripts/anchor_prop_plot.py 
+python python_scripts/anchor_prop_amman.py 
+  --sp_dir splash 
+  --bin_dir analyses/amman/2026_08_10/result_satc 
+  --bin_key analyses/amman/2026_08_10/anchor_bin_key.csv 
+  --meta data/amman/clean_metadata.tsv 
+  --covar date 
   --output analyses/amman/2026_08_10 
-  --anchor_file analyses/amman/2026_08_10/anchor_filt_summary.csv
+  --scratch /scratch/arosenga/amman
 ```
 
+#### Example (Jahn)
+```python python_scripts/anchor_prop_jahn.py --sp_dir splash --bin_dir analyses/jahn/2026_08_19/result_satc --bin_key analyses/jahn/2026_08_19/anchor_bin_key.csv --meta data/jahn/clean_metadata.tsv --covar date --output analyses/jahn/2026_08_19 --scratch /scratch/arosenga/jahn```
 
 
 
@@ -412,6 +468,18 @@ python python_scripts/satc_filt.py
 ```
 
 This example resulted in 23,730 anchors in the filtered list.
+
+
+#### Example (Jahn)
+```
+python python_scripts/satc_filt.py 
+  --satc_dir /scratch/arosenga/jahn/anchor_satc 
+  --anchor_file analyses/jahn/2026_08_19/anchor_filt_by_date.csv 
+  --output analyses/jahn/2026_08_19
+```
+
+This example resulted in 22,334 anchors in the filtered list.
+
 
 ---
 
@@ -488,20 +556,50 @@ bash shell_scripts/all_anchors_job.sh
   -j 50
 ```
 
+#### Example (Jahn)
+```
+bash shell_scripts/all_anchors_job.sh 
+  -a "analyses/jahn/2026_08_19/anchor_list.txt" 
+  -d "analyses/jahn/2026_08_19/d_jahn.yaml" 
+  -m "analyses/jahn/2026_08_19/m_jahn.yaml"
+  -o "analyses/jahn/2026_08_19" 
+  -n 200 
+  -j 50
+```
 
 
 
 ## Analyzing Results
-We analyze the anchor-specific .json output with `json_summary.py`. This reads each of the .json files in the passed directory and writes the pertinent information to a `anchor_score_test.csv` in the provided output directory.
+We analyze the anchor-specific .json output with `json_summary.py`. This reads each of the .json files in the passed directory and writes the pertinent information to a `anchor_score_test.csv` in the provided output directory. This will also creates a file `anchor_score_test_signf.csv`, which only includes rows for anchors that are statistically significant at a level of $\alpha = 0.05$ based on the one-sided or two-sided score test $p$-value after Benjamini-Yekulieli correction. The columns are also extended to include the SPLASH output (from `result.after_correction.all_anchors.tsv`) so that we can look at the most frequent target and other summary statistics about the significant anchor tables. 
 
 #### Usage
-`python [path to json_summary.py] --json_dir [path to anchor .json files] --out_dir [output directory]`
+```
+python [path to json_summary.py] 
+  --json_dir [path to anchor .json files] 
+  --splash_out_dir [path to splash output files] 
+  --out_dir [output directory]
+```
 
 #### Example (Viana)
-`python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/analyses/viana/2026_05_29/score_test/anchor_json --out_dir /home/arosenga/score-test/analyses/viana/2026_05_29/score_test`
+```
+python python_scripts/json_summary.py 
+  --json_dir /home/arosenga/score-test/analyses/viana/2026_05_29/score_test/success 
+  --splash_out_dir /home/arosenga/score-test/analyses/viana/2026_05_29 
+  --out_dir /home/arosenga/score-test/analyses/viana/2026_05_29/score_test
+```
 
 #### Example (Amman)
-`python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test/anchor_json --out_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test`
+```
+python python_scripts/json_summary.py 
+  --json_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test/anchor_json 
+  --splash_out_dir /home/arosenga/score-test/analyses/amman/2026_08_10 
+  --out_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test
+  ```
+
+---
+
+# Biological Analysis
+As described in the 
 
 
 
