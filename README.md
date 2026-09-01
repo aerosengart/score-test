@@ -92,16 +92,6 @@ python python_scripts/filter_tryndyak.py --meta data/tryndyak/metadata.tsv --ids
 ```
 
 
-#### Example (Justen)
-We want to use this dataset to investigate batch effects, so we only need to download the data from samples that were from Deer Island in Boston. These samples were 
-
-```
-python python_scripts/filter_justen.py --meta data/justen/metadata.tsv --ids data/justen/ids.txt --output data/justen --min_date 2020-01-01 --max_date 2026-01-01
-```
-
-
-
-
 ## Retrieve sequences
 We then fetch the SRA accessions for the samples specified in `input_samples.txt` in FASTQ format. This requires specifying the path to the `bin` directory of your local installation of the SRA Toolkit as well as the path to the directory of python scripts (`fetch.sh` calls `python_scripts/fastq.py`, which itself uses the SRA Toolkit to dump the data as FASTQ). This creates a separate `/srr` in the output directory, which contains a sub-directory for each sample containing the sample .sra and .fastq file(s). 
 
@@ -137,13 +127,6 @@ bash shell_scripts/fastq_dir.sh -p /scratch/arosenga/tryndyak/srr -o fastq
 ```
 
 
-#### Example (Justen)
-Saving to `/scratch` for space/speed. 
-```
-bash shell_scripts/fetch.sh -b ../ww-seq/sra/bin -p python_scripts -f data/justen/input_samples.txt -o /scratch/arosenga/justen
-bash shell_scripts/fastq_dir.sh -p /scratch/arosenga/justen/srr -o fastq
-```
-
 ---
 
 # SPLASH Analysis
@@ -156,6 +139,14 @@ It's nice to just put the SPLASH run in a shell script for reproducability, but 
 The results include `logs/` (logging of run), `result_Cjs/` (binarized files of $\mathbf{c}$ data), `result_satc/` (binarized files of SATC data), four .csv files of results where each row corresponds to an anchor-target pair, and `sample_name_to_id.mapping.txt` (mapping between BioSample IDs and the indexing used in SPLASH).
 
 The shell script is finally moved to the output directory.
+
+Note: There are many differences in the configuration, settings, and output of `SPLASH2` and `SPLASH`, and it is difficult for us to compare and contrast them exactly. We note some of the differences we notice below, and we provide our configuration in the `splash_run.sh` files for reproducibility, which mostly uses the defaults in `SPLASH2`.
+
+- Default $k$-mer length is $31$ in `SPLASH2` and $27$ in `SPLASH`
+- Default distance between anchor and target is $0$ in `SPLASH2` and inferred in `SPLASH`
+- Default `anchor_mode` is unspecified in `SPLASH2` and `tile` in `SPLASH`, which also option to set the sliding window width and has a default of $5$
+- Many options are offerred by `SPLASH2` to adjust $p$-value optimization and correction methods, data splitting, and what information is saved to disc. 
+
 
 #### Usage
 ```
@@ -202,17 +193,11 @@ First, move to the directory of FASTQ files.
 `bash /home/arosenga/score-test/analyses/bal/splash_run.sh`
 
 
-#### Example (Jahn)
+#### Example (Tryndyak)
 First, move to the directory of FASTQ files.
-`cd /scratch/arosenga/jahn/fastq`
-`bash /home/arosenga/score-test/analyses/jahn/2026_08_24/splash_run.sh`
+`cd /scratch/arosenga/tryndyak/fastq`
+`bash /home/arosenga/score-test/analyses/tryndyak/splash_run.sh`
 
-
-## $C_j$ Analysis
-TO DO
-
-## Filter Anchors
-TO DO
 
 
 
@@ -489,9 +474,8 @@ bash shell_scripts/all_anchors_job.sh
 ```
 
 
-
-## Analyzing Results
-We analyze the anchor-specific .json output with `json_summary.py`. This reads each of the .json files in the passed directory and writes the pertinent information to a `anchor_score_test.csv` in the provided output directory. This will also creates a file `anchor_score_test_signf.csv`, which only includes rows for anchors that are statistically significant at a level of $\alpha = 0.05$ based on the one-sided or two-sided score test $p$-value after Benjamini-Yekulieli correction. The columns are also extended to include the SPLASH output (from `result.after_correction.all_anchors.tsv`) so that we can look at the most frequent target and other summary statistics about the significant anchor tables. 
+## Summarizing Results
+We summarize the anchor-specific .json output with `json_summary.py`. This reads each of the .json files in the passed directory and writes the pertinent information to a `anchor_score_test.csv` in the provided output directory. This will also creates a file `anchor_score_test_signf.csv`, which only includes rows for anchors that are statistically significant at a level of $\alpha = 0.05$ based on the one-sided or two-sided score test $p$-value after Benjamini-Yekulieli correction. The columns are also extended to include the SPLASH output (from `result.after_correction.all_anchors.tsv`) so that we can look at the most frequent target and other summary statistics about the significant anchor tables. 
 
 #### Usage
 ```
@@ -600,7 +584,19 @@ python python_scripts/align_kmers.py --splash_calls analyses/bal/2026_08_24/no_x
 
 Chaung et al. state that they consider anchors that align perfectly to at least one of the reference assemblies (Wuhan-Hu-1, Delta, Omicron BA.1, or Omicron BA.2) and also have at least one target that aligns perfectly with a reference assembly. For each of these anchors, they deem it "strain-defining" if, for any of the reference assemblies, it has at least one target that maps to it and one target that does not.
 
-Since we ran the alignment with `-v 0` (mismatches capped at $0$), any hit returned by Bowtie is a perfect alignment. We then filter the results of the Bowtie alignment according to the steps laid out by Chaung et al. 
+Since we ran the alignment with `-v 0` (mismatches capped at $0$), any hit returned by Bowtie is a perfect alignment. We then filter the results of the Bowtie alignment according to the steps laid out by Chaung et al. The results are saved as two different files in the output directory: `score_strain_def.tsv` and `splash_strain_def.tsv`. These files contain the strain-defining anchors/targets and 0/1-encoded information about which reference genomes they aligned to.
+
+### Analyzing Results
+Although we did our best to replicate the settings in Chaung et al., we did not reproduce their results. This is likely due to the differences in `SPLASH2` and `SPLASH` or user error. We nevertheless continue with a similar analysis to the original publication.
+
+After [the previous step](#alignment), we have two lists: one containing the "strain-defining" anchor/target pairs called by SPLASH (`splash_strain_def.tsv`) and one containing the pairs called by our score test method (`score_strain_def.tsv`). The next step is to rank these pairs in some way. We choose to use a combination of $k$-mer abundance and BY-correct $p$-values/$p$-value bounds to do this ordering. This information (target abundance, $p$-values, etc.) is in the `splash_calls.csv` and `score_calls.csv` files that were output in [the filtering step](#filtering-to-candidate-anchorstargets) performed before alignment. 
+
+The file `python_scripts/align_summary.py` (inner) joins the strain-defining `.tsv` files with the corresponding `.csv` files listing the anchors called as significant by SPLASH/the score test. It saves the merged dataframes to two separate files in the `align_dir` directory: `score_alignment_results.tsv` and `splash_alignment_results.tsv`. Because the $p$-values/$p$-value bounds are for each anchor table, the values in these columns will be the same across all rows corresponding to the same anchor. The same goes for any other anchor-specific information (`M`, `anch_uniqTargs`, etc.).
+
+
+
+
+
 
 
 
