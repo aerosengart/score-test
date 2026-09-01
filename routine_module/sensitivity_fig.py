@@ -33,8 +33,11 @@ def set_fx_effs_jitter(model, jitter_vals):
     model.set_fx_effs_arr(fx_effs_arr)
 
 def set_disp_jitter(model, jitter_vals):
-    ## jitter the dispersion
-    disp_arr = model.data.disp_arr + jitter_vals
+    ## fully set dispersion (not jitter)
+    # if model.data.outcome == 'poi':
+    disp_arr = jnp.ones(model.data.disp_arr.shape) * jitter_vals
+    # else:
+        # disp_arr = model.data.disp_arr + jitter_vals
     ## overwrite model MLE with jittered array
     model.set_disp_arr(disp_arr)
 
@@ -47,8 +50,8 @@ jitter_dispatch = {
 }
 
 x_axis_vals_dispatch = {
-    'fx_effs': [-1, -0.1, -0.05, -0.01, 0.0, 0.01, 0.05, 0.1, 1],
-    'disp':    [-1.0, -0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
+    'fx_effs': [-1, -0.1, -0.05, -0.01, 0.0, 0.01, 0.05, 0.1, 1.0],
+    'disp':    [0.25, 0.5, 1.0, 1.5, 2.0, 5.0, 10.0, 50.0]
 }
 
 title_dispatch = {

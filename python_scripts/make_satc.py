@@ -40,6 +40,9 @@ if not os.path.isdir(args.output):
 scratch_dir = os.path.join(args.scratch, 'anchor_satc')
 if not os.path.isdir(scratch_dir):
     os.makedirs(scratch_dir)
+dump_dir = os.path.join(args.output, 'satc_dump')
+if not os.path.isdir(dump_dir):
+    os.makedirs(dump_dir)
 
 ## loop over all binary files
 bin_files = glob.glob(os.path.join(args.bin_dir, '*.satc'))
@@ -47,7 +50,7 @@ for i in tqdm(range(len(bin_files))):
     bin_file = bin_files[i]
     ## dump bin to satc
     bin_read = os.path.join(args.bin_dir, f'bin{i}.satc')
-    bin_dump = os.path.join(args.output, 'satc_dump', f'bin{i}.satc.dump')
+    bin_dump = os.path.join(dump_dir, f'bin{i}.satc.dump')
     if not os.path.isfile(bin_dump):
         subprocess.call([args.sp_dir + '/satc_dump', bin_read, bin_dump])
 

@@ -186,7 +186,7 @@ def construct_metadata(
         rd_dummy      - list; bools for which covariates need dummy
         metadata_file - str; path to clean_metadata.tsv 
     RAISES: None
-    RETURNS: three pandas DataFrames 
+    RETURNS: two pandas DataFrames 
     """ 
     ## read metadata
     md = pd.read_csv(metadata_file, sep = '\t')
@@ -201,11 +201,17 @@ def construct_metadata(
     x_cov_arr = x_cov_arr.astype({'srr': 'str', 'splash_id': 'str'})
     z_cov_arr = z_cov_arr.astype({'srr': 'str', 'splash_id': 'str'})
     ## to dummy if desired
-    fx_dum = np.array(fx_covars)[fx_dummy].tolist()
-    rd_dum = np.array(rd_covars)[rd_dummy].tolist()
-    ## drop first
-    x_cov_dum = pd.get_dummies(x_cov_arr, prefix = fx_dum, columns = fx_dum, drop_first = True)
-    z_cov_dum = pd.get_dummies(z_cov_arr, prefix = rd_dum, columns = rd_dum, drop_first = True)
+    if sum(fx_dummy) > 0:
+        fx_dum = np.array(fx_covars)[fx_dummy].tolist()
+        ## drop first
+        x_cov_dum = pd.get_dummies(x_cov_arr, prefix = fx_dum, columns = fx_dum, drop_first = True)
+    else:
+        x_cov_dum = pd.DataFrame(x_cov_arr)
+    if sum(rd_dummy) > 0:
+        rd_dum = np.array(rd_covars)[rd_dummy].tolist()
+        z_cov_dum = pd.get_dummies(z_cov_arr, prefix = rd_dum, columns = rd_dum, drop_first = True)
+    else:
+        z_cov_dum = pd.DataFrame(z_cov_arr)
     ## need to drop duplicates because sometimes same srr/z pair is unique but srr/x pair is not
     x_cov_df = x_cov_dum.drop_duplicates()
     z_cov_df = z_cov_dum.drop_duplicates()

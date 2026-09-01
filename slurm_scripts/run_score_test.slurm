@@ -4,9 +4,9 @@
 #SBATCH --nodes=1               # node count
 #SBATCH --ntasks=1              # total number of tasks across all nodes
 #SBATCH --ntasks-per-node 1   
-#SBATCH --cpus-per-task=1       # number of cores
-#SBATCH --mem-per-cpu=16G       # memory per core
-#SBATCH --time=04:00:00         # total run time limit (HH:MM:SS)
+#SBATCH --cpus-per-task=2       # number of cores
+#SBATCH --mem-per-cpu=24G       # memory per core
+#SBATCH --time=01:00:00         # total run time limit (HH:MM:SS)
 #SBATCH --nice=500              ## deprioritize to be nice to others
 
 source /home/arosenga/miniconda/bin/activate /home/arosenga/miniconda/envs/score-test
@@ -23,9 +23,9 @@ source /home/arosenga/miniconda/bin/activate /home/arosenga/miniconda/envs/score
 ## $7 - number of anchors in anchor_list.txt
 
 ## starting index in anchor_list
-start_idx=$(( (($SLURM_ARRAY_TASK_ID - 1) * $6) + $5 ))
+start_idx=$(( (($SLURM_ARRAY_TASK_ID - 1) * $6) + $5 - 1 ))
 ## ending index in anchor_list
-end_idx=$(( ($SLURM_ARRAY_TASK_ID * $6) + $5 - 1)) 
+end_idx=$(( ($SLURM_ARRAY_TASK_ID * $6) + $5 - 1 )) 
 ## make sure we don't exceed total number of anchors in anchor_list
 end_idx=$(( $end_idx < $7 ? $end_idx : $7 ))
 

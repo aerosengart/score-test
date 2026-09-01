@@ -94,8 +94,8 @@ class Data(data.Data):
         x_pd, z_pd = helpers.construct_metadata(
             fx_covars     = self.x_types,
             rd_covars     = self.z_types,
-            fx_dummy    = self.x_dummy,
-            rd_dummy    = self.z_dummy,
+            fx_dummy      = self.x_dummy,
+            rd_dummy      = self.z_dummy,
             metadata_file = self.metadata_file
         )
 

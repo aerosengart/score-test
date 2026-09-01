@@ -45,6 +45,7 @@ while read -u 9 line;
 ## ignore _2 (mate pairs)
 do 
    cat "${base_path}/${line}/${line}_1.fastq" >> "${output_dir}/${line}_full.fastq";
+   # cat "${base_path}/${line}/${line}_2.fastq" >> "${output_dir}/${line}_full.fastq";
    cat "${base_path}/${line}/${line}.fastq" >> "${output_dir}/${line}_full.fastq";
    #mv "${base_path}/${line}/"*".sra" "${base_path}/srr/${line}.sra";
    echo -e "${line} \t ${line}_full.fastq";

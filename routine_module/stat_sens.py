@@ -51,7 +51,7 @@ jitter_dispatch = {
 
 x_axis_vals_dispatch = {
     'fx_effs': [-1, -0.1, -0.05, -0.01, 0.0, 0.01, 0.05, 0.1, 1],
-    'disp':    [-0.8, -0.5, -0.25, -0.1, -0.05, 0.0, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
+    'disp':    [0.1, 0.25, 0.5, 1.0, 1.5, 2.0, 5.0]
 }
 
 title_dispatch = {
@@ -120,7 +120,9 @@ def test_stat_sensitivity(
             if m_config['debug'] == 'full':
                 doc.save_rep(model, d_config, m_config, sub_dir = f'n_samps_{str(x_axis_vals[k])}')
             ## jitter the appropriate parameters
+            print(model.disp_arr)
             jitter_func(model = model, jitter_vals = x_axis_vals[k])
+            print(model.disp_arr)
             ## compute score test
             one_stat = stat.compute_score_stat(model, one_sided = True)
             two_stat = stat.compute_score_stat(model, one_sided = False)

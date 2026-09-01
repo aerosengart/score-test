@@ -1,8 +1,0 @@
-d_config: '/home/arosenga/score-test/data/configs/d_nb_t2_bl.yaml'
-m_config: '/home/arosenga/score-test/data/configs/m_nb_t2.yaml'
-routine: 'err_comp'
-r_args:
-  param: 'disp'
-  err_type: 'II'
-  reps: 100
-  level: 0.05

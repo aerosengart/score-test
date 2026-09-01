@@ -1,5 +1,0 @@
-d_config: '/home/arosenga/score-test/data/configs/d_nb_true.yaml'
-m_config: '/home/arosenga/score-test/data/configs/m_nb_true.yaml'
-routine: 'one_two_sided'
-r_args:
-  reps: 100

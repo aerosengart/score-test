@@ -25,6 +25,8 @@ import sys
 
 import jax.numpy as jnp
 
+from tqdm        import tqdm
+
 sys.path.append('/home/arosenga/score-test')
 from stat_module import score, info, helpers
 
@@ -71,87 +73,58 @@ def main():
     out_dir_succ = os.path.join(m_dict['out_dir'], 'score_test/success')
     out_dir_unst = os.path.join(m_dict['out_dir'], 'score_test/unstable')
     out_dir_fail = os.path.join(m_dict['out_dir'], 'score_test/failure')
+
     if not os.path.isdir(out_dir_succ):
         os.makedirs(out_dir_succ, exist_ok = True)
     if not os.path.isdir(out_dir_unst):
         os.makedirs(out_dir_unst, exist_ok = True)
     if not os.path.isdir(out_dir_fail):
         os.makedirs(out_dir_fail, exist_ok = True)
-    
+
+    fail_file = os.path.join(out_dir_fail, f'failed_anchors_{args.start_idx}_{args.end_idx - 1}.csv')
+    with open(fail_file, 'w') as file:
+        file.write(f'anchor,idx,error\n')
+        
     ## load specified rows of anchor_list
     anch_seqs = []
     with open(args.anch_list) as fp:
         for i, line in enumerate(fp):
-            idx = i + 1
-            if (idx >= args.start_idx) and (idx <= args.end_idx):
+            if (i >= args.start_idx) and (i < args.end_idx):
                 anch_seqs += [line.strip()]
-            elif idx < args.start_idx:
+            elif i < args.start_idx:
                 continue
             else: 
                 break
 
     ## loop over specified anchors
-    for anchor in anch_seqs:
+    for j in tqdm(range(len(anch_seqs))):
+        anchor = anch_seqs[j]
         ## anchor output file
-        anchor_succ = os.path.join(out_dir_succ, f'{anchor}.json')
-        anchor_unst = os.path.join(out_dir_unst, f'{anchor}.json')
-        anchor_fail = os.path.join(out_dir_fail, f'{anchor}.csv')
-        ## instantiate data and model
-        data = data_types[d_dict['outcome']](d_dict, anchor)
+        anchor_succ = os.path.join(out_dir_succ, f'{args.start_idx + j}_{anchor}.json')
+        anchor_unst = os.path.join(out_dir_unst, f'{args.start_idx + j}_{anchor}.json')
 
-        try:
-            model = model_types[m_dict['outcome']](m_dict, data)
-        except:
-            with open(anchor_fail, 'w') as file:
-                file.write(f'{anchor},{data.n_samps},{data.n_targs}, model fitting error')
+        if os.path.isfile(anchor_succ) or os.path.isfile(anchor_unst):
             continue
+        
+        print(f'{args.start_idx + j} {anchor} not run! running now...')
 
-        try:
-            ## compute all of the pieces for the score test so that we can write to file
-            score_val, scale_val = score.compute_score_var_comp(
-                model, 
-                scale = model.scale
-            )
-            info_fx, info_fx_var, info_var = info.compute_info(
-                model, 
-                scale_val = scale_val
-            )
-            schur_inv = helpers.lower_right_inv(
-                upp_left  = info_fx,
-                middle    = info_fx_var,
-                low_right = info_var
-            )
-            inf_val = helpers.compute_infimum(
-                score = score_val,
-                schur_inv = schur_inv,
-                test_p = 0,
-                q = model.data.q
-            )
+        try: 
+            ## instantiate data and model
+            data = data_types[d_dict['outcome']](d_dict, anchor)
+            q = data.z_arr.shape[-1]
 
-            ## compute stat
-            if model.data.q == 1:
-                stat = score_val**2 * schur_inv
-            else:
-                stat = jnp.matmul(
-                    jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
-                )
-
-            one_sided_stat = jnp.squeeze(stat - inf_val)
-            two_sided_stat = stat
-            ## compute p-values
-            one_sided_p = helpers.compute_score_test_p_val(one_sided_stat, True)
-            two_sided_p = helpers.compute_score_test_p_val(two_sided_stat[0][0], False)
-        except:
-            with open(anchor_fail, 'w') as file:
-                file.write(f'{anchor},{data.n_samps},{data.n_targs}, score test computation error')
-            continue
-        else:
-            ## if we get here, everything went smoothly and we can record the results
-            ## summary statistics taken over targets (e.g. min_fx_effs should have p entries)
+            ## try to fit model
+            try:
+                model = model_types[m_dict['outcome']](m_dict, data)
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},model_fit\n')
+                continue
+            ## successful model fit -> into json
             model_info = {
                 'n_samps': model.data.n_samps,
                 'n_targs': model.data.n_targs,
-                'q': model.data.q,
+                'q': q,
                 'x_dims': model.data.x_arr.shape,
                 'z_dims': model.data.z_arr.shape,
                 'fx_effs_dims': model.fx_effs_arr.shape,
@@ -162,16 +135,101 @@ def main():
                 'max_disp': jnp.max(model.disp_arr, axis = 0).tolist(),
                 'med_disp': jnp.median(model.disp_arr, axis = 0).tolist(),
             }
+            ## try to compute score 
+            try:
+                score_val, scale_val = score.compute_score_var_comp(
+                    model, 
+                    scale = model.scale
+                )
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},score\n')
+                continue
             test_info = {
                 'score_val': score_val.tolist(), 
-                'scale_val': float(scale_val),
-                'schur_inv': schur_inv.tolist(),
-                'inf_val':   float(inf_val),
-                'one_side':  float(one_sided_stat),
-                'one_side_p': one_sided_p,
-                'two_side':  float(two_sided_stat[0][0]),
-                'two_side_p': two_sided_p
+                'scale_val': float(scale_val)
             }
+            ## try to compute information components
+            try:
+                info_fx, info_fx_var, info_var = info.compute_info(
+                    model, 
+                    scale_val = scale_val
+                )
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},information\n')
+                continue
+            ## try to compute schur complement inversion
+            try:
+                schur_inv = helpers.lower_right_inv(
+                    upp_left  = info_fx,
+                    middle    = info_fx_var,
+                    low_right = info_var
+                )
+            except: 
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},schur_comp\n')
+                continue
+            test_info['schur_inv'] = schur_inv.tolist()
+            ## try to find infimum
+            try:
+                inf_val = helpers.compute_infimum(
+                    score = score_val,
+                    schur_inv = schur_inv,
+                    test_p = 0,
+                    q = q
+                )
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},infimum\n')
+                continue
+            test_info['inf_val'] = float(inf_val)
+
+            ## compute stat
+            if q == 1:
+                stat = score_val**2 * schur_inv
+            else:
+                stat = jnp.matmul(
+                    jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
+                )
+            
+            ## try to compute one-sided stat
+            try:
+                one_sided_stat = jnp.squeeze(stat - inf_val)
+                test_info['one_side'] = float(one_sided_stat)
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},one_sided_stat\n')
+                continue
+
+            ## try to compute two-sided stat
+            try:
+                two_sided_stat = jnp.squeeze(stat)
+                test_info['two_side'] = float(two_sided_stat)
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},two_sided_stat\n')
+                continue
+
+            ## try to compute one-sided p-value
+            try:
+                one_sided_p = helpers.compute_score_test_p_val(one_sided_stat, True)
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},one_sided_p_value\n')
+                continue
+            test_info['one_side_p'] = one_sided_p
+
+            ## try to compute two-sided p-value
+            try:
+                two_sided_p = helpers.compute_score_test_p_val(two_sided_stat, False)
+            except:
+                with open(fail_file, 'a') as file:
+                    file.write(f'{anchor},{j},two_sided_p_value\n')
+                continue
+            test_info['two_side_p'] = two_sided_p
+
+            ## create json
             anchor_json = {'test':  test_info,
                            'model': model_info}
             
@@ -183,7 +241,12 @@ def main():
             else:
                 with open(anchor_succ, 'w') as file:
                     json.dump(anchor_json, file, indent = 4)
-        
+        except MemoryError:
+            with open(fail_file, 'a') as file:
+                file.write(f'{anchor},{j},memory_error\n')
+        except TypeError:
+            with open(fail_file, 'a') as file:
+                file.write(f'{anchor},{j},type_error\n')
             
 
 if __name__ == "__main__":
