@@ -50,8 +50,8 @@ n_anch_arr=$(( $n_anch_job*$n_job_arr ))
 ##    start_idx   - index of first anchor in list to run
 ##    n_anch_job  - number of anchors per slurm job
 ##    num_anchors - total number of anchors in anchor_list
-#last_job_sub=$(sbatch --parsable --array=1-$n_job_arr slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir 1 $n_anch_job $num_anchors)
-last_job_sub=$(sbatch --parsable --array=3-4 slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir 1 $n_anch_job $num_anchors)
+last_job_sub=$(sbatch --parsable --array=1-$n_job_arr slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir 1 $n_anch_job $num_anchors)
+# # last_job_sub=$(sbatch --parsable --array=3-4 slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir 1 $n_anch_job $num_anchors)
 
 ## index of last anchor in first job array is where we start the loop
 end_idx=$(( $start_idx + $n_anch_arr + 1 ))
@@ -60,9 +60,9 @@ end_idx=$(( $start_idx + $n_anch_arr + 1 ))
 for (( i=$end_idx; i<=$num_anchors; i+=$n_anch_arr )); do
    wait_job=$last_job_sub
    ## wait until previous job array is done
-   #last_job_sub=$(sbatch --parsable --dependency=afterany:$wait_job --array=1-$n_job_arr slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir $i $n_anch_job $num_anchors) 
+   last_job_sub=$(sbatch --parsable --dependency=afterany:$wait_job --array=1-$n_job_arr slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir $i $n_anch_job $num_anchors) 
 
-   ## problems with bal --- manually run only 3-4
-   last_job_sub=$(sbatch --parsable --dependency=afterany:$wait_job --array=3-4 slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir $i $n_anch_job $num_anchors) 
+   # ## problems with bal --- manually run only 3-4
+   # last_job_sub=$(sbatch --parsable --dependency=afterany:$wait_job --array=3-4 slurm_scripts/run_score_test.slurm $d_config $m_config $anchor_list $out_dir $i $n_anch_job $num_anchors) 
 done
 

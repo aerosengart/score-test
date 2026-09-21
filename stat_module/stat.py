@@ -22,60 +22,143 @@ from routine_module import doc
 from stat_module    import info, intermed, helpers, score
 
 
-def compute_score_stat(model, one_sided = False):
-    """
-    Compute the one- or two-sided score test statistic for variance components in a GLMM.
-    
-    ARGS:
-        model - instance of Model class
-        one_sided - boolean flag; whether to compute the one-sided score test
-    RETURNS:
-        float; the test statistic value
-    RAISES:
-        None
-    """
-    q = model.data.z_arr.shape[-1]
-    ## compute score
-    score_val, scale_val = score.compute_score_var_comp(
-        model, 
+def compute_score_stat(model):
+    ## compute orthogonalized score
+    score_dict = score.ortho_score_dict(model)
+    score_vec, scale_val = score.ortho_score_var_comp(
+        score_dict, 
         scale = model.scale
     )
-    ## compute information
-    info_fx, info_fx_var, info_var = info.compute_info(
-        model, 
+    info_targs = info.info_ortho(
+        score_dict,
         scale_val = scale_val
     )
-    ## schur complement
-    schur_inv = helpers.lower_right_inv(
-        upp_left  = info_fx,
-        middle    = info_fx_var,
-        low_right = info_var
-    )
-    
+    info_mat = jnp.sum(info_targs, axis = 0)
+    ## variance component dimension
+    q = score_vec.shape[0]
     ## find infimum if one-sided test. otherwise set to 0
     inf_val = 0
-    if one_sided:
-        try:
-            inf_val = helpers.compute_infimum(
-                score     = score_val,
-                schur_inv = schur_inv,
-                test_p    = 0,
-                q         = q
-            )
+    try:
+        inf_val = helpers.compute_infimum(
+            score_vec = score_vec,
+            info_mat  = info_mat,
+            test_p    = 0,
+            q         = q
+        )
 
-        except:
-            raise Exception("didn't work :(")
+    except:
+        print("infimum program didn't work :(")
+        stat = score_vec.T @ jnp.linalg.solve(info_mat, score_vec)
+        return None, jnp.squeeze(stat)
     
     ## compute stat
-    if q == 1:
-        stat = score_val**2 * schur_inv
-    else:
-        stat = jnp.matmul(
-            jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
-        )
-    test_stat = jnp.squeeze(stat - inf_val)
-    return test_stat
+    stat = score_vec.T @ jnp.linalg.solve(info_mat, score_vec)
+    one_sided = jnp.squeeze(stat - inf_val)
+    return one_sided, jnp.squeeze(stat)
 
+# def compute_score_stat(model, one_sided = False):
+#     """
+#     Compute the one- or two-sided score test statistic for variance components in a GLMM.
+    
+#     ARGS:
+#         model - instance of Model class
+#         one_sided - boolean flag; whether to compute the one-sided score test
+#     RETURNS:
+#         float; the test statistic value
+#     RAISES:
+#         None
+#     """
+#     q = model.data.z_arr.shape[-1]
+#     ## compute score
+#     score_val, scale_val = score.compute_score_var_comp(
+#         model, 
+#         scale = model.scale
+#     )
+#     ## compute information
+#     info_fx, info_fx_var, info_var = info.compute_info(
+#         model, 
+#         scale_val = scale_val
+#     )
+#     ## schur complement
+#     schur_inv = helpers.lower_right_inv(
+#         upp_left  = info_fx,
+#         middle    = info_fx_var,
+#         low_right = info_var
+#     )
+    
+#     ## find infimum if one-sided test. otherwise set to 0
+#     inf_val = 0
+#     if one_sided:
+#         try:
+#             inf_val = helpers.compute_infimum(
+#                 score     = score_val,
+#                 schur_inv = schur_inv,
+#                 test_p    = 0,
+#                 q         = q
+#             )
+
+#         except:
+#             raise Exception("didn't work :(")
+    
+#     ## compute stat
+#     if q == 1:
+#         stat = score_val**2 * schur_inv
+#     else:
+#         stat = jnp.matmul(
+#             jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
+#         )
+#     test_stat = jnp.squeeze(stat - inf_val)
+#     return test_stat
+
+
+# def compute_score_stat(model, one_sided = False):
+#     """
+#     Compute the one- or two-sided score test statistic for variance components in a GLMM.
+    
+#     ARGS:
+#         model - instance of Model class
+#         one_sided - boolean flag; whether to compute the one-sided score test
+#     RETURNS:
+#         float; the test statistic value
+#     RAISES:
+#         None
+#     """
+#     q = model.data.z_arr.shape[-1]
+#     ## compute score
+#     score_val, scale_val = score.compute_score_var_comp(
+#         model, 
+#         scale = model.scale
+#     )
+#     ## compute information
+#     info_var = info.compute_info(
+#         model,
+#         scale_val = scale_val
+#     )
+#     info_inv = jnp.linalg.pinv(info_var)
+
+#     ## find infimum if one-sided test. otherwise set to 0
+#     inf_val = 0
+#     if one_sided:
+#         try:
+#             inf_val = helpers.compute_infimum(
+#                 score     = score_val,
+#                 schur_inv = info_inv,
+#                 test_p    = 0,
+#                 q         = q
+#             )
+
+#         except:
+#             raise Exception("didn't work :(")
+    
+#     ## compute stat
+#     if q == 1:
+#         stat = score_val**2 * info_inv
+#     else:
+#         stat = jnp.matmul(
+#             jnp.matmul(jnp.transpose(score_val), info_inv), score_val
+#         )
+#     test_stat = jnp.squeeze(stat - inf_val)
+#     return test_stat
 
 
 def compute_lrt_stat(

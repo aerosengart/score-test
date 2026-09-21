@@ -1,0 +1,5 @@
+d_config: '/home/arosenga/score-test/routine_module/examples/d_one_two_sided.yaml'
+m_config: '/home/arosenga/score-test/routine_module/examples/m_one_two_sided.yaml'
+routine:  'one_two_sided'
+r_args:
+  reps:   100

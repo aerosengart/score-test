@@ -1,0 +1,5 @@
+d_config: '/home/arosenga/score-test/routine_module/examples/d_score_var_comp.yaml'
+m_config: '/home/arosenga/score-test/routine_module/examples/m_score_var_comp.yaml'
+routine:  'score_var_comp'
+r_args:
+  reps:   100

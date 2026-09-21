@@ -68,14 +68,15 @@ def one_two_sided_comparison(
             doc.save_rep(model, d_config, m_config, sub_dir = None)
         doc.log_routine(model, d_config, m_config, routine)
         ## compute test statistics
-        one_sided_stat = stat.compute_score_stat(model, one_sided = True)
-        two_sided_stat = stat.compute_score_stat(model, one_sided = False)
+        oss, tss = stat.compute_score_stat(model)
+        #one_sided_stat = stat.compute_score_stat(model, one_sided = True)
+        #two_sided_stat = stat.compute_score_stat(model, one_sided = False)
         ## check for crazy large values
         #if one_sided_stat >= 100 or two_sided_stat >= 100:
             #doc.debug_sample(model = model)
         ## record values
-        one_sided_stats = one_sided_stats.at[r].set(one_sided_stat)
-        two_sided_stats = two_sided_stats.at[r].set(two_sided_stat)
+        one_sided_stats = one_sided_stats.at[r].set(oss)
+        two_sided_stats = two_sided_stats.at[r].set(tss)
     ## save iteration
     jnp.savez(
         os.path.join(out_dir, f'results_iter{iter_id}.npz'),
@@ -85,55 +86,55 @@ def one_two_sided_comparison(
     return out_dir
 
 
-def score_lrt_comparison(
-        d_config,
-        m_config,
-        iter_id: int,
-        reps:    int = 100,
-    ):
-    """Compute the one-sided score test statistic and LRT statistic for the provided data-generating scheme.
+# def score_lrt_comparison(
+#         d_config,
+#         m_config,
+#         iter_id: int,
+#         reps:    int = 100,
+#     ):
+#     """Compute the one-sided score test statistic and LRT statistic for the provided data-generating scheme.
 
-    ARGS:
-        d_config - data configuration dictionary
-        m_config - model configuration dictionary
-        iter_id  - positive int: iteration number for output name
-        reps     - positive int: number of replicates to draw. default: 100
-    RAISES:  None
-    RETURNS: None
-    """
-    ## instantiate data
-    data = data_types[d_config['outcome']](d_config)
-    ## document routine
-    routine = 'score_lrt_comp'
-    out_dir = doc.routine_dir(d_config, m_config, routine)
-    ## initialize
-    score_stats = np.zeros((reps))
-    lrt_stats   = np.zeros((reps))
+#     ARGS:
+#         d_config - data configuration dictionary
+#         m_config - model configuration dictionary
+#         iter_id  - positive int: iteration number for output name
+#         reps     - positive int: number of replicates to draw. default: 100
+#     RAISES:  None
+#     RETURNS: None
+#     """
+#     ## instantiate data
+#     data = data_types[d_config['outcome']](d_config)
+#     ## document routine
+#     routine = 'score_lrt_comp'
+#     out_dir = doc.routine_dir(d_config, m_config, routine)
+#     ## initialize
+#     score_stats = np.zeros((reps))
+#     lrt_stats   = np.zeros((reps))
 
-    for r in tqdm(range(reps)):
-        ## draw data and build model
-        data.resample()
-        data.set_debug(iter = str(iter_id), rep = str(r), routine = routine)
-        model = model_types[m_config['outcome']](m_config, data)
-        if m_config['debug'] == 'full':
-            doc.save_data(data = data, m_config = m_config)
-            doc.debug_sample(model = model)
-        ## compute test statistics
-        score_stat = stat.compute_score_stat(model, one_sided = True)
-        lrt_stat   = stat.compute_lrt_stat(model)
-        ## check for crazy large values
-        if m_config['debug'] == 'full' and (score_stat >= 100 or lrt_stat >= 100):
-            doc.debug_sample(model = model)
-        ## record values
-        score_stats[r] = score_stat
-        lrt_stats[r] = lrt_stat
-    ## save iteration
-    jnp.savez(
-        os.path.join(out_dir, f'results_iter{iter_id}.npz'),
-        score_stats = score_stats,
-        lrt_stats   = lrt_stats
-    )
-    return out_dir
+#     for r in tqdm(range(reps)):
+#         ## draw data and build model
+#         data.resample()
+#         data.set_debug(iter = str(iter_id), rep = str(r), routine = routine)
+#         model = model_types[m_config['outcome']](m_config, data)
+#         if m_config['debug'] == 'full':
+#             doc.save_data(data = data, m_config = m_config)
+#             doc.debug_sample(model = model)
+#         ## compute test statistics
+#         score_stat = stat.compute_score_stat(model, one_sided = True)
+#         lrt_stat   = stat.compute_lrt_stat(model)
+#         ## check for crazy large values
+#         if m_config['debug'] == 'full' and (score_stat >= 100 or lrt_stat >= 100):
+#             doc.debug_sample(model = model)
+#         ## record values
+#         score_stats[r] = score_stat
+#         lrt_stats[r] = lrt_stat
+#     ## save iteration
+#     jnp.savez(
+#         os.path.join(out_dir, f'results_iter{iter_id}.npz'),
+#         score_stats = score_stats,
+#         lrt_stats   = lrt_stats
+#     )
+#     return out_dir
 
 
 

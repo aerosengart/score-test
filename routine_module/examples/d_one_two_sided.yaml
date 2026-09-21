@@ -1,4 +1,4 @@
-outcome: poi
+outcome: neg_bin
 seed: 7647766
 n_samps: 100
 n_targs: 100
@@ -20,3 +20,6 @@ z:
   dummy: [False]
   mu: 0.0
   sigma: 1.0
+disp:
+  mu: 2.0
+  sigma: 0.0

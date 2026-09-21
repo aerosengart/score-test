@@ -61,8 +61,9 @@ def score_var_comp_emp_dist(
             doc.save_rep(model, d_config, m_config, sub_dir = None)
         doc.log_routine(model, d_config, m_config, routine)
         ## compute score
-        gradient, _ = score.compute_score_var_comp(model, scale = False)
-        scores_arr = scores_arr.at[:, i].set(gradient)
+        score_dict = score.ortho_score_dict(model)
+        gradient, _ = score.ortho_score_var_comp(score_dict, scale = model.scale)
+        scores_arr = scores_arr.at[:, i].set(gradient.sum())
 
     ## save full results
     jnp.savez(
@@ -110,7 +111,8 @@ def score_var_comp_by_disp_emp_dist(
             if m_config['debug'] == 'full':
                 doc.debug_sample(model = model)
             ## compute score
-            gradient, _ = score.compute_score_var_comp(model, scale = False)
+            score_dict = score.ortho_score_dict(model)
+            gradient, _ = score.ortho_score_var_comp(score_dict, scale = model.scale)
             scores_arr = scores_arr.at[:, i].set(gradient)
 
     ## save full results

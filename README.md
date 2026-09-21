@@ -24,10 +24,15 @@ bash [path to shell_scripts/ids.sh script]
 bash shell_scripts/ids.sh -b "PRJNA817806" -o "data/bal"
 ```
 
-#### Example (Tryndyak)
+#### Example (Amman)
+```
+bash shell_scripts/ids.sh -b "PRJEB48985" -o "data/amman"
+```
+
+<!-- #### Example (Tryndyak)
 ```
 bash shell_scripts/ids.sh -b "PRJNA865728" -o "data/tryndyak"
-```
+``` -->
 
 
 ## Retrieve metadata for BioSamples
@@ -61,9 +66,14 @@ esearch -db biosample -query "SRS12336687" | esummary | xtract -pattern Document
 python python_scripts/metadata.py --sh_dir shell_scripts --bsl data/bal/ids.txt --head data/bal/headers.tsv --output data/bal
 ```
 
-#### Example (Tryndyak)
-There is actually a bunch of metadata that is not included in the NBCI SRA, so I've downloaded the spreadsheet manually from [the paper supplement](https://figshare.com/articles/dataset/Wastewater_dataset_on_the_SARS-CoV-2_sublineages_circulating_in_Central_Arkansas_USA_post-COVID-19_pandemic/28071389).
-
+#### Example (Amman)
+```
+esearch -db biosample -query "ERS10769784" | esummary | xtract -pattern DocumentSummary -element Attribute@attribute_name
+```
+[_create headers.tsv_]
+```
+python python_scripts/metadata.py --sh_dir shell_scripts --bsl data/amman/ids.txt --head data/amman/headers.tsv --output data/amman --european
+```
 
 
 ## Select BioSamples
@@ -77,6 +87,7 @@ python [path to filter.py]
   --output [output directory] 
   --min-date [min collection date in quotes] 
   --max-date [max collection date in quotes]
+  OTHER OPTIONS
 ```
 
 #### Example (Bal)
@@ -85,11 +96,14 @@ There are only 106 samples in this dataset, so we don't want to filter any out. 
 python python_scripts/filter_bal.py --meta data/bal/metadata.tsv --infec data/bal/infection_labels.csv --ids data/bal/ids.txt --output data/bal --min_date 2020-01-01 --max_date 2023-01-01
 ```
 
-#### Example (Tryndyak)
-There are 269 samples in this dataset with BioSample 'SAMN30124484' being duplicated. However, this experiment also includes quantification runs, and we only need the runs that correspond to the whole genome sequencing. We therefore use the `Sequence Read Run` column (`SRR`) in `metadata.tsv` to construct our sample list. There should be 199. 
-```
-python python_scripts/filter_tryndyak.py --meta data/tryndyak/metadata.tsv --ids data/tryndyak/ids.txt --output data/tryndyak
-```
+#### Example (Amman)
+For the Amman et al. data, there are thousands of runs, and I am running out of disk space when converting to FASTQ. Gafurov et al. (VirPool) test their method on a subset of this data, so the date limits here are taken from that (see their supplementary information, tab C - Wastewater Samples). We take samples taken between 2020-11-01 and 2021-03-31.
+
+For this dataset, we also need to add the processing laboratory information. This was kindly provided to us by Amman et al., and we simply left join with the metadata file output in this step. 
+
+`python python_scripts/filter_amman.py --meta data/amman/metadata.tsv --ids data/amman/ids.txt --output data/amman --min_date 2020-11-01 --max_date 2021-03-31 --labs data/amman/accession2sample_source_institute.csv`
+
+This results in 660 total samples.
 
 
 ## Retrieve sequences
@@ -119,12 +133,20 @@ bash shell_scripts/fetch.sh -b ../ww-seq/sra/bin -p python_scripts -f data/bal/i
 bash shell_scripts/fastq_dir.sh -p /scratch/arosenga/bal/srr -o fastq
 ```
 
-#### Example (Tryndyak)
+#### Example (Amman)
+Saving to /scratch for space/speed.
+```
+bash shell_scripts/fetch.sh -b ../ww-seq/sra/bin -p python_scripts -f data/amman/input_samples.txt -o /scratch/arosenga/amman
+bash shell_scripts/fastq_dir.sh -p /scratch/arosenga/amman/srr -o fastq
+```
+
+
+<!-- #### Example (Tryndyak)
 Saving to `/scratch` for space/speed. 
 ```
 bash shell_scripts/fetch.sh -b ../ww-seq/sra/bin -p python_scripts -f data/tryndyak/input_samples.txt -o /scratch/arosenga/tryndyak
 bash shell_scripts/fastq_dir.sh -p /scratch/arosenga/tryndyak/srr -o fastq
-```
+``` -->
 
 
 ---
@@ -193,10 +215,10 @@ First, move to the directory of FASTQ files.
 `bash /home/arosenga/score-test/analyses/bal/splash_run.sh`
 
 
-#### Example (Tryndyak)
+#### Example (Amman)
 First, move to the directory of FASTQ files.
-`cd /scratch/arosenga/tryndyak/fastq`
-`bash /home/arosenga/score-test/analyses/tryndyak/splash_run.sh`
+`cd /scratch/arosenga/amman/fastq`
+`bash /home/arosenga/score-test/analyses/amman/splash_run.sh`
 
 
 
@@ -218,12 +240,9 @@ python [path to clean_metadata.py]
 python python_scripts/clean_metadata_bal.py --meta data/bal/metadata_filt.tsv --id_key analyses/bal/2026_08_24/sample_name_to_id.mapping.txt --output data/bal
 ```
 
-#### Example (Jahn)
+#### Example (Amman)
 ```
-python python_scripts/clean_metadata_jahn.py 
-  --meta data/jahn/metadata_filt.tsv 
-  --id_key analyses/jahn/2026_08_19/sample_name_to_id.mapping.txt 
-  --output data/jahn
+python python_scripts/clean_metadata_amman.py --meta data/amman/metadata_filt.tsv --id_key analyses/amman/2026_09_06/sample_name_to_id.mapping.txt --output data/amman
 ```
 
 
@@ -247,13 +266,11 @@ python [path to anchor_bin_key.py]
 python python_scripts/anchor_bin_key.py --sp_dir splash --bin_dir analyses/bal/2026_08_24/result_satc --output analyses/bal/2026_08_24
 ```
 
-#### Example (Jahn)
+#### Example (Amman)
 ```
-python python_scripts/anchor_bin_key.py 
-  --sp_dir splash 
-  --bin_dir analyses/jahn/2026_08_19/result_satc 
-  --output analyses/jahn/2026_08_19
+python python_scripts/anchor_bin_key.py --sp_dir splash --bin_dir analyses/amman/2026_09_06/result_satc --output analyses/amman/2026_09_06
 ```
+
 
 
 ## Anchor Summary Statistics
@@ -280,20 +297,10 @@ python [path to anchor_prop.py]
 python python_scripts/anchor_prop_bal.py --sp_dir splash --bin_dir analyses/bal/2026_08_24/result_satc --bin_key analyses/bal/2026_08_24/anchor_bin_key.csv --meta data/bal/clean_metadata.tsv --covar primary --output analyses/bal/2026_08_24 --scratch /scratch/arosenga/bal
 ```
 
-#### Example (Justen)
+#### Example (Amman)
 ```
-python python_scripts/anchor_prop_amman.py 
-  --sp_dir splash 
-  --bin_dir analyses/amman/2026_08_10/result_satc 
-  --bin_key analyses/amman/2026_08_10/anchor_bin_key.csv 
-  --meta data/amman/clean_metadata.tsv 
-  --covar date 
-  --output analyses/amman/2026_08_10 
-  --scratch /scratch/arosenga/amman
+python python_scripts/anchor_prop_amman.py --sp_dir splash --bin_dir analyses/amman/2026_09_06/result_satc --bin_key analyses/amman/2026_09_06/anchor_bin_key.csv --meta data/amman/clean_metadata.tsv --covar date --output analyses/amman/2026_09_06 --scratch /scratch/arosenga/amman
 ```
-
-#### Example (Jahn)
-```python python_scripts/anchor_prop_jahn.py --sp_dir splash --bin_dir analyses/jahn/2026_08_19/result_satc --bin_key analyses/jahn/2026_08_19/anchor_bin_key.csv --meta data/jahn/clean_metadata.tsv --covar date --output analyses/jahn/2026_08_19 --scratch /scratch/arosenga/jahn```
 
 
 
@@ -317,15 +324,12 @@ python python_scripts/satc_filt.py --satc_dir /scratch/arosenga/bal/anchor_satc 
 This example resulted in 63,943 anchors in the filtered list.
 
 
-#### Example (Jahn)
+#### Example (Amman)
 ```
-python python_scripts/satc_filt.py 
-  --satc_dir /scratch/arosenga/jahn/anchor_satc 
-  --anchor_file analyses/jahn/2026_08_19/anchor_filt_by_date.csv 
-  --output analyses/jahn/2026_08_19
+python python_scripts/satc_filt.py --satc_dir /scratch/arosenga/amman/anchor_satc --anchor_file analyses/amman/2026_09_06/anchor_filt_by_date.csv --output analyses/amman/2026_09_06
 ```
 
-This example resulted in 22,334 anchors in the filtered list.
+This example resulted in 161,776 anchors in the filtered list.
 
 
 ---
@@ -389,7 +393,7 @@ bash shell_scripts/all_anchors_job.sh -a "analyses/bal/2026_08_24/anchor_test.tx
 
 Keep `-j` low because there can be memory issues:
 ```
-bash shell_scripts/all_anchors_job.sh -a "analyses/bal/2026_08_24/anchor_list.txt" -d "analyses/bal/2026_08_24/d_bal.yaml" -m "analyses/bal/2026_08_24/m_bal.yaml" -o "analyses/bal/2026_08_24/no_x" -n 200 -j 10
+bash shell_scripts/all_anchors_job.sh -a "analyses/bal/2026_08_24/anchor_list.txt" -d "analyses/bal/2026_08_24/d_bal.yaml" -m "analyses/bal/2026_08_24/m_bal.yaml" -o "analyses/bal/2026_08_24/no_x_primary" -n 200 -j 10
 ```
 
 Problems with:
@@ -460,17 +464,20 @@ for (( i=$end_idx; i<=$num_anchors; i+=$n_anch_arr )); do
 done
 ```
 
-
-
-#### Example (Justen)
+**2026-09-01**: Ran again with secondary infections as $z$
 ```
-bash shell_scripts/all_anchors_job.sh 
-  -a "analyses/jahn/2026_08_19/anchor_list.txt" 
-  -d "analyses/jahn/2026_08_19/d_jahn.yaml" 
-  -m "analyses/jahn/2026_08_19/m_jahn.yaml"
-  -o "analyses/jahn/2026_08_19" 
-  -n 200 
-  -j 50
+bash shell_scripts/all_anchors_job.sh -a "analyses/bal/2026_08_24/anchor_list.txt" -d "analyses/bal/2026_08_24/d_bal.yaml" -m "analyses/bal/2026_08_24/m_bal.yaml" -o "analyses/bal/2026_08_24/no_x_secondary" -n 200 -j 10
+```
+
+#### Example (Bal 2)
+
+```
+bash shell_scripts/all_anchors_job.sh -a "analyses/bal/2026_08_24/anchor_list.txt" -d "analyses/bal/2026_08_24/w_x_primary/d_bal.yaml" -m "analyses/bal/2026_08_24/w_x_primary/m_bal.yaml" -o "analyses/bal/2026_08_24/w_x_primary" -n 200 -j 10
+```
+
+#### Example (Amman)
+```
+bash shell_scripts/all_anchors_job.sh -a "analyses/amman/2026_09_06/anchor_list.txt" -d "analyses/ammman/2026_09_06/d_jahn.yaml" -m "analyses/amman/2026_09_06/m_jahn.yaml" -o "analyses/amman/2026_09_6" -n 200 -j 10
 ```
 
 
@@ -493,9 +500,9 @@ python python_scripts/json_summary.py --json_dir /home/arosenga/score-test/analy
 #### Example (Amman)
 ```
 python python_scripts/json_summary.py 
-  --json_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test/anchor_json 
-  --splash_out_dir /home/arosenga/score-test/analyses/amman/2026_08_10 
-  --out_dir /home/arosenga/score-test/analyses/amman/2026_08_10/score_test
+  --json_dir /home/arosenga/score-test/analyses/amman/2026_09_06/score_test/anchor_json 
+  --splash_out_dir /home/arosenga/score-test/analyses/amman/2026_09_06 
+  --out_dir /home/arosenga/score-test/analyses/amman/2026_09_06/score_test
   ```
 
 ---
@@ -529,12 +536,12 @@ python python_scripts/make_satc.py --sp_dir /home/arosenga/score-test/splash --b
 
 To construct the list of "called" anchors/targets, Chaung et al. follow the following steps (copied from their supplement and reformatted here), and we do the same:
 
-1. We filter for anchors that are significant (with a BY corrected p value less than 0.05) and have large effect size (>0.5), yielding a list of $N$ SPLASH-called anchors. 
+1. We filter for anchors that are significant (with a BY corrected p value less than 0.05) ~~and have large effect size (>0.5)~~, yielding a list of $N$ SPLASH-called anchors. 
 2. Control anchors are generated by taking the N anchors with the highest counts.
 3.  For each of these anchors, we first filter out all anchors with fewer than 30 counts, only 1 unique target, or only 1 unique sample, and filter out all samples with 5 or fewer counts. 
 4. Then, we discard all targets that constitute less than 5% of the remaining counts for that anchor.
 
-Because the score test method does not compute effect sizes, we follow the same procedure but omit the effect size filtering step for these data. This procedure is implemented in `python_scripts/signf_anchors_bal.py`, which requires a configuration file:
+Because the score test method does not compute effect sizes, we follow the same procedure but omit the effect size filtering step. This procedure is implemented in `python_scripts/signf_anchors_bal.py`, which requires a configuration file:
 
 ```
 d_config: '/home/arosenga/score-test/analyses/bal/2026_08_24/d_bal_filt.yaml' ## need to access scratch i guess
@@ -546,7 +553,13 @@ alpha: 0.05
 output: '/home/arosenga/score-test/analyses/bal/2026_08_24/no_x'
 ```
 
-This step creates four files in the specified output directory: `splash_calls.csv`, `score_calls.csv`, `splash_calls_filt.csv`, and `score_calls_filt.csv`. The first two files contains corresponding to statistically significant anchors (according to the specified hypothesis test) that have total counts greater than or equal to $30$, high effect sizes (for SPLASH), and more than one target and sample in the table. The second two files have rows corresponding to anchor/target pairs that satisfy the other criteria discussed above.
+This step creates four files in the specified output directory: `splash_calls.csv`, `score_calls.csv`, `splash_calls_filt.csv`, and `score_calls_filt.csv`. The first two files contains corresponding to statistically significant anchors (according to the specified hypothesis test) that have total counts greater than or equal to $30$, high effect sizes (for SPLASH), and more than one target and sample in the table. The second two files have rows corresponding to anchor/target pairs that satisfy the other criteria discussed above. We run it with the following command:
+
+```
+python python_scripts/signf_anchors_bal.py --cfg analyses/bal/2026_08_24/signf_anch_filt.yaml 
+```
+
+Note: as in Chaung et al., for a list of $N$ called anchors, we also include the top $N$ insignificant anchors by total table count. 
 
 ### Alignment
 All alignment-related steps are implemented in `python_scripts/align_kmers.py`. First, we need to create comma separated lists of the $k$-mers we want to align to our index. This scripts creates four `.csv` files. Each corresponds to the list of unique anchors or targets in `splash_calls_filt.csv` or `score_calls_filt.csv`. They are saved in the output directory passed as an argument (under `--output`) and named as `[splash or score]_calls_[anchs or targs].csv`. 
@@ -576,15 +589,25 @@ This creates four additional files in the output directory which correspond to t
 - Number of other instances where the same sequence aligned against the same reference characters as were aligned against in the reported alignment. In other words, the number of other reference sequences the read aligned to.
 - Comma-separated list of mismatch descriptors (empty in this case because `-v 0`)
 
-To run this step, we do:
-
-```
-python python_scripts/align_kmers.py --splash_calls analyses/bal/2026_08_24/no_x/splash_calls_filt.csv --score_calls analyses/bal/2026_08_24/no_x/score_calls_filt.csv --output analyses/bal/2026_08_24/no_x/align --bowtie bowtie --index sc2_archs
-```
-
 Chaung et al. state that they consider anchors that align perfectly to at least one of the reference assemblies (Wuhan-Hu-1, Delta, Omicron BA.1, or Omicron BA.2) and also have at least one target that aligns perfectly with a reference assembly. For each of these anchors, they deem it "strain-defining" if, for any of the reference assemblies, it has at least one target that maps to it and one target that does not.
 
 Since we ran the alignment with `-v 0` (mismatches capped at $0$), any hit returned by Bowtie is a perfect alignment. We then filter the results of the Bowtie alignment according to the steps laid out by Chaung et al. The results are saved as two different files in the output directory: `score_strain_def.tsv` and `splash_strain_def.tsv`. These files contain the strain-defining anchors/targets and 0/1-encoded information about which reference genomes they aligned to.
+
+To run this alignment/first filtering step, we do:
+
+```
+python python_scripts/align_kmers.py --splash_calls analyses/bal/2026_08_24/no_x_primary/splash_calls_filt.csv --score_calls analyses/bal/2026_08_24/no_x_primary/score_calls_filt.csv --output analyses/bal/2026_08_24/no_x/align --bowtie bowtie --index sc2_archs
+```
+
+In summary, this step creates 6 files per hypothesis testing framework (`score` or `splash`): 
+
+- `*_calls_anchs.csv`: list of (unique) called anchors (statistically significant anchors + same number of insignificant anchors with highest $M$) 
+- `*_calls_targs.csv`: list of (unique) called targets (targets associated with at least one anchor in `*_calls_anchs.csv`)
+- `*_anchs.txt`: Bowtie output for aligning rows of `*_calls_anchs.csv`
+- `*_targs.txt`: Bowtie output for aligning rows of `*_calls_targs.csv`
+- `*_calls_alignment.tsv`: 0-1 encoded alignment results for each anchor/target pair `*_calls.tsv` using results in `*_anchs.txt` and `*_targs.txt` 
+- `*_strain_def.tsv`: anchors (and corresponding targets) that satisfy the filtering criteria in Chaung et al. to be considered "strain-defining"
+
 
 ### Analyzing Results
 Although we did our best to replicate the settings in Chaung et al., we did not reproduce their results. This is likely due to the differences in `SPLASH2` and `SPLASH` or user error. We nevertheless continue with a similar analysis to the original publication.
@@ -593,6 +616,17 @@ After [the previous step](#alignment), we have two lists: one containing the "st
 
 The file `python_scripts/align_summary.py` (inner) joins the strain-defining `.tsv` files with the corresponding `.csv` files listing the anchors called as significant by SPLASH/the score test. It saves the merged dataframes to two separate files in the `align_dir` directory: `score_alignment_results.tsv` and `splash_alignment_results.tsv`. Because the $p$-values/$p$-value bounds are for each anchor table, the values in these columns will be the same across all rows corresponding to the same anchor. The same goes for any other anchor-specific information (`M`, `anch_uniqTargs`, etc.).
 
+```
+python python_scripts/align_summary.py --splash_file analyses/bal/2026_08_24/no_x_primary/splash_calls.csv --score_file analyses/bal/2026_08_24/no_x_primary/score_calls.csv --align_dir analyses/bal/2026_08_24/no_x_primary/align
+```
+
+We now compare and contrast the results of SPLASH and our score test method. 
+
+```
+python python_scripts/align_comparison.py --splash_file analyses/bal/2026_08_24/no_x_primary/align/splash_alignment_results.tsv --score_file analyses/bal/2026_08_24/no_x_primary/align/score_alignment_results.tsv --align_dir analyses/bal/2026_08_24/no_x_primary/align
+```
+
+Note: Because we do not have an effect size filtering step for the score test, it is possible to get anchors that are statistically significant according to both SPLASH and the score test, but are "called" only by the score test. An example is `AACCCTGTCCTACCATTTAATGATGGTGTTT`, which has an effect size of 0.488878 and is filtered out before alignment.
 
 
 

@@ -1,128 +1,103 @@
 """Computations related to intermediate quantities."""
 
 import jax
+import scipy
 import jax.numpy as jnp
 import numpy as np
 
-def compute_delta(
-        model,
-        inv: bool = True
-    ) -> jnp.array:
-    """
-    Compute and return the delta_i values.
+jax.config.update("jax_enable_x64", True)
 
-    ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
-    RAISES: None
-    """
-    ## compute delta_i values
+def compute_delta(model, inv: bool = True) -> jnp.array:
     if inv:
-        return model.compute_g_prime()
-    else:
-        return 1 / model.compute_g_prime()
-
+        return 1 / model.compute_mu()
+    return model.compute_mu()
 
 def compute_omega(model) -> jnp.array:
-    """
-    Compute and return the omega_i values.
-
-    L'Hopital:
-
-    1 / (v * g'^2) = (1 / v) / g'^2
-
-    derivative of top: - v' / v^2
-    derivative of bottom: 2 g' * g''
-
-    deriv of top = (1 + 2 * mu / disp) / (mu + mu^2 / disp)^2 
-    deriv of bot = 2 * (1 / mu) *  (-1 / mu^2)
-
-    ((1 + 2 * mu / disp) / (mu + mu^2 / disp)^2 ) / (2 * (1 / mu) *  (-1 / mu^2))
-    = ((1 + 2 * mu / disp) / (mu * (1 + mu / disp))^2) / (-2 / mu^3)
-    = - (mu^3 * (1 + 2 * mu / disp) / (mu^2 * (1 + mu / disp)^2 )) / 2
-    = - mu * (1 + 2 * mu / disp) / (2 * (1 + mu / disp)^2)
-
-    as mu -> 0, omega -> 0
-
-    ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
-    RAISES: None
-    """
-    ## initial computations
-    g_prime_vals = model.compute_g_prime()
-    v_vals       = model.compute_v()
-    ## compute omega_i values
-    omegas = 1 / (v_vals * g_prime_vals**2)
-    nan_omega = np.where(np.isnan(omegas))
-    omegas = omegas.at[nan_omega].set(0.0)
-    return omegas
+    mu_arr =  model.compute_mu()
+    ## reparametrize with iota = 1 / gamma
+    iota_arr = 1 / model.disp_arr * jnp.ones(model.data.n_samps)
+    return mu_arr / (1 + iota_arr * mu_arr)
 
 def compute_delta_inv_omega(model) -> jnp.array:
-    """
-    Compute omega_i * 1 / delta_i. 
-    avoid NaNs
-    (1 / delta) * (omega) = (1 / delta) * (delta^2 / v)
-                          = delta / v
-                          = (1 / g'(mu)) / (mu + mu^2 / disp)
-                          = mu / (mu + mu^2 / disp)
-                          = 1 / (1 + mu / disp) -> 1 as mu -> 0
-    """
     omega_vals     = compute_omega(model)
     delta_inv_vals = compute_delta(model, inv = True)
-    delta_inv_omega_vals = omega_vals * delta_inv_vals
-    nan_vals = np.where(np.isnan(delta_inv_omega_vals))
-    delta_inv_omega_vals = delta_inv_omega_vals.at[nan_vals].set(1.0)
-    return delta_inv_omega_vals
+    return omega_vals * delta_inv_vals
 
-
-def compute_epsilon(model) -> jnp.array:
+def compute_phi(model) -> jnp.array:
     """
-    Compute and return the epsilon_i values.
-
-    Should equal zero for canonical links (Poisson case)
-
-    numer = (1 + 2 * mu / disp) * (1 / mu) + (mu + mu^2 / disp) * (-1 / mu^2)
-          = (1 / mu + 2 / disp) - (1 / mu + 1 / disp)
-          = 1 / disp
-    denom = (mu + mu^2 / disp)^2 * (1 / mu^3)
-          = (mu * (1 + mu / disp))^2 / mu^3
-          = (1 + mu / disp)^2 / mu
-
-    as mu -> 0, numer -> 0 and denom -> Inf so eps -> 0
+    Compute and return the phi_i values.
 
     ARGS: model - an instance of class Model
     RETURNS: jnp.array (n_targs, n_samps)
     RAISES: None
     """
-    ## initial computations
-    g_prime_vals   = model.compute_g_prime()
-    g_prime_2_vals = model.compute_g_prime_2()
-    v_vals         = model.compute_v()
-    v_prime_vals   = model.compute_v_prime()
-    ## compute epsilon_i values
-    numer_vals = v_prime_vals * g_prime_vals + v_vals * g_prime_2_vals
-    denom_vals = v_vals**2 * g_prime_vals**3
-    eps_vals = numer_vals / denom_vals
-    nan_eps = np.where(np.isnan(eps_vals))
-    eps_vals = eps_vals.at[nan_eps].set(0.0)
-    return eps_vals
-
+    mu_vals = model.compute_mu()
+    disp_vals = model.disp_arr * jnp.ones((model.data.n_samps,))
+    return mu_vals**2 / (disp_vals + mu_vals)**2
 
 def compute_xi(model) -> jnp.array:
-    """
-    Compute and return the xi_i values.
+    omega_vals = compute_omega(model)
+    resid_vals = model.compute_resid()
+    mu_vals = model.compute_mu()
+    disp_vals = model.disp_arr * jnp.ones((model.data.n_samps,))
+    return omega_vals * (1 + resid_vals / (disp_vals + mu_vals))
 
-    Should not have any NaNs if no NaNs in omega or epsilon.
+def compute_epsilon(model) -> jnp.array:
+    omega_vals = compute_omega(model)
+    mu_vals = model.compute_mu()
+    disp_vals = model.disp_arr * jnp.ones((model.data.n_samps,))
+    return omega_vals / (mu_vals + disp_vals)
 
-    ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
-    RAISES: None
-    """
-    ## initial computations
-    omega_vals   = compute_omega(model)
-    epsilon_vals = compute_epsilon(model)
-    resid_vals   = model.compute_resid()
-    ## compute xi_i values
-    return omega_vals + epsilon_vals * resid_vals
+
+# def compute_epsilon(model) -> jnp.array:
+#     """
+#     Compute and return the epsilon_i values.
+
+#     Should equal zero for canonical links (Poisson case)
+
+#     numer = (1 + 2 * mu / disp) * (1 / mu) + (mu + mu^2 / disp) * (-1 / mu^2)
+#           = (1 / mu + 2 / disp) - (1 / mu + 1 / disp)
+#           = 1 / disp
+#     denom = (mu + mu^2 / disp)^2 * (1 / mu^3)
+#           = (mu * (1 + mu / disp))^2 / mu^3
+#           = (1 + mu / disp)^2 / mu
+
+#     as mu -> 0, numer -> 0 and denom -> Inf so eps -> 0
+
+#     ARGS: model - an instance of class Model
+#     RETURNS: jnp.array (n_targs, n_samps)
+#     RAISES: None
+#     """
+#     ## initial computations
+#     g_prime_vals   = model.compute_g_prime()
+#     g_prime_2_vals = model.compute_g_prime_2()
+#     v_vals         = model.compute_v()
+#     v_prime_vals   = model.compute_v_prime()
+#     ## compute epsilon_i values
+#     numer_vals = v_prime_vals * g_prime_vals + v_vals * g_prime_2_vals
+#     denom_vals = v_vals**2 * g_prime_vals**3
+#     eps_vals = numer_vals / denom_vals
+#     nan_eps = np.where(np.isnan(eps_vals))
+#     eps_vals = eps_vals.at[nan_eps].set(0.0)
+#     return eps_vals
+
+
+# def compute_xi(model) -> jnp.array:
+#     """
+#     Compute and return the xi_i values.
+
+#     Should not have any NaNs if no NaNs in omega or epsilon.
+
+#     ARGS: model - an instance of class Model
+#     RETURNS: jnp.array (n_targs, n_samps)
+#     RAISES: None
+#     """
+#     ## initial computations
+#     omega_vals   = compute_omega(model)
+#     epsilon_vals = compute_epsilon(model)
+#     resid_vals   = model.compute_resid()
+#     ## compute xi_i values
+#     return omega_vals + epsilon_vals * resid_vals
 
 def compute_c(model) -> jnp.array:
     """
@@ -185,6 +160,7 @@ def compute_r(model) -> jnp.array:
     return vals
 
 
+
 def compute_a_j(
         model,
         j:   int = 0
@@ -225,3 +201,143 @@ def random_covar_wrt_var_comp_j(
     covar_deriv = q_zeros.at[j, j].set(1)
     return covar_deriv
 
+
+
+
+# def compute_exp_digamma(model):
+#     """
+#     Compute expectation of digamma(y + disp) for all observations.
+#     """
+#     disp_arr = model.disp_arr * jnp.ones(model.data.n_samps)
+#     mu_arr = compute_delta(model, inv = False)
+
+#     def exp_digam(mu, disp):
+#         p = disp / (disp + mu)
+#         r = disp
+#         if disp > 5000:
+#             def exp_arg(x):
+#                 return jnp.log(x + disp) - 1 / (2 * (x + disp))
+#         else:
+#             def exp_arg(x):
+#                 return scipy.special.digamma(x + disp)
+#         ## throws exception of r is too big
+#         return scipy.stats.nbinom.expect(func = exp_arg, args = (r, p))
+            
+#     exp_pgam_vec = np.vectorize(exp_digam)
+#     return exp_pgam_vec(mu_arr, disp_arr)
+
+
+# def compute_exp_digamma_ctr_y(model):
+#     """
+#     Compute expectation of digamma(y + disp) * (y - mu).
+#     """
+#     disp_arr = model.disp_arr * jnp.ones(model.data.n_samps)
+#     mu_arr = compute_delta(model, inv = False)
+
+#     def exp_digam(mu, disp):
+#         p = disp / (disp + mu)
+#         r = disp
+#         if disp > 5000:
+#             def exp_arg(x):
+#                 return (jnp.log(x + disp) - 1 / (2 * (x + disp))) * (x - mu)
+#         else:
+#             def exp_arg(x):
+#                 return scipy.special.digamma(x + disp) * (x - mu)
+#         ## throws exception of r is too big
+#         return scipy.stats.nbinom.expect(func = exp_arg, args = (r, p))
+    
+#     exp_pgam_ctr_y_vec = np.vectorize(exp_digam)
+#     return exp_pgam_ctr_y_vec(mu_arr, disp_arr)
+
+
+# def compute_exp_digamma_ctr_y_2(model):
+#     """
+#     Compute expectation of digamma(y + disp) * (y - mu)^2.
+#     """
+#     disp_arr = model.disp_arr * jnp.ones(model.data.n_samps)
+#     mu_arr = compute_delta(model, inv = False)
+
+#     def exp_digam(mu, disp):
+#         p = disp / (disp + mu)
+#         r = disp
+#         if disp > 5000:
+#             def exp_arg(x):
+#                 return (jnp.log(x + disp) - 1 / (2 * (x + disp))) * (x - mu)**2
+#         else:
+#             def exp_arg(x):
+#                 return scipy.special.digamma(x + disp) * (x - mu)**2
+#         return scipy.stats.nbinom.expect(func = exp_arg, args = (r, p))
+
+#     exp_pgam_ctr_y_vec2 = np.vectorize(exp_digam)
+#     return exp_pgam_ctr_y_vec2(mu_arr, disp_arr)
+
+
+
+# def compute_delta(
+#         model,
+#         inv: bool = True
+#     ) -> jnp.array:
+#     """
+#     Compute and return the delta_i values.
+
+#     ARGS: model - an instance of class Model
+#     RETURNS: jnp.array (n_targs, n_samps)
+#     RAISES: None
+#     """
+#     ## compute delta_i values
+#     if inv:
+#         return model.compute_g_prime()
+#     else:
+#         return 1 / model.compute_g_prime()
+    
+# def compute_omega(model) -> jnp.array:
+#     """
+#     Compute and return the omega_i values.
+
+#     L'Hopital:
+
+#     1 / (v * g'^2) = (1 / v) / g'^2
+
+#     derivative of top: - v' / v^2
+#     derivative of bottom: 2 g' * g''
+
+#     deriv of top = (1 + 2 * mu / disp) / (mu + mu^2 / disp)^2 
+#     deriv of bot = 2 * (1 / mu) *  (-1 / mu^2)
+
+#     ((1 + 2 * mu / disp) / (mu + mu^2 / disp)^2 ) / (2 * (1 / mu) *  (-1 / mu^2))
+#     = ((1 + 2 * mu / disp) / (mu * (1 + mu / disp))^2) / (-2 / mu^3)
+#     = - (mu^3 * (1 + 2 * mu / disp) / (mu^2 * (1 + mu / disp)^2 )) / 2
+#     = - mu * (1 + 2 * mu / disp) / (2 * (1 + mu / disp)^2)
+
+#     as mu -> 0, omega -> 0
+
+#     ARGS: model - an instance of class Model
+#     RETURNS: jnp.array (n_targs, n_samps)
+#     RAISES: None
+#     """
+#     ## initial computations
+#     g_prime_vals = model.compute_g_prime()
+#     v_vals       = model.compute_v()
+#     ## compute omega_i values
+#     omegas = 1 / (v_vals * g_prime_vals**2)
+#     nan_omega = np.where(np.isnan(omegas))
+#     omegas = omegas.at[nan_omega].set(0.0)
+#     return omegas
+
+
+# def compute_delta_inv_omega(model) -> jnp.array:
+#     """
+#     Compute omega_i * 1 / delta_i. 
+#     avoid NaNs
+#     (1 / delta) * (omega) = (1 / delta) * (delta^2 / v)
+#                           = delta / v
+#                           = (1 / g'(mu)) / (mu + mu^2 / disp)
+#                           = mu / (mu + mu^2 / disp)
+#                           = 1 / (1 + mu / disp) -> 1 as mu -> 0
+#     """
+#     omega_vals     = compute_omega(model)
+#     delta_inv_vals = compute_delta(model, inv = True)
+#     delta_inv_omega_vals = omega_vals * delta_inv_vals
+#     nan_vals = np.where(np.isnan(delta_inv_omega_vals))
+#     delta_inv_omega_vals = delta_inv_omega_vals.at[nan_vals].set(1.0)
+#     return delta_inv_omega_vals

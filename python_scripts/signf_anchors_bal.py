@@ -57,7 +57,7 @@ score  = score.sort_values(by = 'M', ascending = False)
 ## filter splash to signf/insignf anchors with large effect size
 splash_signf   = splash[splash['pval_opt_corrected'] <= args.alpha]
 splash_insignf = splash[splash['pval_opt_corrected'] > args.alpha]
-splash_signf   = splash_signf[splash_signf['effect_size_bin'] > 0.5]
+#splash_signf   = splash_signf[splash_signf['effect_size_bin'] > 0.5]
 ## filter score file to signf anchors
 score_signf   = score[score['one_sided_p_val_by'] <= args.alpha]
 score_insignf = score[score['one_sided_p_val_by'] > args.alpha]

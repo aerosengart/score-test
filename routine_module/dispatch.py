@@ -7,7 +7,7 @@ import numpy as np
 routine_types = {
     'score_var_comp':    emp_dists.score_var_comp_emp_dist,
     'one_two_sided':     stat_comps.one_two_sided_comparison,
-    'score_lrt_comp':    stat_comps.score_lrt_comparison,
+    #'score_lrt_comp':    stat_comps.score_lrt_comparison,
     'fx_effs_sens':      stat_sens.test_stat_sensitivity,
     'disp_sens':         stat_sens.test_stat_sensitivity,
     'err_comp':          error_comps.error_comparison,
@@ -20,7 +20,7 @@ plot_types = {
     'score_var_comp':    emp_dists.score_hist,
     'score_var_comp_by_disp': emp_dists.score_var_comp_by_disp_emp_dist,
     'one_two_sided':     stat_comps.plot_one_two_sided,
-    'score_lrt_comp':    stat_comps.plot_score_lrt,
+    #'score_lrt_comp':    stat_comps.plot_score_lrt,
     'fx_effs_sens':      stat_sens.qq_jitter_grid,
     'disp_sens':         stat_sens.qq_jitter_grid,
     'err_comp':          error_comps.plot_error_comparison,

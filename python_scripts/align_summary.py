@@ -21,7 +21,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser()
 parser.add_argument("--splash_file", type = str, help = "path to splash_calls.csv")
 parser.add_argument("--score_file", type = str, help = "path to score_calls.csv")
-parser.add_argument("--align_dir", type = str, help = "path of directory with anchor .json files")
+parser.add_argument("--align_dir", type = str, help = "output directory")
 args = parser.parse_args()
 
 ## read in specific columns (no entropy cols or targets > 5th rank)
