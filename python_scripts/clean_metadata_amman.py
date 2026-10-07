@@ -54,5 +54,10 @@ metadata = metadata.merge(sample_ids, left_on = 'srr_id', right_on = 'srr')
 
 ## remove biosample ID (duplicated as samn_id)
 metadata = metadata.drop(columns = ['biosample_id'])
+
+## drop unnecessary columns
+cols_to_drop = ['ENA first public', 'ENA last update', 'ENA-CHECKLIST',	'External Id', 'INSDC center alias', 'INSDC center name', 'INSDC first public', 'INSDC last update', 'INSDC status', 'Submitter Id', 'run_accession']
+metadata = metadata.drop(columns = cols_to_drop)
+
 metadata.to_csv(os.path.join(args.output, 'clean_metadata.tsv'), sep = '\t', index = False, header = True)
 

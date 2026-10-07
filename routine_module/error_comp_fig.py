@@ -78,8 +78,8 @@ def compute_p_vals_intercept_only(data, model):
     orig, _, _  = oasis.oasis(data, asymptotic = False)
     asymp, _, _ = oasis.oasis(data, asymptotic = True)
     ## compute score test
-    one_stat  = stat.compute_score_stat(model, one_sided = True)
-    two_stat  = stat.compute_score_stat(model, one_sided = False)
+    one_stat, two_stat  = stat.compute_score_stat(model, one_sided = True)
+    #two_stat  = stat.compute_score_stat(model, one_sided = False)
     one_side = helpers.compute_score_test_p_val(one_stat, one_sided = True)
     two_side = helpers.compute_score_test_p_val(two_stat, one_sided = False)
     return float(orig), float(asymp), one_side, two_side
@@ -89,8 +89,8 @@ def compute_p_vals(data, model):
     ## compute oasis --- default settings!!!
     perp, _, _ = oasis.oasis_perp(data)
     ## compute score test
-    one_stat  = stat.compute_score_stat(model, one_sided = True)
-    two_stat  = stat.compute_score_stat(model, one_sided = False)
+    one_stat, two_stat  = stat.compute_score_stat(model, one_sided = True)
+    #two_stat  = stat.compute_score_stat(model, one_sided = False)
     one_side = helpers.compute_score_test_p_val(one_stat, one_sided = True)
     two_side = helpers.compute_score_test_p_val(two_stat, one_sided = False)
     return perp, None, one_side, two_side

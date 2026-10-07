@@ -5,6 +5,7 @@ Functions to:
 """
 
 import os
+import subprocess 
 
 import jax.numpy  as jnp
 import pandas     as pd
@@ -216,4 +217,40 @@ def construct_metadata(
     x_cov_df = x_cov_dum.drop_duplicates()
     z_cov_df = z_cov_dum.drop_duplicates()
     return x_cov_df, z_cov_df
+
+
+def process_bin(d_config, bin, bins, anch_seqs, first_idxs, last_idxs):
+    bin_file = os.path.join(d_config['paths']['temp_dir'], f'bin{bin}.satc')
+    ## dump SATC binary files as text if not already done
+    if not os.path.isfile(bin_file):
+        subprocess.call([
+            d_config['paths']['splash_dir'] + '/satc_dump', 
+            os.path.join(d_config['paths']['bin_dir'], f'bin{bin}.satc'),
+            os.path.join(d_config['paths']['temp_dir'], f'bin{bin}.satc'),
+        ])
+    ## indices of anchors in this bin
+    bin_anch_idxs = [i for i in range(len(bins)) if bins[i] == bin]
+    ## anchor sequences, first idxs, last idxs for anchors in this bin
+    bin_anchs = [anch_seqs[i] for i in bin_anch_idxs]
+    bin_anch_firsts = [first_idxs[i] for i in bin_anch_idxs]
+    bin_anch_lasts = [last_idxs[i] for i in bin_anch_idxs]
+
+    ## minimum and maximum index in bin file to save
+    min_first = min(bin_anch_firsts)
+    max_last = max(bin_anch_lasts)
     
+    ## read the anchor-specific lines from the SATC file
+    bin_anch_tab = pd.DataFrame(columns = ['sample', 'anchor', 'target', 'count'])
+    with open(bin_file, 'r') as f:
+        for i, line in enumerate(f):
+            if i < min_first:
+                continue
+            elif i > max_last:
+                break
+            else:
+                new_row = pd.DataFrame(
+                    [line.strip().split('\t')],
+                    columns = ['sample', 'anchor', 'target', 'count']
+                )
+                bin_anch_tab = pd.concat([bin_anch_tab, new_row])
+    return bin_anchs, bin_anch_tab

@@ -16,7 +16,6 @@ import csv
 import os
 import subprocess
 import glob
-import statistics
 
 import pandas as pd
 
@@ -29,7 +28,7 @@ parser.add_argument("--bin_key", type = str, help = "path to anchor_bin_key.csv"
 parser.add_argument("--output", type = str, help = "path to save output directory")
 parser.add_argument("--scratch", type = str, help = "path to scratch directory for temporary file writing")
 parser.add_argument("--metadata", type = str, help = "path to clean_metadata.tsv")
-parser.add_argument("--covar", type = str, default = None, help = "covariate to filter on")
+#parser.add_argument("--covar", type = str, help = "covariate to filter on")
 parser.add_argument("--clean_up", action = "store_true", help = "remove dump files")
 args = parser.parse_args()
 
@@ -45,22 +44,15 @@ if not os.path.isdir(scratch_dir):
 ## output file
 anchor_bin_file  = os.path.join(args.bin_key)
 anchor_summ_file = os.path.join(args.output, 'anchor_summary.csv')
-anchor_filt_file = os.path.join(args.output, 'anchor_filt_summary.csv')
-
-## check if filtering on covariate as well
-if args.covar is not None:
-    covar_filt_file = os.path.join(args.output, f'anchor_filt_by_{args.covar}.csv')
-    with open(covar_filt_file, 'w') as out_file:
-        out_file.write('bin,anchor,total_count,total_num_nonzero,num_targets,num_samples,tab_prop_nonzero,med_row_prop_nonzero,num_row_prop_nonzero_geq_65\n')
-    ## get unique values of covariate
-    md = pd.read_csv(args.metadata, sep = '\t', header = 0, index_col = 0)
-    unique_covar = md[args.covar].unique()
+covar_filt_file = os.path.join(args.output, f'anchor_filt_summary.csv')
+with open(anchor_summ_file, 'w') as out_file:
+    out_file.write('bin,anchor,total_count,total_num_nonzero,num_targets,num_samples,tab_prop_nonzero,max_count,satc_file\n')
+## get unique values of covariate
+md = pd.read_csv(args.metadata, sep = '\t', header = 0, index_col = 0)
 
 ## add headers to output files
-with open(anchor_summ_file, 'w') as out_file:
-    out_file.write('bin,anchor,total_count,total_num_nonzero,num_targets,num_samples,tab_prop_nonzero,med_row_prop_nonzero\n')
-with open(anchor_filt_file, 'w') as out_file:
-    out_file.write('bin,anchor,total_count,total_num_nonzero,num_targets,num_samples,tab_prop_nonzero,med_row_prop_nonzero,num_row_prop_nonzero_geq_65\n')
+with open(covar_filt_file, 'w') as out_file:
+    out_file.write('bin,anchor,total_count,total_num_nonzero,num_targets,num_samples,num_cand_targs,tab_prop_nonzero,max_count\n')
 
 ## loop over all binary files
 bin_files = glob.glob(os.path.join(args.bin_dir, '*.satc'))
@@ -71,6 +63,7 @@ for i in tqdm(range(len(bin_files))):
     bin_dump = os.path.join(args.output, 'satc_dump', f'bin{i}.satc.dump')
     if not os.path.isfile(bin_dump):
         subprocess.call([args.sp_dir + '/satc_dump', bin_read, bin_dump])
+    delete_files = []
     ## read bin.satc.dump line by line
     with open(bin_dump, 'r') as satc_file:
         first_row = next(satc_file).split('\t')
@@ -90,7 +83,8 @@ for i in tqdm(range(len(bin_files))):
             count       = line[3].rstrip()
 
             ## write line to anchor-specific SATC file
-            with open(os.path.join(scratch_dir, f'{anchor}.txt'), 'a') as f:
+            anchor_file = os.path.join(scratch_dir, f'{anchor}.txt')
+            with open(anchor_file, 'a') as f:
                 f.write(f'{samp_idx} {target} {count}\n')
 
             if anchor == last_anchor:
@@ -109,6 +103,8 @@ for i in tqdm(range(len(bin_files))):
                 anchor_nonzero = 0
                 ## list of non-zero cells by row (len == # targets in anchor table)
                 anchor_targ_nonzero = []
+                ## list of maximum count per row
+                anchor_targ_max_count = []
                 ## list of all samples from all targets in anchor table
                 anchor_samples = []
                 for targ in anchor_dict.keys():
@@ -132,37 +128,48 @@ for i in tqdm(range(len(bin_files))):
                     anchor_samples += targ_samples
                     ## add number of non-zero cells in target row to anchor table list
                     anchor_targ_nonzero += [len(counts)]
+                    ## add maximum count for target row
+                    anchor_targ_max_count += [max(counts)]
 
                 ## get unique sample IDs
                 unique_samples = set(anchor_samples)
-                ## get proportion of non-zero cells for each target row in anchor table
-                prop_nonzero = [val / len(unique_samples) for val in anchor_targ_nonzero]
                 ## get proportion of non-zero cells for entire anchor table
                 num_targs = len(anchor_dict.keys())
                 tab_prop_nonzero = anchor_nonzero / (len(unique_samples) * num_targs)
-                ## bin, anchor, anchor table total count, anchor table non-zero cells, number of targets (rows), number of samples (cols), table proportion of non-zero cells, median row proportion of non-zero cells
+                ## get maximum count in table
+                max_count = max(anchor_targ_max_count)
+                ## write to filtered summary file ##
+                md_samps = md[md['splash_id'].astype(str).isin(unique_samples)]
+                ## number of observations per site
+                sd_counts = md_samps.groupby(['site']).size()
+                sd_counts = sd_counts[sd_counts >= 25].index.tolist()
+                ## number of observations per lab
+                lab_counts = md_samps.groupby(['sample_source_institute']).size()
+                lab_counts = lab_counts[lab_counts >= 25].index.tolist()
+                ## compute candidate targets
+                cand_targs = [x for x in anchor_targ_max_count if x > 10]
+                ## only write to file if ALL conditions pass
+                if len(md_samps) > 300 \
+                    and len(cand_targs) >= 50 \
+                        and len(sd_counts) > 1 \
+                            and len(lab_counts) > 1:
+                    with open(covar_filt_file, 'a') as out_file:
+                        out_file.write(f'{i},{anchor},{anchor_counts},{anchor_nonzero},{num_targs},{len(unique_samples)},{len(cand_targs)},{tab_prop_nonzero},{max_count}\n')
+                    kept_satc = 'saved'
+                else:
+                    delete_files += [anchor_file]
+                    kept_satc = 'deleted'
+                ## write to all anchors file and whether SATC was saved
                 with open(anchor_summ_file, 'a') as out_file:
-                    out_file.write(f'{i},{anchor},{anchor_counts},{anchor_nonzero},{num_targs},{len(unique_samples)},{tab_prop_nonzero},{statistics.median(prop_nonzero)}\n')
-                ## write anchor stats to filtered .csv if there are at least 5 target rows that have at least 65% non-zero cells and >= 50 samples
-                prop_nonzero_geq_65 = [prop for prop in prop_nonzero if prop >= 0.65]
-                if len(unique_samples) >= 100 and len(prop_nonzero_geq_65) >= 10:
-                    with open(anchor_filt_file, 'a') as out_file:
-                        out_file.write(f'{i},{anchor},{anchor_counts},{anchor_nonzero},{num_targs},{len(unique_samples)},{tab_prop_nonzero},{statistics.median(prop_nonzero)},{len(prop_nonzero_geq_65)}\n')
+                    out_file.write(f'{i},{anchor},{anchor_counts},{anchor_nonzero},{num_targs},{len(unique_samples)},{tab_prop_nonzero},{max_count},{kept_satc}\n')
+                ## update line
                 last_anchor = anchor
                 anchor_dict = {target: {samp_idx: count}}
-                ## if filtering by covariate, do necessary checks/writing
-                if args.covar is not None:
-                    md_samps = md[md['splash_id'].astype(str).isin(unique_samples)]
-                    md_samps_unique_covar = md_samps[args.covar].unique()
-                    sd_counts = md_samps.groupby(['site']).size()
-                    sd_counts = sd_counts[sd_counts > 10].index.tolist()
-                    ## only write to file if ALL conditions pass
-                    if len(md_samps) > 10 \
-                        and len(sd_counts) >= 5 \
-                        and len(unique_samples) >= 20 \
-                        and len(prop_nonzero_geq_65) >= 10:
-                        with open(covar_filt_file, 'a') as out_file:
-                            out_file.write(f'{i},{anchor},{anchor_counts},{anchor_nonzero},{num_targs},{len(unique_samples)},{tab_prop_nonzero},{statistics.median(prop_nonzero)},{len(prop_nonzero_geq_65)}\n')
+
+    ## delete files to save space
+    for f in delete_files:
+        print(f'Deleting {len(delete_files)} SATC files...\n')
+        subprocess.call(['rm', f])
 
     ## delete bin_dump file to save space 
     if args.clean_up:

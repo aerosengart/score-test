@@ -55,8 +55,8 @@ x_axis_vals_dispatch = {
 }
 
 title_dispatch = {
-    'fx_effs': 'QQ Plots of Test Statistics with Jittered Fixed Effects',
-    'disp': r'QQ Plots of Test Statistics with Jittered Dispersion ($\gamma$)'
+    'fx_effs': 'QQ Plots of Test Statistics with Jittered Fixed Effects Values',
+    'disp': r'QQ Plots of Test Statistics with Over Dispersion Values ($\gamma$)'
 }
 ##----------------------------------------------------------------------------##
 ## Computations                                                               ##
@@ -125,8 +125,8 @@ def test_stat_sensitivity(
             ## jitter the appropriate parameters
             jitter_func(model = model, jitter_vals = x_axis_vals[k])
             ## compute score test
-            one_stat = stat.compute_score_stat(model, one_sided = True)
-            two_stat = stat.compute_score_stat(model, one_sided = False)
+            one_stat, two_stat = stat.compute_score_stat(model, one_sided = True)
+            #two_stat = stat.compute_score_stat(model, one_sided = False)
             ## record values
             one_sided = one_sided.at[r, k].set(one_stat)
             two_sided = two_sided.at[r, k].set(two_stat)
@@ -150,7 +150,6 @@ def plot_sensitivity(d_config, m_config, param, reps, other_known):
         routine = f'test_stat_{param}_sens_others_known'
     else:
         routine = f'test_stat_{param}_sens'
-    jitter_vals = jitter_dispatch[param]
 
     ## read all results from output directory
     out_dir = doc.routine_dir(d_config, m_config, routine)

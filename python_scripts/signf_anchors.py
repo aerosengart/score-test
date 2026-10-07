@@ -34,7 +34,7 @@ parser.add_argument('--d_config',
                     dest = 'd_config',
                     type = jsonargparse.typing.Path)
 parser.add_argument("--splash_file", type = str, help = "path to result.after_correction.all_anchors.tsv file")
-parser.add_argument("--score_file", type = str, help = "path to anchor_score_test_summary_signf.csv file")
+parser.add_argument("--score_file", type = str, help = "path to anchor_score_test_summary.csv file")
 parser.add_argument("--alpha", type = float, help = "level cut-off")
 parser.add_argument("--output", type = str, help = "path to output directory")
 args = parser.parse_args()
@@ -53,6 +53,9 @@ splash = pd.read_csv(args.splash_file, sep = '\t', header = 0)
 splash = splash.sort_values(by = 'M', ascending = False)
 score  = pd.read_csv(args.score_file, sep = ',', header = 0)
 score  = score.sort_values(by = 'M', ascending = False)
+
+## restrict score results to only the anchors that were used in the score test
+splash = splash[splash['anchor'].isin(score['anchor'])]
 
 ## filter splash to signf/insignf anchors with large effect size
 splash_signf   = splash[splash['pval_opt_corrected'] <= args.alpha]

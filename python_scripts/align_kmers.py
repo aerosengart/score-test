@@ -66,29 +66,46 @@ if (not os.path.isfile(f'{args.output}/splash_anchs.txt')) or \
     subprocess.call([f'{args.bowtie_dir}/bowtie', '-r', '-a', '-v 0', '-x', f'{args.index}', score_targs, f'{args.output}/score_targs.txt'])
 
 ## filter according to Chaung et al.
-align_anchs_spl = pd.read_csv(f'{args.output}/splash_anchs.txt', sep='\t', header=None)
-align_anchs_spl.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'anchor', 'qual', 'inst', 'mismatch']
-align_targs_spl = pd.read_csv(f'{args.output}/splash_targs.txt', sep='\t', header=None)
-align_targs_spl.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'target', 'qual', 'inst', 'mismatch']
+try:
+    align_anchs_spl = pd.read_csv(f'{args.output}/splash_anchs.txt', sep='\t', header=None)
+    align_anchs_spl.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'anchor', 'qual', 'inst', 'mismatch']
+    ref_seqs = align_anchs_spl['ref_seq'].unique().tolist()
+    for i in range(len(ref_seqs)):
+        splash_calls[f'anch_align_{ref_seqs[i]}'] = 0
+except pd.errors.EmptyDataError:
+    print('Skipping SPLASH anchors...no alignments...')
+    align_anchs_spl = np.zeros((0, 8))
 
-align_anchs_sc = pd.read_csv(f'{args.output}/score_anchs.txt', sep='\t', header=None)
-align_anchs_sc.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'anchor', 'qual', 'inst', 'mismatch']
-align_targs_sc = pd.read_csv(f'{args.output}/score_targs.txt', sep='\t', header=None)
-align_targs_sc.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'target', 'qual', 'inst', 'mismatch']
+try:
+    align_targs_spl = pd.read_csv(f'{args.output}/splash_targs.txt', sep='\t', header=None)
+    align_targs_spl.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'target', 'qual', 'inst', 'mismatch']
+    ref_seqs = align_targs_spl['ref_seq'].unique().tolist()
+    for i in range(len(ref_seqs)):
+        splash_calls[f'targ_align_{ref_seqs[i]}'] = 0
+except pd.errors.EmptyDataError:
+    print('Skipping SPLASH targets...no alignments...')
+    align_targs_spl = np.zeros((0, 8))
 
-## add columns for alignment to filtered calls dataframes
-ref_seqs = align_anchs_spl['ref_seq'].unique().tolist()
-for i in range(len(ref_seqs)):
-    splash_calls[f'anch_align_{ref_seqs[i]}'] = 0
-ref_seqs = align_targs_spl['ref_seq'].unique().tolist()
-for i in range(len(ref_seqs)):
-    splash_calls[f'targ_align_{ref_seqs[i]}'] = 0
-ref_seqs = align_anchs_sc['ref_seq'].unique().tolist()
-for i in range(len(ref_seqs)):
-    score_calls[f'anch_align_{ref_seqs[i]}'] = 0
-ref_seqs = align_targs_sc['ref_seq'].unique().tolist()
-for i in range(len(ref_seqs)):
-    score_calls[f'targ_align_{ref_seqs[i]}'] = 0
+try:
+    align_anchs_sc = pd.read_csv(f'{args.output}/score_anchs.txt', sep='\t', header=None)
+    align_anchs_sc.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'anchor', 'qual', 'inst', 'mismatch']
+    ref_seqs = align_anchs_sc['ref_seq'].unique().tolist()
+    for i in range(len(ref_seqs)):
+        score_calls[f'anch_align_{ref_seqs[i]}'] = 0
+except pd.errors.EmptyDataError:
+    print('Skipping score test anchors...no alignments...')
+    align_anchs_sc = np.zeros((0, 8))
+
+try:
+    align_targs_sc = pd.read_csv(f'{args.output}/score_targs.txt', sep='\t', header=None)
+    align_targs_sc.columns = ['idx', 'drctn', 'ref_seq', 'pos', 'target', 'qual', 'inst', 'mismatch']
+    ref_seqs = align_targs_sc['ref_seq'].unique().tolist()
+    for i in range(len(ref_seqs)):
+        score_calls[f'targ_align_{ref_seqs[i]}'] = 0
+except pd.errors.EmptyDataError:
+    print('Skipping score test targets...no alignments...')
+    align_targs_sc = np.zeros((0, 8))
+
 
 ## loop over alignments in each of the four files and fill in call dataframe
 if not os.path.isfile(f'{args.output}/splash_calls_alignment.tsv'):
@@ -128,14 +145,13 @@ else:
 ## i.e. anch_* columns sum to at least 1 and targ_* columns sum to at least 1
 anch_col_idxs = splash_calls.columns.str.startswith('anch_align')
 targ_col_idxs = splash_calls.columns.str.startswith('targ_align')
-splash_calls_filt = splash_calls.iloc[splash_calls.iloc[:, anch_col_idxs].sum(axis = 1) > 0, :]
+splash_calls_filt = splash_calls.iloc[splash_calls.iloc[:, anch_col_idxs].sum(axis = 1) >= 0, :] ## made \geq 2026 Oct 4
 splash_calls_filt = splash_calls_filt.iloc[splash_calls_filt.iloc[:, targ_col_idxs].sum(axis = 1) > 0, :]
 
 anch_col_idxs = score_calls.columns.str.startswith('anch_align')
 targ_col_idxs = score_calls.columns.str.startswith('targ_align')
-score_calls_filt = score_calls.iloc[score_calls.iloc[:, anch_col_idxs].sum(axis = 1) > 0, :]
+score_calls_filt = score_calls.iloc[score_calls.iloc[:, anch_col_idxs].sum(axis = 1) >= 0, :] ## made \geq 2026 Oct 4
 score_calls_filt = score_calls_filt.iloc[score_calls_filt.iloc[:, targ_col_idxs].sum(axis = 1) > 0, :]
-
 
 strain_defn_spl = os.path.join(f'{args.output}/splash_strain_def.tsv')
 with open(strain_defn_spl, 'w') as of:

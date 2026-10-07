@@ -47,14 +47,18 @@ def compute_omega(model) -> jnp.array:
     RETURNS: jnp.array (n_targs, n_samps)
     RAISES: None
     """
-    ## initial computations
-    g_prime_vals = model.compute_g_prime()
-    v_vals       = model.compute_v()
-    ## compute omega_i values
-    omegas = 1 / (v_vals * g_prime_vals**2)
-    nan_omega = np.where(np.isnan(omegas))
-    omegas = omegas.at[nan_omega].set(0.0)
-    return omegas
+    # ## initial computations
+    # g_prime_vals = model.compute_g_prime()
+    # v_vals       = model.compute_v()
+    # ## compute omega_i values
+    # omegas = 1 / (v_vals * g_prime_vals**2)
+    # nan_omega = np.where(np.isnan(omegas))
+    # omegas = omegas.at[nan_omega].set(0.0)
+    # return omegas
+    mu_arr =  model.compute_mu()
+    ## reparametrize with iota = 1 / gamma
+    iota_arr = 1 / model.disp_arr * jnp.ones(model.data.n_samps)
+    return mu_arr / (1 + iota_arr * mu_arr)
 
 def compute_delta_inv_omega(model) -> jnp.array:
     """

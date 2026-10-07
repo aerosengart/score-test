@@ -119,13 +119,11 @@ def test_stat_sensitivity(
             ## update debugging dictionary
             if m_config['debug'] == 'full':
                 doc.save_rep(model, d_config, m_config, sub_dir = f'n_samps_{str(x_axis_vals[k])}')
-            ## jitter the appropriate parameters
-            print(model.disp_arr)
+            ## jitter the appropriate parameterso
             jitter_func(model = model, jitter_vals = x_axis_vals[k])
-            print(model.disp_arr)
             ## compute score test
-            one_stat = stat.compute_score_stat(model, one_sided = True)
-            two_stat = stat.compute_score_stat(model, one_sided = False)
+            one_stat, two_stat = stat.compute_score_stat(model, one_sided = True)
+            #two_stat = stat.compute_score_stat(model, one_sided = False)
             ## record values
             one_sided = one_sided.at[r, k].set(one_stat)
             two_sided = two_sided.at[r, k].set(two_stat)

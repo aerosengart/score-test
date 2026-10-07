@@ -68,8 +68,8 @@ def one_two_sided_comparison(
             doc.save_rep(model, d_config, m_config, sub_dir = None)
         doc.log_routine(model, d_config, m_config, routine)
         ## compute test statistics
-        one_sided_stat = stat.compute_score_stat(model, one_sided = True)
-        two_sided_stat = stat.compute_score_stat(model, one_sided = False)
+        one_sided_stat, two_sided_stat = stat.compute_score_stat(model, one_sided = True)
+        #two_sided_stat = stat.compute_score_stat(model, one_sided = False)
         ## check for crazy large values
         #if one_sided_stat >= 100 or two_sided_stat >= 100:
             #doc.debug_sample(model = model)

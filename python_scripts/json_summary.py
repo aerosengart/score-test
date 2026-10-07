@@ -58,8 +58,6 @@ file_conts['two_sided_p_val_by'] = fdc(
     ps = file_conts['two_sided_p_val'], 
     method = 'by'
 )
-file_conts.to_csv(out_file, index = False)
-
 ## join with SPLASH output 
 splash_output = os.path.join(args.splash_out_dir, 'result.after_correction.all_anchors.tsv')
 splash_df = pd.read_csv(splash_output, sep = '\t', low_memory = False)

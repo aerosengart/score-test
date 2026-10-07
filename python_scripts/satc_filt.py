@@ -46,7 +46,6 @@ with open(args.anchor_file, 'r') as anch_file:
         with open(anch_list_file, 'a') as list_file:
             list_file.write(f'{anchor}\n')
 
-
 ## delete the satc_dir (so many files and we no longer need them)
 if args.clean_up:
     subprocess.call(['rm', '-r', args.satc_dir])

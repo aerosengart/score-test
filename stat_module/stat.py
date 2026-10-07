@@ -30,27 +30,19 @@ def compute_score_stat(model, one_sided = False):
         model - instance of Model class
         one_sided - boolean flag; whether to compute the one-sided score test
     RETURNS:
-        float; the test statistic value
+        two float; the one and two-sided test statistics
     RAISES:
         None
     """
     q = model.data.z_arr.shape[-1]
     ## compute score
-    score_val, scale_val = score.compute_score_var_comp(
+    score_val, scale_val = score.compute_score_eff(
         model, 
         scale = model.scale
     )
-    ## compute information
-    info_fx, info_fx_var, info_var = info.compute_info(
-        model, 
-        scale_val = scale_val
-    )
-    ## schur complement
-    schur_inv = helpers.lower_right_inv(
-        upp_left  = info_fx,
-        middle    = info_fx_var,
-        low_right = info_var
-    )
+
+    info_mat = info.compute_info_eff(model, scale_val)
+    info_inv = jnp.linalg.pinv(info_mat)
     
     ## find infimum if one-sided test. otherwise set to 0
     inf_val = 0
@@ -58,7 +50,7 @@ def compute_score_stat(model, one_sided = False):
         try:
             inf_val = helpers.compute_infimum(
                 score     = score_val,
-                schur_inv = schur_inv,
+                info_inv  = info_inv, 
                 test_p    = 0,
                 q         = q
             )
@@ -68,13 +60,13 @@ def compute_score_stat(model, one_sided = False):
     
     ## compute stat
     if q == 1:
-        stat = score_val**2 * schur_inv
+        stat = score_val**2 * info_inv 
     else:
         stat = jnp.matmul(
-            jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
+            jnp.matmul(jnp.transpose(score_val), info_inv), score_val
         )
     test_stat = jnp.squeeze(stat - inf_val)
-    return test_stat
+    return test_stat, jnp.squeeze(stat)
 
 
 

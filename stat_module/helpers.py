@@ -170,7 +170,7 @@ def lower_right_inv(
 
 def compute_infimum(
         score:     jnp.array, 
-        schur_inv: jnp.array,
+        info_inv:  jnp.array,
         test_p:    int,
         q:         int
     ) -> float:
@@ -180,7 +180,7 @@ def compute_infimum(
 
     ARGS:
         score     - jax.numpy array; the gradient (first derivative) of the full marginal log-likelihood with respect to var_comp evaluated at var_comp = 0 (q,)
-        schur_inv - jax.numpy array; the inverse Schur complement of the lower right block of the Fisher information (q + test_p, q + test_p)
+        info_inv - jax.numpy array; the inverse Schur complement of the lower right block of the Fisher information (q + test_p, q + test_p)
         test_p    - int; the number of fixed effects being tested
         q         - int; dimension of variance component (var_comp)
     RETURNS:
@@ -192,8 +192,8 @@ def compute_infimum(
     dims = test_p + q
     if dims == 1 and not hasattr(score, 'shape'):
         score = jnp.array([score])
-    q_arr = np.array(-jnp.matmul(schur_inv, score), dtype = float)
-    p_arr = np.array(schur_inv, dtype = float)
+    q_arr = np.array(-jnp.matmul(info_inv, score), dtype = float)
+    p_arr = np.array(info_inv, dtype = float)
     q_vec = matrix(q_arr)
     p_arr = matrix(p_arr)
     ## inequality constraint on var_comp
@@ -209,16 +209,15 @@ def compute_infimum(
     ## compute infimum value
     if dims == 1:
         inf_val = jnp.matmul(
-            jnp.matmul((score - sol_x), schur_inv),
+            jnp.matmul((score - sol_x), info_inv),
             (score - sol_x)
         )
     else:
         inf_val = jnp.matmul(
-            jnp.matmul(jnp.transpose((score - sol_x)), schur_inv),
-            (score - sol_x)
+            jnp.matmul(jnp.transpose((score - sol_x[:, None])), info_inv),
+            (score - sol_x[:, None])
         )
     return inf_val
-
 
 def compute_score_test_p_val(test_stat, one_sided = False):
     """Compute p-value for score test statistic when q = 1."""
@@ -227,6 +226,24 @@ def compute_score_test_p_val(test_stat, one_sided = False):
         return 0.5 * one_df_p 
     else:
         return one_df_p
+
+
+
+
+
+def trigamma_diff(y_i, disp_i):
+    """
+    Trigamma difference recurrence relation for target i values.
+    
+    trigamma(y + disp) - trigamma(disp) is equal to sum from k = 0 to y-1 of -1 / (disp + k)^2
+    """
+    y_i = y_i.astype('int')
+    ks = jnp.arange(jnp.max(y_i))
+    summands = -1 / (disp_i + ks)**2
+    values = jnp.concatenate([jnp.zeros(1), jnp.cumsum(summands)])
+    return values[y_i]
+
+
 
 
 ## SAMPLING/QUANTILE FUNCTIONS
