@@ -62,23 +62,6 @@ with open(anchor_bin_file, "a") as f:
                         f.write(new_line)
                 curr_idx += 1
             subprocess.call(['rm', bin_dump])
-            
-        
-        # satc = pd.read_csv(bin_dump, sep = '\t')
-        # ## rename columns
-        # if satc.shape[-1] == 4:
-        #     satc.columns = ['sample', 'anchor', 'target', 'count']
-        # else: ## 10X data
-        #     satc.columns = ['sample_id', 'cell_barcode', 'anchor', 'target', 'count']
-        # anchors = satc['anchor'].unique()
-        # for i in tqdm(range(len(anchors))):
-        #     anchor = anchors[i]
-        #     first_idx = satc['anchor'].eq(anchor).idxmax()
-        #     last_idx = satc['anchor'].eq(anchor).idxmin()
-        #     with open(anchor_bin_file, "a") as f:
-        #         f.write(f'{anchor},{i},{first_idx},{last_idx}\n')
-        ## delete bin_dump file to save space 
-
 if args.clean_up:
     subprocess.call(['rm', '-r', os.path.join(args.bin_dir, 'satc_dump')])
 

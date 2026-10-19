@@ -23,8 +23,10 @@ import yaml
 import json
 import os
 import sys
+import time
 
 import pandas    as pd
+import polars    as pl
 import jax.numpy as jnp
 
 from tqdm        import tqdm
@@ -76,7 +78,8 @@ def main():
     out_dir_succ = os.path.join(m_dict['out_dir'], 'score_test/success')
     out_dir_unst = os.path.join(m_dict['out_dir'], 'score_test/unstable')
     out_dir_fail = os.path.join(m_dict['out_dir'], 'score_test/failure')
-    temp_dir = os.path.join(d_dict['paths']['temp_dir'])
+    temp_dir = d_dict['paths']['temp_dir']
+    satc_dir = d_dict['paths']['satc_dir']
 
     if not os.path.isdir(out_dir_succ):
         os.makedirs(out_dir_succ, exist_ok = True)
@@ -86,67 +89,61 @@ def main():
         os.makedirs(out_dir_fail, exist_ok = True)
     if not os.path.isdir(temp_dir):
         os.makedirs(temp_dir, exist_ok = True)
+    if not os.path.isdir(satc_dir):
+        os.makedirs(satc_dir, exist_ok = True)
 
     fail_file = os.path.join(out_dir_fail, f'failed_anchors_{args.start_idx}_{args.end_idx - 1}.csv')
     with open(fail_file, 'w') as file:
-        file.write(f'anchor,idx,error\n')
-        
-    ## load specified rows of anchor_list
-    anch_seqs = []
-    first_idxs = []
-    last_idxs = []
-    bins = []
-    with open(args.anch_list) as fp:
-        ## skip header 
-        next(fp)
-        for i, line in enumerate(fp):
-            if (i >= args.start_idx) and (i < args.end_idx):
-                anch_line = line.strip().split(',')
-                anch = anch_line[0]
-                anch_seqs += [anch]
-                bins += [anch_line[1]]
-                first_idxs += [int(anch_line[2])]
-                last_idxs += [int(anch_line[3])]
-            elif i < args.start_idx:
-                continue
-            else: 
-                break
+        file.write(f'anchor,bin,idx,error\n')
+
+    ## only read [start_idx, end_idx) rows of list
+    ## +1 to start_idx because has_header = False but there _is_ a header (skip_rows will read header on starting line)
+    anch_subset = pl.read_csv(args.anch_list, skip_rows = args.start_idx + 1, n_rows = args.end_idx - args.start_idx, has_header = False, separator= ',', new_columns = ['anchor', 'bin', 'first_idx', 'last_idx'])
 
     ## loop over unique bins
-    unique_bins = set(bins)
+    unique_bins = list(anch_subset['bin'].unique())
     for bin in unique_bins:
-        ## list of anchors in bin and dataframe of SATC for them
-        bin_anchs, bin_df = process_bin(d_dict, bin, bins, anch_seqs, first_idxs, last_idxs)
+        ## list of anchors in bin and (polars!) dataframe of SATC for them
+        bin_anchs, bin_df = process_bin(d_dict, bin, anch_subset)
+        ## anchors will be consecutive in original list so just need to offset by index of first anchor from this bin
+        offset = anch_subset.get_column('anchor').index_of(bin_anchs[0])
         ## have to loop over job anchor list to maintain indexing arithmetic
-        for j, anchor in tqdm(enumerate(anch_seqs)):
-            ## skip anchor if not in this bin
-            if anchor not in bin_anchs:
-                continue
+        for idx, anchor in enumerate(bin_anchs):
+            j = idx + args.start_idx + offset
+            print(bin, j)
 
             ## anchor output file
-            anchor_succ = os.path.join(out_dir_succ, f'{args.start_idx + j}_{anchor}.json')
-            anchor_unst = os.path.join(out_dir_unst, f'{args.start_idx + j}_{anchor}.json')
+            anchor_succ = os.path.join(out_dir_succ, f'{j}_{anchor}.json')
+            anchor_unst = os.path.join(out_dir_unst, f'{j}_{anchor}.json')
 
             ## anchor score test was already run
             if os.path.isfile(anchor_succ) or os.path.isfile(anchor_unst):
                 continue
 
-            ## get anchor table data
-            anch_table_data = bin_df[bin_df['anchor'] == anchor]
+            ## get anchor table data --- drop anchor column
+            anch_table_data = bin_df.filter(pl.col('anchor') == anchor)
+            anch_table_data = anch_table_data.drop('anchor')
+
+            ## drop rows with max count < 10
+            anch_table_data = anch_table_data.filter(
+                    pl.col('count').max().over('target') >= 10
+                )
 
             ## skip anchor if table is too small
-            unique_targs = len(bin_df['target'].unique())
-            unique_samps = len(bin_df['sample'].unique())
-            if unique_targs < 5 or unique_samps < 20:
+            unique_targs = len(anch_table_data.get_column('target').unique())
+            unique_samps = len(anch_table_data.get_column('sample').unique())
+
+            if unique_targs < 30 or unique_samps < 200:
                 with open(fail_file, 'a') as file:
-                    file.write(f'{anchor},{j},insufficient data\n')
+                    file.write(f'{anchor},{bin},{j},insufficient data\n')
                 continue
 
             ## write table to file
             anch_tab_path = os.path.join(d_dict['paths']['satc_dir'], f'{anchor}.txt')
-            anch_table_data.to_csv(anch_tab_path, sep = '\t', columns = False, index = None)
+            anch_table_data.write_csv(anch_tab_path, separator = '\t', include_header = False)
 
             try: 
+                t0 = time.time()
                 ## instantiate data and model
                 data = data_types[d_dict['outcome']](d_dict, anchor)
                 q = data.z_arr.shape[-1]
@@ -156,7 +153,7 @@ def main():
                     model = model_types[m_dict['outcome']](m_dict, data)
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},model_fit\n')
+                        file.write(f'{anchor},{bin},{j},model fit\n')
                     continue
                 ## successful model fit -> into json
                 model_info = {
@@ -182,7 +179,7 @@ def main():
                     )
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},score\n')
+                        file.write(f'{anchor},{bin},{j},score\n')
                     continue
                 test_info = {
                     'score_val': score_val.tolist(), 
@@ -194,7 +191,7 @@ def main():
                     info_inv = jnp.linalg.pinv(info_mat)
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},information\n')
+                        file.write(f'{anchor},{bin},{j},information\n')
                     continue
                 test_info['info_inv'] = info_inv.tolist()
 
@@ -208,7 +205,7 @@ def main():
                     )
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},infimum\n')
+                        file.write(f'{anchor},{bin},{j},infimum\n')
                     continue
                 
                 test_info['inf_val'] = jnp.squeeze(inf_val).tolist()
@@ -227,7 +224,7 @@ def main():
                     test_info['one_side'] = float(one_sided_stat)
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},one_sided_stat\n')
+                        file.write(f'{anchor},{bin},{j},one sided stat\n')
                     continue
 
                 ## try to compute two-sided stat
@@ -236,14 +233,14 @@ def main():
                     test_info['two_side'] = float(two_sided_stat)
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},two_sided_stat\n')
+                        file.write(f'{anchor},{bin},{j},two sided stat\n')
                     continue
                 ## try to compute one-sided p-value
                 try:
                     one_sided_p = helpers.compute_score_test_p_val(one_sided_stat, True)
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},one_sided_p_value\n')
+                        file.write(f'{anchor},{bin},{j},one sided p-value\n')
                     continue
                 test_info['one_side_p'] = one_sided_p
 
@@ -252,13 +249,16 @@ def main():
                     two_sided_p = helpers.compute_score_test_p_val(two_sided_stat, False)
                 except:
                     with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{j},two_sided_p_value\n')
+                        file.write(f'{anchor},{bin},{j},two sided p-value\n')
                     continue
                 test_info['two_side_p'] = two_sided_p
 
+                t1 = time.time()
+                test_info['time'] = t1 - t0
+
                 ## create json
                 anchor_json = {'test':  test_info,
-                            'model': model_info}
+                               'model': model_info}
                 
                 ## write to file
                 if abs(jnp.max(model.fx_effs_arr)) > 1e6:
@@ -270,10 +270,13 @@ def main():
                         json.dump(anchor_json, file, indent = 4)
             except MemoryError:
                 with open(fail_file, 'a') as file:
-                    file.write(f'{anchor},{j},memory_error\n')
+                    file.write(f'{anchor},{bin},{j},memory error\n')
             except TypeError:
                 with open(fail_file, 'a') as file:
-                    file.write(f'{anchor},{j},type_error\n')
+                    file.write(f'{anchor},{bin},{j},type error\n')
+        
+            if d_dict['clean_up']:
+                subprocess.call(['rm', anch_tab_path])
             
 
 if __name__ == "__main__":

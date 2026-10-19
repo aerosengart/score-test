@@ -64,7 +64,6 @@ def alt_max(anch_arr, c_vec, c_vec_list = None):
             break
     return c_vec, f_vec, np.abs(stat)
 
-
 def generate_alt_max_c_f(
         anch_arr,
         rand_seed:      int  = 0,
@@ -178,3 +177,7 @@ def generate_asymp_c_f(anch_arr):
     c_vec[~zero_col] = c_old
 
     return c_vec, f_vec
+
+
+
+

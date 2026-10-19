@@ -9,6 +9,7 @@ import subprocess
 
 import jax.numpy  as jnp
 import pandas     as pd
+import polars     as pl
 import numpy      as np
 import scipy.sparse   as sps
 
@@ -150,7 +151,7 @@ def satc_to_sparse_rep(
     tab_val = []
     with open(anchor_file, 'r') as f:
         for line in f:
-            vals = line.split(' ')
+            vals = line.strip().split('\t')
             samp = str(vals[0])
             targ = str(vals[1])
             cnt  = int(vals[2])
@@ -219,7 +220,7 @@ def construct_metadata(
     return x_cov_df, z_cov_df
 
 
-def process_bin(d_config, bin, bins, anch_seqs, first_idxs, last_idxs):
+def process_bin(d_config, bin, anch_subset):
     bin_file = os.path.join(d_config['paths']['temp_dir'], f'bin{bin}.satc')
     ## dump SATC binary files as text if not already done
     if not os.path.isfile(bin_file):
@@ -228,29 +229,20 @@ def process_bin(d_config, bin, bins, anch_seqs, first_idxs, last_idxs):
             os.path.join(d_config['paths']['bin_dir'], f'bin{bin}.satc'),
             os.path.join(d_config['paths']['temp_dir'], f'bin{bin}.satc'),
         ])
-    ## indices of anchors in this bin
-    bin_anch_idxs = [i for i in range(len(bins)) if bins[i] == bin]
-    ## anchor sequences, first idxs, last idxs for anchors in this bin
-    bin_anchs = [anch_seqs[i] for i in bin_anch_idxs]
-    bin_anch_firsts = [first_idxs[i] for i in bin_anch_idxs]
-    bin_anch_lasts = [last_idxs[i] for i in bin_anch_idxs]
+    ## rows in anchor list that correspond to anchors for this job and this bin
+    one_bin_file = anch_subset.filter(pl.col('bin') == bin)
+    bin_anch_tab = pl.DataFrame(schema = {
+        'sample': pl.Int64,
+        'anchor': pl.String,
+        'target': pl.String,
+        'count':  pl.Int64
+    })
+    ## loop over anchors
+    for i in range(one_bin_file.shape[0]):
+        row = one_bin_file.row(i, named = True)
+        start_idx = row['first_idx']
+        nrow = row['last_idx'] - start_idx + 1 ## +1 to correct 0-indexing
+        anch_data = pl.read_csv(bin_file, skip_rows = start_idx, n_rows = nrow, has_header = False, separator = '\t', new_columns = ['sample', 'anchor', 'target', 'count'])
+        bin_anch_tab = pl.concat([bin_anch_tab, anch_data])
 
-    ## minimum and maximum index in bin file to save
-    min_first = min(bin_anch_firsts)
-    max_last = max(bin_anch_lasts)
-    
-    ## read the anchor-specific lines from the SATC file
-    bin_anch_tab = pd.DataFrame(columns = ['sample', 'anchor', 'target', 'count'])
-    with open(bin_file, 'r') as f:
-        for i, line in enumerate(f):
-            if i < min_first:
-                continue
-            elif i > max_last:
-                break
-            else:
-                new_row = pd.DataFrame(
-                    [line.strip().split('\t')],
-                    columns = ['sample', 'anchor', 'target', 'count']
-                )
-                bin_anch_tab = pd.concat([bin_anch_tab, new_row])
-    return bin_anchs, bin_anch_tab
+    return list(one_bin_file.get_column('anchor')), bin_anch_tab
