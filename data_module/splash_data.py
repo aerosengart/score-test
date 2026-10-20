@@ -8,7 +8,7 @@ import scipy.sparse as sps
 from data_module import data, helpers
 
 class Data(data.Data):
-    def __init__(self, config, anchor):
+    def __init__(self, config, anchor, satc_dir = None):
         ## initialize parent class
         super().__init__(config)
 
@@ -16,7 +16,11 @@ class Data(data.Data):
 
         ## set file paths for data ingestion
         self.splash_dir      = config['paths']['splash_dir']
-        self.satc_dir        = config['paths']['satc_dir']
+        ## needed for /scratch
+        if satc_dir is None:
+            self.satc_dir    = config['paths']['satc_dir']
+        else:
+            self.satc_dir = satc_dir
         self.metadata_file   = config['paths']['metadata_file']
         self.temp_dir        = config['paths']['temp_dir']
 

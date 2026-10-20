@@ -21,6 +21,7 @@ import subprocess
 import jsonargparse
 import yaml
 import json
+import logging
 import os
 import sys
 import time
@@ -37,6 +38,22 @@ from stat_module import score, info, helpers
 from data_module.dispatch  import data_types
 from data_module.helpers   import process_bin
 from model_module.dispatch import model_types
+
+
+def anchor_logger(logger_name, level = logging.DEBUG):
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(level)
+    format_string = ("%(asctime)s — %(levelname)s — %(message)s")
+    log_format = logging.Formatter(format_string)
+    # Creating and adding the console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(log_format)
+    logger.addHandler(console_handler)
+    # Creating and adding the file handler
+    file_handler = logging.FileHandler(logger_name, mode = 'w')
+    file_handler.setFormatter(log_format)
+    logger.addHandler(file_handler)
+    return logger
 
 def main():
     ## create an argument parser and add options
@@ -75,11 +92,12 @@ def main():
         m_dict = yaml.safe_load(file)
 
     ## check if save path exists just one time
-    out_dir_succ = os.path.join(m_dict['out_dir'], 'score_test/success')
-    out_dir_unst = os.path.join(m_dict['out_dir'], 'score_test/unstable')
-    out_dir_fail = os.path.join(m_dict['out_dir'], 'score_test/failure')
-    temp_dir = d_dict['paths']['temp_dir']
-    satc_dir = d_dict['paths']['satc_dir']
+    out_dir_succ = os.path.join(args.out_dir, 'score_test/success')
+    out_dir_unst = os.path.join(args.out_dir, 'score_test/unstable')
+    out_dir_fail = os.path.join(args.out_dir, 'score_test/failure')
+    final_succ = os.path.join(m_dict['out_dir'], 'score_test/success')
+    final_unst = os.path.join(m_dict['out_dir'], 'score_test/unstable')
+    table_dir = os.path.join(args.out_dir, 'anchor_tables')
 
     if not os.path.isdir(out_dir_succ):
         os.makedirs(out_dir_succ, exist_ok = True)
@@ -87,14 +105,14 @@ def main():
         os.makedirs(out_dir_unst, exist_ok = True)
     if not os.path.isdir(out_dir_fail):
         os.makedirs(out_dir_fail, exist_ok = True)
-    if not os.path.isdir(temp_dir):
-        os.makedirs(temp_dir, exist_ok = True)
-    if not os.path.isdir(satc_dir):
-        os.makedirs(satc_dir, exist_ok = True)
-
-    fail_file = os.path.join(out_dir_fail, f'failed_anchors_{args.start_idx}_{args.end_idx - 1}.csv')
-    with open(fail_file, 'w') as file:
-        file.write(f'anchor,bin,idx,error\n')
+    if not os.path.isdir(final_succ):
+        os.makedirs(final_succ, exist_ok = True)
+    if not os.path.isdir(final_unst):
+        os.makedirs(final_unst, exist_ok = True)
+    if not os.path.isdir(table_dir):
+        os.makedirs(table_dir, exist_ok = True)
+    # if not os.path.isdir(satc_dir):
+    #     os.makedirs(satc_dir, exist_ok = True)
 
     ## only read [start_idx, end_idx) rows of list
     ## +1 to start_idx because has_header = False but there _is_ a header (skip_rows will read header on starting line)
@@ -110,51 +128,59 @@ def main():
         ## have to loop over job anchor list to maintain indexing arithmetic
         for idx, anchor in enumerate(bin_anchs):
             j = idx + args.start_idx + offset
-            print(bin, j)
 
             ## anchor output file
             anchor_succ = os.path.join(out_dir_succ, f'{j}_{anchor}.json')
             anchor_unst = os.path.join(out_dir_unst, f'{j}_{anchor}.json')
+            anchor_fail = os.path.join(out_dir_fail, f'{j}_{anchor}.log')
 
+            ## new logger for anchor
+            logger = anchor_logger(anchor_fail)
             ## anchor score test was already run
-            if os.path.isfile(anchor_succ) or os.path.isfile(anchor_unst):
+            if os.path.isfile(os.path.join(final_succ, f'{j}_{anchor}.json')) \
+                or os.path.isfile(os.path.join(final_unst, f'{j}_{anchor}.json')):
                 continue
 
             ## get anchor table data --- drop anchor column
             anch_table_data = bin_df.filter(pl.col('anchor') == anchor)
             anch_table_data = anch_table_data.drop('anchor')
 
-            ## drop rows with max count < 10
+            unique_targs0 = len(anch_table_data.get_column('target').unique())
+            unique_samps0 = len(anch_table_data.get_column('sample').unique())
+            logger.info('Raw achor table has %s unique targets and %s unique samples', unique_targs0, unique_samps0)
+
             anch_table_data = anch_table_data.filter(
-                    pl.col('count').max().over('target') >= 10
-                )
+                pl.col('count').max().over('target') >= 5
+            )
 
             ## skip anchor if table is too small
-            unique_targs = len(anch_table_data.get_column('target').unique())
-            unique_samps = len(anch_table_data.get_column('sample').unique())
+            unique_targs1 = len(anch_table_data.get_column('target').unique())
+            unique_samps1 = len(anch_table_data.get_column('sample').unique())
+            logger.info('Dropping %s targets with maximum row count < 5', unique_targs0 - unique_targs1)
 
-            if unique_targs < 30 or unique_samps < 200:
-                with open(fail_file, 'a') as file:
-                    file.write(f'{anchor},{bin},{j},insufficient data\n')
+            if unique_targs1 < 30 or unique_samps1 < 200:
+                logger.warning('Skipping anchor due to insufficient data (only %s unique targets and %s unique samples)', unique_targs1, unique_samps1)
                 continue
 
+            logger.info('Filtered achor table has %s unique targets and %s unique samples', unique_targs1, unique_samps1)
             ## write table to file
-            anch_tab_path = os.path.join(d_dict['paths']['satc_dir'], f'{anchor}.txt')
+            anch_tab_path = os.path.join(table_dir, f'{anchor}.txt')
             anch_table_data.write_csv(anch_tab_path, separator = '\t', include_header = False)
 
             try: 
                 t0 = time.time()
                 ## instantiate data and model
-                data = data_types[d_dict['outcome']](d_dict, anchor)
+                data = data_types[d_dict['outcome']](d_dict, anchor, table_dir)
                 q = data.z_arr.shape[-1]
+                logger.info('Instantiated data object')
 
                 ## try to fit model
                 try:
                     model = model_types[m_dict['outcome']](m_dict, data)
                 except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},model fit\n')
+                    logger.error('Failed to instantiate model object')
                     continue
+                logger.info('Instantiated model object')
                 ## successful model fit -> into json
                 model_info = {
                     'n_samps': model.data.n_samps,
@@ -177,10 +203,10 @@ def main():
                         model, 
                         scale = model.scale
                     )
-                except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},score\n')
+                except Exception as err:
+                    logger.error('Failed to compute efficient score. Error: %s', err)
                     continue
+                logger.info('Computed efficient score')
                 test_info = {
                     'score_val': score_val.tolist(), 
                     'scale_val': float(scale_val)
@@ -189,10 +215,10 @@ def main():
                 try:
                     info_mat = info.compute_info_eff(model, scale_val)
                     info_inv = jnp.linalg.pinv(info_mat)
-                except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},information\n')
+                except Exception as err:
+                    logger.error('Failed to compute efficient information. Error: %s', err)
                     continue
+                logger.info('Computed efficient information')
                 test_info['info_inv'] = info_inv.tolist()
 
                 ## try to find infimum
@@ -203,11 +229,10 @@ def main():
                         test_p    = 0,
                         q         = q
                     )
-                except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},infimum\n')
+                except Exception as err:
+                    logger.error('Failed to complete infimum program. Error: %s', err)
                     continue
-                
+                logger.info('Completed infimum program')
                 test_info['inf_val'] = jnp.squeeze(inf_val).tolist()
 
                 ## compute stat
@@ -222,35 +247,35 @@ def main():
                 try:
                     one_sided_stat = jnp.squeeze(stat - inf_val)
                     test_info['one_side'] = float(one_sided_stat)
-                except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},one sided stat\n')
+                except Exception as err:
+                    logger.error('Failed to compute one-sided test statistic. Error: %s', err)
                     continue
+                logger.info('Computed one-sided test statistic')
 
                 ## try to compute two-sided stat
                 try:
                     two_sided_stat = jnp.squeeze(stat)
                     test_info['two_side'] = float(two_sided_stat)
-                except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},two sided stat\n')
+                except Exception as err:
+                    logger.error('Failed to compute two-sided test statistic. Error: %s', err)
                     continue
+                logger.info('Compute two-sided test statistic')
                 ## try to compute one-sided p-value
                 try:
                     one_sided_p = helpers.compute_score_test_p_val(one_sided_stat, True)
-                except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},one sided p-value\n')
+                except Exception as err:
+                    logger.error('Failed to compute one-sided p-value. Error: %s', err)
                     continue
+                logger.info('Computed one-sided p-value')
                 test_info['one_side_p'] = one_sided_p
 
                 ## try to compute two-sided p-value
                 try:
                     two_sided_p = helpers.compute_score_test_p_val(two_sided_stat, False)
-                except:
-                    with open(fail_file, 'a') as file:
-                        file.write(f'{anchor},{bin},{j},two sided p-value\n')
+                except Exception as err:
+                    logger.error('Failed to compute two-sided p-value. Error: %s', err)
                     continue
+                logger.info('Computed two-sided p-value')
                 test_info['two_side_p'] = two_sided_p
 
                 t1 = time.time()
@@ -268,13 +293,16 @@ def main():
                 else:
                     with open(anchor_succ, 'w') as file:
                         json.dump(anchor_json, file, indent = 4)
-            except MemoryError:
-                with open(fail_file, 'a') as file:
-                    file.write(f'{anchor},{bin},{j},memory error\n')
-            except TypeError:
-                with open(fail_file, 'a') as file:
-                    file.write(f'{anchor},{bin},{j},type error\n')
-        
+            except MemoryError as err:
+                logger.error('Failed to instantiate data due to memory error. Error: %s', err)
+            except TypeError as err:
+                logger.error('Failed to instantiate data due to type error. Error: %s', err)
+            except Exception as err:
+                logger.error('Failed to instantiate data due to error. Error: %s', err)
+            else:
+                ## delete logging file if successfully run
+                os.remove(anchor_fail)
+
             if d_dict['clean_up']:
                 subprocess.call(['rm', anch_tab_path])
             
