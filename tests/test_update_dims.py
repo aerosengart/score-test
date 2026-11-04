@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import numpy as np
 
 def test_nb_update_n_targs_smaller(simul_data):
     ## 3 level batch effect
@@ -28,17 +29,17 @@ def test_nb_update_n_targs_smaller(simul_data):
     assert len(data.targ_idx) == len(data.samp_idx)
     assert len(data.targ_idx) == len(data.counts)
     ## check that we kept the first ten targets
-    assert jnp.array_equal(data.fx_effs_arr, old_fx_effs[0:10, :])
-    assert jnp.array_equal(data.rd_effs_arr, old_rd_effs[0:10, :])
-    assert jnp.array_equal(data.disp_arr, old_disp[0:10, :])
-    assert jnp.array_equal(data.x_arr, old_x) ## shouldn't change
-    assert jnp.array_equal(data.z_arr, old_z) ## shouldn't change
+    assert np.array_equal(data.fx_effs_arr, old_fx_effs[0:10, :])
+    assert np.array_equal(data.rd_effs_arr, old_rd_effs[0:10, :])
+    assert np.array_equal(data.disp_arr, old_disp[0:10, :])
+    assert np.array_equal(data.x_arr, old_x) ## shouldn't change
+    assert np.array_equal(data.z_arr, old_z) ## shouldn't change
     assert max(data.targ_idx) <= 10
     ## check counts
     assert old_targ_idx[:len(data.targ_idx)] == data.targ_idx
     assert old_samp_idx[:len(data.targ_idx)] == data.samp_idx
     assert old_counts[:len(data.targ_idx)]   == data.counts
-    assert jnp.array_equal(old_y[:10, :], data.construct_y())
+    assert np.array_equal(old_y[:10, :], data.construct_y())
 
 
 
@@ -69,18 +70,18 @@ def test_nb_update_n_targs_smaller(simul_data):
 #     assert len(data.targ_idx) == len(data.samp_idx)
 #     assert len(data.targ_idx) == len(data.counts)
 #     ## check that we kept the first ten targets
-#     assert jnp.array_equal(data.fx_effs_arr[0:100, :], old_fx_effs)
-#     assert jnp.array_equal(data.rd_effs_arr[0:100, :], old_rd_effs)
-#     assert jnp.array_equal(data.disp_arr[0:100, :], old_disp)
-#     assert jnp.array_equal(data.x_arr, old_x)
-#     assert jnp.array_equal(data.z_arr, old_z)
+#     assert np.array_equal(data.fx_effs_arr[0:100, :], old_fx_effs)
+#     assert np.array_equal(data.rd_effs_arr[0:100, :], old_rd_effs)
+#     assert np.array_equal(data.disp_arr[0:100, :], old_disp)
+#     assert np.array_equal(data.x_arr, old_x)
+#     assert np.array_equal(data.z_arr, old_z)
 #     assert max(data.targ_idx) <= 101
 #     ## check counts
-#     assert jnp.array_equal(old_col_sums, data.col_sums) ## shouldn't change
+#     assert np.array_equal(old_col_sums, data.col_sums) ## shouldn't change
 #     assert data.targ_idx[:len(old_targ_idx)] == old_targ_idx
 #     assert data.samp_idx[:len(old_targ_idx)] == old_samp_idx
 #     assert data.counts[:len(old_targ_idx)]   == old_counts
-#     assert jnp.array_equal(old_y, data.construct_y()[:100, :])
+#     assert np.array_equal(old_y, data.construct_y()[:100, :])
 
 
 def test_nb_update_n_samps_smaller(simul_data):
@@ -107,14 +108,14 @@ def test_nb_update_n_samps_smaller(simul_data):
     assert len(data.targ_idx) == len(data.counts)
     ## check that we kept the first ten targets (compare uncentered values)
     new_x, new_z, new_x_names, new_z_names = data.get_covars(ctr = False)
-    assert jnp.allclose(new_x, old_x[:10, :])
-    assert jnp.allclose(new_z, old_z[:10, :])
-    assert jnp.array_equal(data.disp_arr, old_disp)
-    assert jnp.array_equal(data.fx_effs_arr, old_fx_effs)
-    assert jnp.array_equal(data.rd_effs_arr, old_rd_effs)
+    assert np.allclose(new_x, old_x[:10, :])
+    assert np.allclose(new_z, old_z[:10, :])
+    assert np.array_equal(data.disp_arr, old_disp)
+    assert np.array_equal(data.fx_effs_arr, old_fx_effs)
+    assert np.array_equal(data.rd_effs_arr, old_rd_effs)
     assert max(data.samp_idx) <= 10
     ## check counts 
-    assert jnp.array_equal(old_y[:, :10], data.construct_y())
+    assert np.array_equal(old_y[:, :10], data.construct_y())
     ## check column names
     assert new_x_names == old_x_names
     assert new_z_names == old_z_names
@@ -149,16 +150,16 @@ def test_nb_update_n_samps_smaller(simul_data):
 #     assert len(data.targ_idx) == len(data.counts)
 #     ## check that we kept the first targets --- compare uncentered values
 #     new_x, new_z = data.get_covars(ctr = False)
-#     assert jnp.allclose(new_x[:old_n_samps, :], old_x)
-#     assert jnp.allclose(new_z[:old_n_samps, :], old_z)
-#     assert jnp.array_equal(data.col_sums[:old_n_samps], old_col_sums)
-#     assert jnp.array_equal(data.disp_arr, old_disp)
-#     assert jnp.array_equal(data.fx_effs_arr, old_fx_effs)
-#     assert jnp.array_equal(data.rd_effs_arr, old_rd_effs)
+#     assert np.allclose(new_x[:old_n_samps, :], old_x)
+#     assert np.allclose(new_z[:old_n_samps, :], old_z)
+#     assert np.array_equal(data.col_sums[:old_n_samps], old_col_sums)
+#     assert np.array_equal(data.disp_arr, old_disp)
+#     assert np.array_equal(data.fx_effs_arr, old_fx_effs)
+#     assert np.array_equal(data.rd_effs_arr, old_rd_effs)
 #     assert max(data.samp_idx) <= 51
 #     ## check counts
-#     assert jnp.array_equal(data.col_sums[:old_n_samps], old_col_sums)
+#     assert np.array_equal(data.col_sums[:old_n_samps], old_col_sums)
 #     # assert data.targ_idx[:len(old_samp_idx)] == old_targ_idx
 #     # assert data.samp_idx[:len(old_samp_idx)] == old_samp_idx
 #     # assert data.counts[:len(old_samp_idx)]   == old_counts
-#     assert jnp.array_equal(old_y, data.construct_y()[:, :50])
+#     assert np.array_equal(old_y, data.construct_y()[:, :50])

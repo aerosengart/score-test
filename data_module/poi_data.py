@@ -17,13 +17,6 @@ class Data(custom_data.Data):
         self.set_disp_arr(disp_arr)
         
     ## ---------------------------------------------------------------------- ##
-    ## COMPUTATIONS                                                           ##
-    ## ---------------------------------------------------------------------- ##
-    def compute_mu(self):
-        """Compute and return linear predictor."""
-        return jnp.exp(self.compute_eta())
-
-    ## ---------------------------------------------------------------------- ##
     ## GETTERS / SETTERS                                                      ##
     ## ---------------------------------------------------------------------- ##
     def get_attrbs(self):
@@ -74,7 +67,7 @@ class Data(custom_data.Data):
     ## ---------------------------------------------------------------------- ##
     def draw_disp(self):
         """Sample negative binomial dispersion parameter."""
-        return jnp.ones((self.n_targs, 1)) * np.inf
+        return np.ones((self.n_targs, 1)) * np.inf
     
     def sample(self):
         """
@@ -83,9 +76,9 @@ class Data(custom_data.Data):
         ARGS:
             self
         RETURNS:
-            y_arr - jnp.array; response array (n_targs, n_samps)
+            y_arr - np.array; response array (n_targs, n_samps)
         RAISES:
             None
         """
-        y_arr = jnp.array(self.rng.poisson(lam = self.compute_mu()))
+        y_arr = np.array(self.rng.poisson(lam = self.compute_mu()))
         return y_arr

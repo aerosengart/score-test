@@ -6,7 +6,7 @@
 #SBATCH --ntasks-per-node 1   
 #SBATCH --cpus-per-task=2       # number of cores
 #SBATCH --mem-per-cpu=30G       # memory per core
-#SBATCH --time=10:00:00         # total run time limit (HH:MM:SS)
+#SBATCH --time=100:00:00         # total run time limit (HH:MM:SS)
 #SBATCH --nice=0              ## deprioritize to be nice to others
 #SBATCH --exclude=leviathan3,leviathan6 ## have to exclude these because i do not have permission to write to /scratch on them
 

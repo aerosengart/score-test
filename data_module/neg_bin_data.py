@@ -26,13 +26,6 @@ class Data(custom_data.Data):
         self.set_disp_arr(disp_arr)
 
     ## ---------------------------------------------------------------------- ##
-    ## COMPUTATIONS                                                           ##
-    ## ---------------------------------------------------------------------- ##
-    def compute_mu(self):
-        """Compute and return linear predictor."""
-        return jnp.exp(self.compute_eta())
-
-    ## ---------------------------------------------------------------------- ##
     ## GETTERS / SETTERS                                                      ##
     ## ---------------------------------------------------------------------- ##
     def get_attrbs(self):
@@ -96,11 +89,11 @@ class Data(custom_data.Data):
 
         ARGS:    None
         RAISES:  None
-        RETURNS: jnp.array; response array (n_targs, n_samps)
+        RETURNS: np.array; response array (n_targs, n_samps)
         """
-        probs = jnp.divide(self.disp_arr, jnp.add(self.compute_mu(), self.disp_arr))
+        probs = np.divide(self.disp_arr, np.add(self.compute_mu(), self.disp_arr))
         succs = self.disp_arr
-        y_arr = jnp.array(self.rng.negative_binomial(n = succs, p = probs))
+        y_arr = np.array(self.rng.negative_binomial(n = succs, p = probs))
         return y_arr
 
     def draw_disp(self):
@@ -112,6 +105,7 @@ class Data(custom_data.Data):
             sigma = self.disp_sigma,
             rng   = self.rng,
         )
-        disp_arr = disp_arr.at[disp_arr < 0.0].set(1e-4) ## avoid negative disp
+        disp_arr[disp_arr < 0.0] = 1e-4
+        #[disp_arr < 0.0].set(1e-4) ## avoid negative disp
         return disp_arr
 

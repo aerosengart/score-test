@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import numpy as np
 
 def test_poi_fx_targ_int_rd_slope(simul_data):
     ## n_samps: 50
@@ -14,8 +15,8 @@ def test_poi_fx_targ_int_rd_slope(simul_data):
     assert eta_arr.shape == (100, 50)
     assert len(data.targ_idx) == len(data.samp_idx) == len(data.counts)
     ## data values
-    assert jnp.array_equal(data.x_arr, jnp.ones((50, 1)))
-    assert not jnp.array_equal(data.z_arr, jnp.ones((100, 1)))
+    assert np.array_equal(data.x_arr, np.ones((50, 1)))
+    assert not np.array_equal(data.z_arr, np.ones((100, 1)))
 
 
 def test_poi_fx_targ_int_batch(simul_data):
@@ -32,11 +33,11 @@ def test_poi_fx_targ_int_batch(simul_data):
     assert eta_arr.shape == (100, 100)
     assert len(data.targ_idx) == len(data.samp_idx) == len(data.counts)
     ## data values
-    assert jnp.array_equal(data.x_arr[:, 0], jnp.ones((100,)))
-    unique_vals = jnp.unique(data.x_arr).tolist()
+    assert np.array_equal(data.x_arr[:, 0], np.ones((100,)))
+    unique_vals = np.unique(data.x_arr).tolist()
     wrong_vals = [x for x in unique_vals if x not in [0.0, 1.0]]
     assert len(wrong_vals) == 0
-    assert not jnp.array_equal(data.z_arr, jnp.ones((100, 1)))
+    assert not np.array_equal(data.z_arr, np.ones((100, 1)))
 
 
 def test_poi_batch_z(simul_data):
@@ -54,7 +55,7 @@ def test_poi_batch_z(simul_data):
     assert eta_arr.shape == (100, 50)
     assert len(data.targ_idx) == len(data.samp_idx) == len(data.counts)
     ## data values
-    assert jnp.array_equal(data.x_arr[:, 0], jnp.ones((50,)))
+    assert np.array_equal(data.x_arr[:, 0], np.ones((50,)))
     ## check all fixed effect covariates are in [0, 1]
-    assert jnp.sum(data.z_arr[:, 1:] < 0) == 0
-    assert jnp.sum(data.z_arr[:, 1:] > 2) == 0
+    assert np.sum(data.z_arr[:, 1:] < 0) == 0
+    assert np.sum(data.z_arr[:, 1:] > 2) == 0

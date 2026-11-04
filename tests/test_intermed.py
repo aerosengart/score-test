@@ -33,22 +33,22 @@ def test_quantities(simul_data, nb_model):
     assert r_vals.shape == (n_targs, n_samps, n_samps)
     assert a_vals.shape == (n_samps, n_samps)
 
-    assert not jnp.isnan(omega_vals).any()
-    assert not jnp.isnan(delta_vals).any()
-    assert not jnp.isnan(delta_inv_vals).any()
-    assert not jnp.isnan(epsilon_vals).any()
-    assert not jnp.isnan(xi_vals).any()
-    assert not jnp.isnan(c_vals).any()
-    assert not jnp.isnan(r_vals).any()
-    assert not jnp.isnan(a_vals).any()
+    assert not np.isnan(omega_vals).any()
+    assert not np.isnan(delta_vals).any()
+    assert not np.isnan(delta_inv_vals).any()
+    assert not np.isnan(epsilon_vals).any()
+    assert not np.isnan(xi_vals).any()
+    assert not np.isnan(c_vals).any()
+    assert not np.isnan(r_vals).any()
+    assert not np.isnan(a_vals).any()
 
-    print(model.compute_mu())
+    #print(model.compute_mu())
 
-    assert jnp.allclose(omega_vals, model.compute_omega())
-    p = np.argwhere(np.isnan(epsilon_vals))
-    print(p)
-    z = np.argwhere(np.isnan(model.compute_epsilon()))
-    print(z)
+    assert np.allclose(omega_vals, model.compute_omega())
+    #p = np.argwhere(np.isnan(epsilon_vals))
+    #print(p)
+    #z = np.argwhere(np.isnan(model.compute_epsilon()))
+    #print(z)
 
     # print(epsilon_vals[p[0][0], :])
 
@@ -60,6 +60,6 @@ def test_quantities(simul_data, nb_model):
 
     # print(model.compute_xi()[p[0][0], :])
 
-    assert jnp.allclose(epsilon_vals, model.compute_epsilon())
-    assert jnp.allclose(xi_vals, model.compute_xi())
-    assert jnp.allclose(delta_inv_omega_vals, model.compute_delta_inv_omega())
+    assert np.allclose(epsilon_vals, model.compute_epsilon())
+    assert np.allclose(xi_vals, model.compute_xi())
+    assert np.allclose(delta_inv_omega_vals, model.compute_delta_inv_omega())

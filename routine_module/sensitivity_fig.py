@@ -35,7 +35,7 @@ def set_fx_effs_jitter(model, jitter_vals):
 def set_disp_jitter(model, jitter_vals):
     ## fully set dispersion (not jitter)
     # if model.data.outcome == 'poi':
-    disp_arr = jnp.ones(model.data.disp_arr.shape) * jitter_vals
+    disp_arr = np.ones(model.data.disp_arr.shape) * jitter_vals
     # else:
         # disp_arr = model.data.disp_arr + jitter_vals
     ## overwrite model MLE with jittered array
@@ -109,8 +109,8 @@ def test_stat_sensitivity(
     jitter_func = jitter_dispatch[param]
 
     ## initialize
-    one_sided = jnp.zeros((reps, len(x_axis_vals)))
-    two_sided = jnp.zeros((reps, len(x_axis_vals)))
+    one_sided = np.zeros((reps, len(x_axis_vals)))
+    two_sided = np.zeros((reps, len(x_axis_vals)))
 
     for r in tqdm(range(reps)):
         ## draw data
@@ -128,10 +128,12 @@ def test_stat_sensitivity(
             one_stat, two_stat = stat.compute_score_stat(model, one_sided = True)
             #two_stat = stat.compute_score_stat(model, one_sided = False)
             ## record values
-            one_sided = one_sided.at[r, k].set(one_stat)
-            two_sided = two_sided.at[r, k].set(two_stat)
+            one_sided[r, k] = one_stat
+            two_sided[r, k] = two_stat
+            #one_sided = one_sided.at[r, k].set(one_stat)
+            #two_sided = two_sided.at[r, k].set(two_stat)
     ## save results
-    jnp.savez(
+    np.savez(
         os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         x_axis_vals     = x_axis_vals,
         one_sided_stats = one_sided,
@@ -157,16 +159,16 @@ def plot_sensitivity(d_config, m_config, param, reps, other_known):
     two_sided = []
     x_axis_vals = []
     for file in glob.glob(os.path.join(out_dir, 'results_iter*.npz')):
-        iter_res = jnp.load(file)
+        iter_res = np.load(file)
         ## overwrite since all the same
         x_axis_vals = iter_res['x_axis_vals']
         ## expand dims because we want to create a 2D array
-        one_sided.append(jnp.expand_dims(iter_res['one_sided_stats'], 1))
-        two_sided.append(jnp.expand_dims(iter_res['two_sided_stats'], 1))
+        one_sided.append(np.expand_dims(iter_res['one_sided_stats'], 1))
+        two_sided.append(np.expand_dims(iter_res['two_sided_stats'], 1))
 
     ## join together results (reps, iters, # jitter vals)
-    one_sided_stats = jnp.concatenate(one_sided, axis = 1)
-    two_sided_stats = jnp.concatenate(two_sided, axis = 1)
+    one_sided_stats = np.concatenate(one_sided, axis = 1)
+    two_sided_stats = np.concatenate(two_sided, axis = 1)
 
     ## get necessary quantities/names
     q = len(d_config['rd_effs']['sigma'])

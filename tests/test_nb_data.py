@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import numpy as np
 
 def test_nb_fx_targ_int_rd_slope(simul_data):
     ## n_samps: 50
@@ -15,12 +16,12 @@ def test_nb_fx_targ_int_rd_slope(simul_data):
     assert eta_arr.shape == (100, 50)
     assert len(data.targ_idx) == len(data.samp_idx) == len(data.counts)
     ## data values
-    assert jnp.array_equal(data.x_arr, jnp.ones((50, 1)))
-    assert not jnp.array_equal(data.z_arr, jnp.ones((50, 1)))
+    assert np.array_equal(data.x_arr, np.ones((50, 1)))
+    assert not np.array_equal(data.z_arr, np.ones((50, 1)))
     ## check that linear predictor is computed correctly
-    assert jnp.allclose(eta_arr - data.fx_effs_arr @ data.x_arr.T, jnp.zeros(eta_arr.shape))
+    assert np.allclose(eta_arr - data.fx_effs_arr @ data.x_arr.T, np.zeros(eta_arr.shape))
     ## dispersion is same for all targets
-    assert jnp.array_equal(data.disp_arr, 5 * jnp.ones((100, 1)))
+    assert np.array_equal(data.disp_arr, 5 * np.ones((100, 1)))
 
 
 def test_nb_fx_targ_int_slope_rd_slope(simul_data):
@@ -38,14 +39,14 @@ def test_nb_fx_targ_int_slope_rd_slope(simul_data):
     assert eta_arr.shape == (100, 50)
     assert len(data.targ_idx) == len(data.samp_idx) == len(data.counts)
     ## data values
-    assert jnp.array_equal(data.x_arr[:, 0], jnp.ones((50,)))
-    assert not jnp.array_equal(data.z_arr, jnp.ones((50, 1)))
+    assert np.array_equal(data.x_arr[:, 0], np.ones((50,)))
+    assert not np.array_equal(data.z_arr, np.ones((50, 1)))
     ## check that linear predictor is computed correctly
-    assert jnp.allclose((eta_arr - data.fx_effs_arr @ data.x_arr.T)[0, :], jnp.zeros(eta_arr.shape))
+    assert np.allclose((eta_arr - data.fx_effs_arr @ data.x_arr.T)[0, :], np.zeros(eta_arr.shape))
     ## check all fixed effect covariates are in [0, 1]
-    assert jnp.sum(data.x_arr[:, 1:] < 0) == 0
-    assert jnp.sum(data.x_arr[:, 1:] > 1) == 0
+    assert np.sum(data.x_arr[:, 1:] < 0) == 0
+    assert np.sum(data.x_arr[:, 1:] > 1) == 0
     ## dispersion is same for all targets
-    assert jnp.array_equal(data.disp_arr, 5 * jnp.ones((100, 1)))
+    assert np.array_equal(data.disp_arr, 5 * np.ones((100, 1)))
 
 

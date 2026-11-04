@@ -9,10 +9,15 @@ from data_module import data, helpers
 
 class Data(data.Data):
     def __init__(self, config, anchor, satc_dir = None):
-        ## initialize parent class
-        super().__init__(config)
-
         self.outcome = 'splash'
+        
+        ## covariate types
+        self.x_types = config['x']['types']
+        self.z_types = config['z']['types']
+        self.x_dummy = config['x']['dummy']
+        self.z_dummy = config['z']['dummy']
+        self.ctr_x   = bool(config['x']['center'])
+        self.ctr_z   = bool(config['z']['center'])
 
         ## set file paths for data ingestion
         self.splash_dir      = config['paths']['splash_dir']
@@ -23,6 +28,7 @@ class Data(data.Data):
             self.satc_dir = satc_dir
         self.metadata_file   = config['paths']['metadata_file']
         self.temp_dir        = config['paths']['temp_dir']
+        self.offsets_file    = config['paths']['offsets_file']
 
         ## anchor name and variance component (under H0!)
         self.anchor = anchor
@@ -35,11 +41,12 @@ class Data(data.Data):
         self.n_samps = len(self.samples)
         self.n_targs = len(self.targets)
 
-        ## covariate types
-        self.x_types = config['x']['types']
-        self.z_types = config['z']['types']
-        self.x_dummy = config['x']['dummy']
-        self.z_dummy = config['z']['dummy']
+        offsets = self.get_offsets()
+        self.set_offsets(offsets)
+
+        ## initialize parent class
+        super().__init__(config)
+
         ## set covariate arrays
         x_arr, z_arr, x_cols, z_cols = self.extract_covars()
         self.set_covars(x_arr, z_arr, x_cols, z_cols)
@@ -91,6 +98,21 @@ class Data(data.Data):
         self.targ_dict = t_dict
         self.samp_dict = s_dict
         return targ_idx, samp_idx, counts
+    
+
+    def get_offsets(self):
+        """
+        Read offsets file and extract relevant samples. 
+
+        ARGS:    None
+        RAISES:  None
+        RETURNS: None
+        """
+        offsets = helpers.load_offsets(
+            sample_idx   = self.samples,
+            offsets_file = self.offsets_file
+        )
+        return offsets
 
     def extract_covars(self):
         """Read covariate arrays from file."""
@@ -127,14 +149,14 @@ class Data(data.Data):
         z_pd_filt = z_pd_filt.drop(columns = ['splash_id', 'srr'])
 
         ## convert to array
-        x_arr = jnp.array(x_pd_filt)
-        z_arr = jnp.array(z_pd_filt)
+        x_arr = np.array(x_pd_filt)
+        z_arr = np.array(z_pd_filt)
 
         ## add intercepts
         if x_arr.shape[1] == 0:
             ## if no target-specific fixed slopes
-            x_arr = jnp.ones((self.n_samps, 1))
+            x_arr = np.ones((self.n_samps, 1))
         else:
-            x_arr = jnp.concatenate([jnp.ones((self.n_samps, 1)), x_arr], axis = 1)
+            x_arr = np.concatenate([np.ones((self.n_samps, 1)), x_arr], axis = 1)
         return x_arr, z_arr, x_cols, z_cols
     

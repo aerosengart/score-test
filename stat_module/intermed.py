@@ -7,12 +7,12 @@ import numpy as np
 def compute_delta(
         model,
         inv: bool = True
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute and return the delta_i values.
 
     ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
+    RETURNS: np.array (n_targs, n_samps)
     RAISES: None
     """
     ## compute delta_i values
@@ -22,7 +22,7 @@ def compute_delta(
         return 1 / model.compute_g_prime()
 
 
-def compute_omega(model) -> jnp.array:
+def compute_omega(model) -> np.array:
     """
     Compute and return the omega_i values.
 
@@ -44,7 +44,7 @@ def compute_omega(model) -> jnp.array:
     as mu -> 0, omega -> 0
 
     ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
+    RETURNS: np.array (n_targs, n_samps)
     RAISES: None
     """
     # ## initial computations
@@ -57,10 +57,10 @@ def compute_omega(model) -> jnp.array:
     # return omegas
     mu_arr =  model.compute_mu()
     ## reparametrize with iota = 1 / gamma
-    iota_arr = 1 / model.disp_arr * jnp.ones(model.data.n_samps)
+    iota_arr = 1 / model.disp_arr * np.ones(model.data.n_samps)
     return mu_arr / (1 + iota_arr * mu_arr)
 
-def compute_delta_inv_omega(model) -> jnp.array:
+def compute_delta_inv_omega(model) -> np.array:
     """
     Compute omega_i * 1 / delta_i. 
     avoid NaNs
@@ -72,13 +72,15 @@ def compute_delta_inv_omega(model) -> jnp.array:
     """
     omega_vals     = compute_omega(model)
     delta_inv_vals = compute_delta(model, inv = True)
-    delta_inv_omega_vals = omega_vals * delta_inv_vals
+    with np.errstate(divide = 'ignore', invalid = 'ignore'):
+        delta_inv_omega_vals = omega_vals * delta_inv_vals
     nan_vals = np.where(np.isnan(delta_inv_omega_vals))
-    delta_inv_omega_vals = delta_inv_omega_vals.at[nan_vals].set(1.0)
+    delta_inv_omega_vals[nan_vals] = 1.0
+    #delta_inv_omega_vals = delta_inv_omega_vals.at[nan_vals].set(1.0)
     return delta_inv_omega_vals
 
 
-def compute_epsilon(model) -> jnp.array:
+def compute_epsilon(model) -> np.array:
     """
     Compute and return the epsilon_i values.
 
@@ -94,7 +96,7 @@ def compute_epsilon(model) -> jnp.array:
     as mu -> 0, numer -> 0 and denom -> Inf so eps -> 0
 
     ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
+    RETURNS: np.array (n_targs, n_samps)
     RAISES: None
     """
     ## initial computations
@@ -103,22 +105,24 @@ def compute_epsilon(model) -> jnp.array:
     v_vals         = model.compute_v()
     v_prime_vals   = model.compute_v_prime()
     ## compute epsilon_i values
-    numer_vals = v_prime_vals * g_prime_vals + v_vals * g_prime_2_vals
-    denom_vals = v_vals**2 * g_prime_vals**3
-    eps_vals = numer_vals / denom_vals
+    with np.errstate(divide = 'ignore', invalid = 'ignore'):
+        numer_vals = v_prime_vals * g_prime_vals + v_vals * g_prime_2_vals
+        denom_vals = v_vals**2 * g_prime_vals**3
+        eps_vals = numer_vals / denom_vals
     nan_eps = np.where(np.isnan(eps_vals))
-    eps_vals = eps_vals.at[nan_eps].set(0.0)
+    eps_vals[nan_eps] = 0.0
+    #eps_vals = eps_vals.at[nan_eps].set(0.0)
     return eps_vals
 
 
-def compute_xi(model) -> jnp.array:
+def compute_xi(model) -> np.array:
     """
     Compute and return the xi_i values.
 
     Should not have any NaNs if no NaNs in omega or epsilon.
 
     ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
+    RETURNS: np.array (n_targs, n_samps)
     RAISES: None
     """
     ## initial computations
@@ -128,14 +132,14 @@ def compute_xi(model) -> jnp.array:
     ## compute xi_i values
     return omega_vals + epsilon_vals * resid_vals
 
-def compute_c(model) -> jnp.array:
+def compute_c(model) -> np.array:
     """
     Compute and return the c_i values.
 
     Should equal (omega_i * delta_i^{-1})**3 * kappa_{3,i} for canonical links (Poisson case).
 
     ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps)
+    RETURNS: np.array (n_targs, n_samps)
     RAISES: None
     """
     ## initial computations
@@ -149,12 +153,12 @@ def compute_c(model) -> jnp.array:
     term2 = delta_inv_omega_vals * epsilon_vals * kappa_2_vals
     return term1 - term2
 
-def compute_r(model) -> jnp.array:
+def compute_r(model) -> np.array:
     """
     Compute and return the R matrices for each cluster.
 
     ARGS: model - an instance of class Model
-    RETURNS: jnp.array (n_targs, n_samps, n_samps)
+    RETURNS: np.array (n_targs, n_samps, n_samps)
     RAISES: None
     """
     ## initial computations
@@ -169,7 +173,7 @@ def compute_r(model) -> jnp.array:
     ## vectorize wrapper
     def wrap_func(omega_i, delta_inv_omega_i, epsilon_i, kappa_2_i, kappa_3_i, kappa_4_i):
         ## off-diagonal elements
-        omega_omega = 2 * jnp.outer(omega_i, omega_i)
+        omega_omega = 2 * np.outer(omega_i, omega_i)
 
         ## diagonal elements
         term1 = delta_inv_omega_i**4 * kappa_4_i
@@ -177,44 +181,45 @@ def compute_r(model) -> jnp.array:
         term3 = epsilon_i**2 * kappa_2_i
         term4 = 2 * delta_inv_omega_i**2 * epsilon_i * kappa_3_i
         diag_vals = term1 + term2 + term3 - term4
-
-        r_arr = jnp.fill_diagonal(omega_omega, diag_vals, inplace = False)
-        return r_arr
+        np.fill_diagonal(omega_omega, diag_vals)
+        return np.reshape(omega_omega, (1, omega_omega.shape[0], omega_omega.shape[1]))
     ## compute values
-    vmap_func = jax.vmap(wrap_func, in_axes = [0, 0, 0, 0, 0, 0])
-    vals = vmap_func(
-        omega_vals, delta_inv_omega_vals, epsilon_vals, 
-        kappa_2_vals, kappa_3_vals, kappa_4_vals
-    )
-    return vals
+    vals = [wrap_func(omega_i, delta_inv_omega_i, epsilon_i, kappa_2_i, kappa_3_i, kappa_4_i) for omega_i, delta_inv_omega_i, epsilon_i, kappa_2_i, kappa_3_i, kappa_4_i in zip(omega_vals, delta_inv_omega_vals, epsilon_vals, 
+        kappa_2_vals, kappa_3_vals, kappa_4_vals)]
+    # vmap_func = jax.vmap(wrap_func, in_axes = [0, 0, 0, 0, 0, 0])
+    # vals = vmap_func(
+    #     omega_vals, delta_inv_omega_vals, epsilon_vals, 
+    #     kappa_2_vals, kappa_3_vals, kappa_4_vals
+    # )
+    return np.concatenate(vals, axis = 0)
 
 
 def compute_a_j(
         model,
         j:   int = 0
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute and return the A matrices for the j-th component of var_comp under the null hypothesis for all clusters.
     
     ARGS:
         model - an instance of class Model
         j     - int; index of variance component for derivative
-    RETURNS: jnp.array (n_samps, n_samps)
+    RETURNS: np.array (n_samps, n_samps)
     RAISES: None
     """
     D_var_comp_j = random_covar_wrt_var_comp_j(
         model,
         j = j
     )
-    #z_j = jnp.expand_dims(model.data.z_arr[:, j], 1)
+    #z_j = np.expand_dims(model.data.z_arr[:, j], 1)
     z_arr = model.data.z_arr
-    #return jnp.matmul(jnp.matmul(z_j, D_var_comp_j), jnp.transpose(z_j))
-    return jnp.matmul(jnp.matmul(z_arr, D_var_comp_j), jnp.transpose(z_arr))
+    #return np.matmul(np.matmul(z_j, D_var_comp_j), np.transpose(z_j))
+    return np.matmul(np.matmul(z_arr, D_var_comp_j), np.transpose(z_arr))
 
 def random_covar_wrt_var_comp_j(
         model,
         j: int
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute and return the matrix of first order partial derivatives of the random effects covariance matrix for a single cluster with respect to the j-th component.
     
@@ -222,10 +227,11 @@ def random_covar_wrt_var_comp_j(
         model - an instance of class Model
         j     - int; index of random effects variance component vector with respect to which to take the partial derivatives
     RETURNS:
-        jnp.array; first order partial derivatives of covariance matrix (q x q)
+        np.array; first order partial derivatives of covariance matrix (q x q)
     """
     q = model.data.z_arr.shape[-1]
-    q_zeros = jnp.zeros((q, q))
-    covar_deriv = q_zeros.at[j, j].set(1)
-    return covar_deriv
+    q_zeros = np.zeros((q, q))
+    q_zeros[j, j] = 1
+    #covar_deriv = q_zeros.at[j, j].set(1)
+    return q_zeros #covar_deriv
 

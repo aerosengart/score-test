@@ -42,7 +42,7 @@ def compute_score_stat(model, one_sided = False):
     )
 
     info_mat = info.compute_info_eff(model, scale_val)
-    info_inv = jnp.linalg.pinv(info_mat)
+    info_inv = np.linalg.pinv(info_mat)
     
     ## find infimum if one-sided test. otherwise set to 0
     inf_val = 0
@@ -62,19 +62,19 @@ def compute_score_stat(model, one_sided = False):
     if q == 1:
         stat = score_val**2 * info_inv 
     else:
-        stat = jnp.matmul(
-            jnp.matmul(jnp.transpose(score_val), info_inv), score_val
+        stat = np.matmul(
+            np.matmul(np.transpose(score_val), info_inv), score_val
         )
-    test_stat = jnp.squeeze(stat - inf_val)
-    return test_stat, jnp.squeeze(stat)
+    test_stat = np.squeeze(stat - inf_val)
+    return test_stat, np.squeeze(stat)
 
 
 
 def compute_lrt_stat(
         model,
-        fx_effs_arr_n: jnp.array = None,
-        fx_effs_arr_a: jnp.array = None,
-        disp_arr:      jnp.array = None
+        fx_effs_arr_n: np.array = None,
+        fx_effs_arr_a: np.array = None,
+        disp_arr:      np.array = None
     ):
     """
     Compute the likelihood ratio test statistic for variance components in a GLMM.
@@ -83,9 +83,9 @@ def compute_lrt_stat(
 
     ARGS:
         model         - instance of Model class
-        fx_effs_arr_n - jnp.array or None; fixed values for fixed effects coefficients in null model
-        fx_effs_arr_a - jnp.array or None; fixed values for fixed effects coefficients in alternative model
-        disp_arr      - jnp.array or None; fixed values for dispersion parameter array in null AND alternative model
+        fx_effs_arr_n - np.array or None; fixed values for fixed effects coefficients in null model
+        fx_effs_arr_a - np.array or None; fixed values for fixed effects coefficients in alternative model
+        disp_arr      - np.array or None; fixed values for dispersion parameter array in null AND alternative model
     RAISES: NotImplementedError - only can run on simulated data of small enough size
     RETURNS: float; the test statistic value
     """

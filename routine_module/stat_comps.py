@@ -55,8 +55,8 @@ def one_two_sided_comparison(
     routine = 'one_two_sided'
     out_dir = doc.routine_dir(d_config, m_config, routine)
     ## initialize
-    one_sided_stats = jnp.zeros((reps))
-    two_sided_stats = jnp.zeros((reps))
+    one_sided_stats = np.zeros((reps))
+    two_sided_stats = np.zeros((reps))
 
     for r in tqdm(range(reps)):
         ## draw data and build model
@@ -74,10 +74,12 @@ def one_two_sided_comparison(
         #if one_sided_stat >= 100 or two_sided_stat >= 100:
             #doc.debug_sample(model = model)
         ## record values
-        one_sided_stats = one_sided_stats.at[r].set(one_sided_stat)
-        two_sided_stats = two_sided_stats.at[r].set(two_sided_stat)
+        one_sided_stats[r] = one_sided_stat
+        two_sided_stats[r] = two_sided_stat
+        #one_sided_stats = one_sided_stats.at[r].set(one_sided_stat)
+        #two_sided_stats = two_sided_stats.at[r].set(two_sided_stat)
     ## save iteration
-    jnp.savez(
+    np.savez(
         os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         one_sided_stats = one_sided_stats,
         two_sided_stats = two_sided_stats
@@ -128,7 +130,7 @@ def score_lrt_comparison(
         score_stats[r] = score_stat
         lrt_stats[r] = lrt_stat
     ## save iteration
-    jnp.savez(
+    np.savez(
         os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         score_stats = score_stats,
         lrt_stats   = lrt_stats
@@ -157,14 +159,14 @@ def plot_one_two_sided(d_config, m_config, reps):
     one_sided = []
     two_sided = []
     for file in glob.glob(os.path.join(out_dir, 'results_iter*.npz')):
-        iter_res = jnp.load(file)
+        iter_res = np.load(file)
         ## expand dims because we want to create a 2D array
-        one_sided.append(jnp.expand_dims(iter_res['one_sided_stats'], 1))
-        two_sided.append(jnp.expand_dims(iter_res['two_sided_stats'], 1))
+        one_sided.append(np.expand_dims(iter_res['one_sided_stats'], 1))
+        two_sided.append(np.expand_dims(iter_res['two_sided_stats'], 1))
 
     ## join together results
-    one_sided_stats = jnp.concatenate(one_sided, axis = 1)
-    two_sided_stats = jnp.concatenate(two_sided, axis = 1)
+    one_sided_stats = np.concatenate(one_sided, axis = 1)
+    two_sided_stats = np.concatenate(two_sided, axis = 1)
 
     ## get necessary quantities/names
     q = len(d_config['rd_effs']['sigma'])
@@ -239,14 +241,14 @@ def plot_score_lrt(d_config, m_config, reps):
     score_stats = []
     lrt_stats = []
     for file in glob.glob(os.path.join(out_dir, 'results_iter*.npz')):
-        iter_res = jnp.load(file)
+        iter_res = np.load(file)
         ## expand dims because we want to create a 2D array
-        score_stats.append(jnp.expand_dims(iter_res['score_stats'], 1))
-        lrt_stats.append(jnp.expand_dims(iter_res['lrt_stats'], 1))
+        score_stats.append(np.expand_dims(iter_res['score_stats'], 1))
+        lrt_stats.append(np.expand_dims(iter_res['lrt_stats'], 1))
 
     ## join together results
-    score_stats = jnp.concatenate(score_stats, axis = 1)
-    lrt_stats = jnp.concatenate(lrt_stats, axis = 1)
+    score_stats = np.concatenate(score_stats, axis = 1)
+    lrt_stats = np.concatenate(lrt_stats, axis = 1)
 
     ## get necessary quantities/names
     q = len(d_config['rd_effs']['sigma'])

@@ -48,7 +48,6 @@ title_dispatch = {
     'n_targs': 'Number of Targets',
 }
 
-
 def one_two_sided_figure(
         d_config,
         m_config,
@@ -82,8 +81,8 @@ def one_two_sided_figure(
     ## document routine
     out_dir = doc.routine_dir(d_config, m_config, routine)
     ## initialize
-    one_sided_stats = jnp.zeros((reps, len(value_grid)))
-    two_sided_stats = jnp.zeros((reps, len(value_grid)))
+    one_sided_stats = np.zeros((reps, len(value_grid)))
+    two_sided_stats = np.zeros((reps, len(value_grid)))
 
     for r in tqdm(range(reps)):
         ## need to maintain same coefficients and the like
@@ -104,10 +103,12 @@ def one_two_sided_figure(
             #if one_sided_stat >= 100 or two_sided_stat >= 100:
                 #doc.debug_sample(model = model)
             ## record values
-            one_sided_stats = one_sided_stats.at[r, i].set(one_sided_stat)
-            two_sided_stats = two_sided_stats.at[r, i].set(two_sided_stat)
+            one_sided_stats[r, i] = one_sided_stat
+            two_sided_stats[r, i] = two_sided_stat
+            #one_sided_stats = one_sided_stats.at[r, i].set(one_sided_stat)
+            #two_sided_stats = two_sided_stats.at[r, i].set(two_sided_stat)
     ## save iteration
-    jnp.savez(
+    np.savez(
         os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         one_sided_stats = one_sided_stats,
         two_sided_stats = two_sided_stats,
@@ -121,13 +122,13 @@ def process_results(dir_files, out_dir):
     two_stat     = []
     value_grid   = []
     for file in dir_files:
-        iter_res = jnp.load(file)
+        iter_res = np.load(file)
         ## will be the same over all iterations, so we can just overwrite it
         value_grid = iter_res['value_grid']
         one_stat.append(iter_res['one_sided_stats'])
         two_stat.append(iter_res['two_sided_stats'])
     ## save full results
-    # jnp.savez(
+    # np.savez(
     #     os.path.join(out_dir, f'results.npz'),
     #     value_grid       = value_grid,
     #     one_sided_stats  = one_stats,
@@ -143,7 +144,7 @@ def plot_one_two_sided(d_config, m_config, param, reps):
     ## read all results from output directory 
     out_dir = doc.routine_dir(d_config, m_config, routine)
     dir_files = glob.glob(os.path.join(out_dir, 'results_iter*.npz'))
-    ## value_grid is list of ints; one_stats, two_stats are lists of jnp.ararys
+    ## value_grid is list of ints; one_stats, two_stats are lists of np.ararys
     value_grid, one_stats, two_stats = process_results(
         dir_files = dir_files,
         out_dir   = out_dir

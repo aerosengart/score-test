@@ -33,7 +33,7 @@ plt.rcParams['axes.unicode_minus'] = False
 ##----------------------------------------------------------------------------##
 def update_disp(data, value):
     """Set dispersion parameter value."""
-    data.set_disp(jnp.ones(data.disp_arr.shape) * value)
+    data.set_disp(np.ones(data.disp_arr.shape) * value)
     data.resample()
 
 def update_fx_effs_sigma(data, value):
@@ -46,13 +46,13 @@ def update_fx_effs_sigma(data, value):
 
 def update_rd_effs(data, value):
     """Set random effects."""
-    new_rd_effs = jnp.ones(data.rd_effs_arr.shape) * value
+    new_rd_effs = np.ones(data.rd_effs_arr.shape) * value
     data.set_effs(data.fx_effs_arr, new_rd_effs)
     data.resample()
 
 def update_var_comp(data, value):
     """Set variance components value."""
-    data.set_var_comps(jnp.ones(data.var_comp.shape) * value)
+    data.set_var_comps(np.ones(data.var_comp.shape) * value)
     ## requires redrawing the rd effs (leave fx effs and rd effs means alone)
     _, rd_effs = data.draw_effs()
     data.set_effs(data.fx_effs_arr, rd_effs)
@@ -286,7 +286,7 @@ def error_comparison(
 
     ## save results
     if len(d_config['x']['types']) == 0:
-        jnp.savez(
+        np.savez(
             os.path.join(out_dir, f'results_iter{iter_id}.npz'),
             x_axis_vals      = x_axis_vals,
             oasis_errs       = oasis_err,
@@ -295,7 +295,7 @@ def error_comparison(
             two_sided_errs   = two_err
         )
     else:
-        jnp.savez(
+        np.savez(
             os.path.join(out_dir, f'results_iter{iter_id}.npz'),
             x_axis_vals    = x_axis_vals,
             oasis_errs     = oasis_err,
@@ -314,23 +314,23 @@ def process_results_intercept_only(dir_files, out_dir):
     asymp_err   = []
     x_axis_vals = None
     for file in dir_files:
-        iter_res = jnp.load(file)
+        iter_res = np.load(file)
         ## will be the same over all iterations, so we can just overwrite it
         x_axis_vals = iter_res['x_axis_vals']
         ## expand dims because we want to create a 2D array
-        oasis_err.append(jnp.expand_dims(iter_res['oasis_errs'], 1))
-        one_err.append(jnp.expand_dims(iter_res['one_sided_errs'], 1))
-        two_err.append(jnp.expand_dims(iter_res['two_sided_errs'], 1))    
-        asymp_err.append(jnp.expand_dims(iter_res['oasis_asymp_errs'], 1))
-    oasis_errs = jnp.concatenate(oasis_err, axis = 1)
-    one_errs   = jnp.concatenate(one_err, axis = 1)
-    two_errs   = jnp.concatenate(two_err, axis = 1)
-    asymp_errs = jnp.concatenate(asymp_err, axis = 1)
+        oasis_err.append(np.expand_dims(iter_res['oasis_errs'], 1))
+        one_err.append(np.expand_dims(iter_res['one_sided_errs'], 1))
+        two_err.append(np.expand_dims(iter_res['two_sided_errs'], 1))    
+        asymp_err.append(np.expand_dims(iter_res['oasis_asymp_errs'], 1))
+    oasis_errs = np.concatenate(oasis_err, axis = 1)
+    one_errs   = np.concatenate(one_err, axis = 1)
+    two_errs   = np.concatenate(two_err, axis = 1)
+    asymp_errs = np.concatenate(asymp_err, axis = 1)
     # ## take average over iterations
-    oasis_errs = jnp.mean(oasis_errs, axis = 1)
-    one_errs   = jnp.mean(one_errs, axis = 1)
-    two_errs   = jnp.mean(two_errs, axis = 1)
-    asymp_errs = jnp.mean(asymp_errs, axis = 1)
+    oasis_errs = np.mean(oasis_errs, axis = 1)
+    one_errs   = np.mean(one_errs, axis = 1)
+    two_errs   = np.mean(two_errs, axis = 1)
+    asymp_errs = np.mean(asymp_errs, axis = 1)
     return x_axis_vals, oasis_errs, one_errs, two_errs, asymp_errs
 
 def process_results(dir_files, out_dir):
@@ -339,20 +339,20 @@ def process_results(dir_files, out_dir):
     two_err     = []
     x_axis_vals = None
     for file in dir_files:
-        iter_res = jnp.load(file)
+        iter_res = np.load(file)
         ## will be the same over all iterations, so we can just overwrite it
         x_axis_vals = iter_res['x_axis_vals']
         ## expand dims because we want to create a 2D array
-        oasis_err.append(jnp.expand_dims(iter_res['oasis_errs'], 1))
-        one_err.append(jnp.expand_dims(iter_res['one_sided_errs'], 1))
-        two_err.append(jnp.expand_dims(iter_res['two_sided_errs'], 1))    
-    oasis_errs = jnp.concatenate(oasis_err, axis = 1)
-    one_errs   = jnp.concatenate(one_err, axis = 1)
-    two_errs   = jnp.concatenate(two_err, axis = 1)
+        oasis_err.append(np.expand_dims(iter_res['oasis_errs'], 1))
+        one_err.append(np.expand_dims(iter_res['one_sided_errs'], 1))
+        two_err.append(np.expand_dims(iter_res['two_sided_errs'], 1))    
+    oasis_errs = np.concatenate(oasis_err, axis = 1)
+    one_errs   = np.concatenate(one_err, axis = 1)
+    two_errs   = np.concatenate(two_err, axis = 1)
     ## take average over iterations
-    oasis_errs = jnp.mean(oasis_errs, axis = 1)
-    one_errs   = jnp.mean(one_errs, axis = 1)
-    two_errs   = jnp.mean(two_errs, axis = 1)
+    oasis_errs = np.mean(oasis_errs, axis = 1)
+    one_errs   = np.mean(one_errs, axis = 1)
+    two_errs   = np.mean(two_errs, axis = 1)
     return x_axis_vals, oasis_errs, one_errs, two_errs, None
 
 

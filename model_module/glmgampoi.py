@@ -3,7 +3,7 @@
 Generalized linear model fitting and coefficient extraction. Models are fit under the null hypothesis (NO RANDOM EFFECTS). All fixed effects are assumed to be TARGET-SPECIFIC, meaning a null model is fit to each target's data. 
 """
 
-import jax.numpy       as jnp
+import numpy       as np
 import pandas          as pd
 import rpy2.robjects   as ro
 
@@ -18,14 +18,14 @@ def fit(model):
     Adds an offset term (called a "size factor" in glmGamPoi implementation) that adjusts for uneven sequencing depth (i.e. differences in column sums). The size factors are computed as the column sums of the count table divided by exp() of the mean log column sum like so:
 
     ```
-        col_sums       = jnp.sum(model.data.construct_y(), axis = 0)
-        scale_col_sums = col_sums / jnp.exp(jnp.mean(jnp.log(col_sums)))    
+        col_sums       = np.sum(model.data.construct_y(), axis = 0)
+        scale_col_sums = col_sums / np.exp(np.mean(np.log(col_sums)))    
     ```
 
     Means are computed as:
 
     ```
-        mu_{i,j} = jnp.exp(eta_{i,j} + jnp.log(scale_col_{j}))
+        mu_{i,j} = np.exp(eta_{i,j} + np.log(scale_col_{j}))
     ```
 
     ARGS:
@@ -33,7 +33,7 @@ def fit(model):
     RAISES:
         None
     RETURNS:
-        three jnp.arrays; fixed effects estimates (k, p), dispersion parameter estimates (k, 1), estimated means (n, k)
+        three np.arrays; fixed effects estimates (k, p), dispersion parameter estimates (k, 1), estimated means (n, k)
     """
     matrix_lib = importr('Matrix')
     glmgampoi  = importr('glmGamPoi')
@@ -43,10 +43,15 @@ def fit(model):
         j = ro.IntVector(model.data.samp_idx),
         x = ro.IntVector(model.data.counts),
     ) 
+
+    ## model fitting arguments dictionary
+    fit_args = {
+        'overdispersion_shrinkage': False
+    }
     if isinstance(model.estim_disp, list):
-        disps = ro.FloatVector(model.estim_disp)
+        fit_args['overdispersion'] = ro.FloatVector(model.estim_disp)
     else:
-        disps = model.estim_disp
+        fit_args['overdispersion'] = model.estim_disp
 
     if model.data.x_arr.shape[1] - 1 > 0:
         ## there are slopes in model, so need to create col_data object
@@ -60,24 +65,43 @@ def fit(model):
         ## to R dataframe
         with (ro.default_converter + pandas2ri.converter).context():
             col_df = ro.conversion.get_conversion().py2rpy(x_targs_pd)
-        ## fit model
-        fit = glmgampoi.glm_gp(
-            model_df, 
-            design   = ro.Formula(formula), 
-            col_data = col_df,
-            # do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-            overdispersion_shrinkage = False, #True,
-            overdispersion = disps
-        ) 
-    else:
-        fit = glmgampoi.glm_gp(
-            model_df,
-            # do_cox_reid_adjustment = False, ## don't do adjustment for bias in classical MLE
-            overdispersion_shrinkage = False, #1True,
-            overdispersion = disps
-        ) 
-    mu_arr = jnp.array(fit.rx2['Mu'])
+        fit_args['design'] = ro.Formula(formula)
+        fit_args['col_data'] = col_df
+        # ## fit model
+        # fit = glmgampoi.glm_gp(
+        #     model_df, 
+        #     design   = ro.Formula(formula), 
+        #     col_data = col_df,
+        #     overdispersion_shrinkage = False, #True,
+        #     overdispersion = disps
+        # ) 
+    # else:
+    #     fit = glmgampoi.glm_gp(
+    #         model_df,
+    #         overdispersion_shrinkage = False, #1True,
+    #         overdispersion = disps
+    #     ) 
+    ## fit model
+    if model.data.outcome == 'splash':
+        fit_args['offset'] = ro.FloatVector(model.data.offsets)
+        fit_args['size_factors'] = False
+
+    fit = glmgampoi.glm_gp(model_df, **fit_args)
+
+    # fit = glmgampoi.glm_gp(
+    #     model_df, 
+    #     design   = ro.Formula(formula), 
+    #     col_data = col_df,
+    #     overdispersion_shrinkage = False, #True,
+    #     overdispersion = disps
+    # ) 
+    mu_arr = np.array(fit.rx2['Mu'])
     fx_effs, disps, offsets = extract_estims(fit)
+
+    ## splash data has specific offsets so overwrite whatever model returned
+    if model.data.outcome == 'splash':
+        offsets = model.data.offsets
+
     return fx_effs, disps, offsets, mu_arr
 
 
@@ -87,16 +111,16 @@ def extract_estims(fit):
 
     ARGS: fit - glmGamPoi fitted object
     RAISES: None
-    RETURNS: three jnp.arrays - (n_targs, p) and (n_targs, 1) and (n_samps, 1)
+    RETURNS: three np.arrays - (n_targs, p) and (n_targs, 1) and (n_samps, 1)
     """
     base    = importr('base')
     ## extract fixed effects
-    fx_effs = jnp.array(base.summary(fit).rx2('Beta'))
+    fx_effs = np.array(base.summary(fit).rx2('Beta'))
     ## overdispersion is inverse of how we specify it (1 / disp)
-    disps  = 1 / jnp.array(base.summary(fit).rx2('overdispersions'))
-    disps = jnp.expand_dims(disps, 1)
+    disps  = 1 / np.array(base.summary(fit).rx2('overdispersions'))
+    disps = np.expand_dims(disps, 1)
     ## size factors = exp(offsets), so take log
-    offsets = jnp.log(jnp.array(base.summary(fit).rx2('size_factors')))
+    offsets = np.log(np.array(base.summary(fit).rx2('size_factors')))
     return fx_effs, disps, offsets
 
 
@@ -110,10 +134,10 @@ def extract_estims(fit):
 # def fit_model(
 #         model, 
 #         null_model:  bool = True,
-#         fx_effs_arr: jnp.array = None,
-#         rd_effs_arr: jnp.array = None,
-#         gamma:       jnp.array = None,
-#         var_comp:     jnp.array = None
+#         fx_effs_arr: np.array = None,
+#         rd_effs_arr: np.array = None,
+#         gamma:       np.array = None,
+#         var_comp:     np.array = None
 #     ):
 #     """
 #     Fit a generalized linear (mixed) model using glmmTMB.
@@ -122,11 +146,11 @@ def extract_estims(fit):
 #         model      - instance of Model class
 #         null_model - bool; whether to fit the null model or not
 #     RETURNS: 
-#         jnp.array; fixed effects estimates (n, k, p)
-#         jnp.array; random effects modes (n, k, q)
-#         jnp.array; auxiliary variable estimate (1,) 
-#         jnp.array; variance components estimates (q,)
-#         jnp.array; random effects variance components estimate (k,)
+#         np.array; fixed effects estimates (n, k, p)
+#         np.array; random effects modes (n, k, q)
+#         np.array; auxiliary variable estimate (1,) 
+#         np.array; variance components estimates (q,)
+#         np.array; random effects variance components estimate (k,)
 #         glmmTMB fitted model
 #     RAISES: 
 #         None
@@ -175,10 +199,10 @@ def extract_estims(fit):
 #         None
 #     RETURNS:
 #         dict; dictionary containing
-#             fx_effs - jnp.array; fixed effects estimates (n, k, p)
-#             rd_effs - jnp.array; random effects modes (n, k, q)
-#             disp    - jnp.array; auxiliary variable estimate (1,) 
-#             var_comp - jnp.array; random effects variance components estimate (q,)
+#             fx_effs - np.array; fixed effects estimates (n, k, p)
+#             rd_effs - np.array; random effects modes (n, k, q)
+#             disp    - np.array; auxiliary variable estimate (1,) 
+#             var_comp - np.array; random effects variance components estimate (q,)
 #     """
 #     ## importing for rpy2
 #     glmmTMB = importr('glmmTMB')
@@ -200,19 +224,19 @@ def extract_estims(fit):
 #                 var_corr
 #             )
 #     else:
-#         rd_effs_estims = jnp.zeros((model.data.n, model.data.k, model.data.q))
-#         rd_sd = jnp.empty((model.data.q))
+#         rd_effs_estims = np.zeros((model.data.n, model.data.k, model.data.q))
+#         rd_sd = np.empty((model.data.q))
 #     return {'fx_effs': fx_effs_estims, 
 #             'rd_effs': rd_effs_estims, 
-#             'disp': jnp.array(disp), 
-#             'var_comp': jnp.array(rd_sd**2)}
+#             'disp': np.array(disp), 
+#             'var_comp': np.array(rd_sd**2)}
 
 
 
 # def glmmtmb_fit(
 #         model, 
 #         formula: str, 
-#         data_arr: jnp.array,
+#         data_arr: np.array,
 #         mapping = None,
 #         params  = None
 #     ):
@@ -222,7 +246,7 @@ def extract_estims(fit):
 #     ARGS:
 #         model    - instance of Model class
 #         formula  - str; formula for glmmTMB
-#         data_arr - jnp.array
+#         data_arr - np.array
 #     RAISES:
 #         NotImplementedError - if model outcome is not one of neg_bin or quasi_poi
 #     RETURNS:
@@ -369,17 +393,17 @@ def extract_estims(fit):
 #         z_design = z_design[:, :, 1:]
 
 #     ## reshape to n x k rows
-#     resp_np = jnp.reshape(
+#     resp_np = np.reshape(
 #         a     = resp,
 #         shape = (total_obs, 1),
 #         order = 'F'
 #     )
-#     x_np = jnp.reshape(
+#     x_np = np.reshape(
 #         a     = x_design,
 #         shape = (total_obs, x_design.shape[-1]),
 #         order = 'F'
 #     )
-#     z_np = jnp.reshape(
+#     z_np = np.reshape(
 #         a     = z_design,
 #         shape = (total_obs, z_design.shape[-1]),
 #         order = 'F'
@@ -388,7 +412,7 @@ def extract_estims(fit):
 #     ## add cluster indicator
 #     clusters = list(range(1, k + 1))
 #     cluster_idx = np.repeat(clusters, n)
-#     cluster_idx_np = jnp.reshape(
+#     cluster_idx_np = np.reshape(
 #         a     = cluster_idx, 
 #         shape = (total_obs, 1), 
 #         order = 'F'
@@ -411,17 +435,17 @@ def extract_estims(fit):
 #             ## no fixed slopes --- we test these in the combined test
 #             fx_cols = []
 #             data_arr = pd.DataFrame(
-#                 jnp.concatenate([resp_np, cluster_idx_np], axis = 1)
+#                 np.concatenate([resp_np, cluster_idx_np], axis = 1)
 #             )
 #             data_arr.columns = ['y'] + ['clust']
 #         else:
 #             data_arr = pd.DataFrame(
-#                 jnp.concatenate([resp_np, x_np, cluster_idx_np], axis = 1)
+#                 np.concatenate([resp_np, x_np, cluster_idx_np], axis = 1)
 #             )
 #             data_arr.columns = ['y'] + fx_cols + ['clust']
 #     else:
 #         data_arr = pd.DataFrame(
-#             jnp.concatenate([resp_np, x_np, z_np, cluster_idx_np], axis = 1)
+#             np.concatenate([resp_np, x_np, z_np, cluster_idx_np], axis = 1)
 #         )
 #         data_arr.columns = ['y'] + fx_cols + rd_cols + ['clust']
 #     data_arr['clust'] = data_arr['clust'].astype('int')
@@ -439,8 +463,8 @@ def extract_estims(fit):
 
 # def set_map_params(
 #         model,
-#         fx_effs_arr: jnp.array,
-#         gamma:       jnp.array,
+#         fx_effs_arr: np.array,
+#         gamma:       np.array,
 #     ):
 #     """
 #     Set mapping and starting values for fixing parameter values in glmmTMB.
@@ -454,8 +478,8 @@ def extract_estims(fit):
 #     theta    - log std dev for random effects (var_comp values)
 
 #     ARGS:
-#         fx_effs_arr - jnp.array; fixed effects values (n, k, p)
-#         gamma       - jnp.array; negative binomial overdispersion (n, k, 1)
+#         fx_effs_arr - np.array; fixed effects values (n, k, p)
+#         gamma       - np.array; negative binomial overdispersion (n, k, 1)
 #     RAISES:
 #     RETURNS:
 #         mapping - dictionary of what parameters we should not estimate
@@ -475,11 +499,11 @@ def extract_estims(fit):
 #         if model.data.fx_int > 0:
 #             fx_effs += [fx_effs_adj[0, 0, 0]]
 #         if model.data.fx_by_k_int > 0:
-#             fx_effs_baseline = jnp.transpose(jnp.tile(
+#             fx_effs_baseline = np.transpose(np.tile(
 #                 fx_effs_arr[:, 0, 0], (model.data.k - 1, 1)
 #             ))
 #             fx_effs_adj = fx_effs_adj.at[:, 1:, 0].set(fx_effs_adj[:, 1:, 0] - fx_effs_baseline)
-#             fx_effs += jnp.squeeze((jnp.reshape(
+#             fx_effs += np.squeeze((np.reshape(
 #                 a     = fx_effs_adj[0, :, 0],
 #                 shape = (model.data.k),
 #                 order = 'C'
@@ -490,7 +514,7 @@ def extract_estims(fit):
 #                 fx_effs += [fx_effs_adj[0, 0, j + 1]]
                 
 #         # if model.data.fx_by_k_slope > 0:
-#         #     fx_effs_baseline = jnp.transpose(jnp.tile(
+#         #     fx_effs_baseline = np.transpose(np.tile(
 #         #         fx_effs_arr[:, 0, 1:], (model.data.k - 1,)
 #         #     ))
 #         #     fx_effs_adj = fx_effs_adj.at[:, 1:, 1:].set(fx_effs_adj[:, 1:, 1:] - fx_effs_baseline)
@@ -500,12 +524,12 @@ def extract_estims(fit):
 #     if gamma is not None:
 #         ## ONLY WORKS FOR SHARED GAMMA PARAMETER (ACROSS ALL CLUSTERS/OBS)
 #         mapping['betadisp'] = ro.FactorVector([ro.NA_Character])
-#         params['betadisp']  = ro.FloatVector([jnp.log(gamma[0, 0, 0])])
+#         params['betadisp']  = ro.FloatVector([np.log(gamma[0, 0, 0])])
 
 #     return ro.ListVector(mapping), ro.ListVector(params)
 
 
-# def extract_fx(model, fit) -> jnp.array:
+# def extract_fx(model, fit) -> np.array:
 #     """
 #     Extract the fixed effects estimates from a glmmTMB fit.
 
@@ -513,7 +537,7 @@ def extract_estims(fit):
 #         model - instance of Model class
 #         fit   - an instance of model.summary (from R)
 #     RETURNS: 
-#         jnp.array; fixed effect MLEs (n, k, p)
+#         np.array; fixed effect MLEs (n, k, p)
 #     RAISES: None
 #     """
 #     ## R imports
@@ -529,7 +553,7 @@ def extract_estims(fit):
 #         coef_df = ro.conversion.get_conversion().rpy2py(fx_coefs)
 
 #     ## initialize
-#     fx_effs_estims = jnp.zeros((model.data.n, model.data.k, model.data.p))
+#     fx_effs_estims = np.zeros((model.data.n, model.data.k, model.data.p))
 
 #     ## accounting for intercept in indexing
 #     if model.data.fx_int or model.data.fx_by_k_int:
@@ -581,7 +605,7 @@ def extract_estims(fit):
 
 
 
-# def extract_rd(model, fit) -> jnp.array:
+# def extract_rd(model, fit) -> np.array:
 #     """
 #     Extract the random effects conditional modes from a glmmTMB fit.
 
@@ -589,7 +613,7 @@ def extract_estims(fit):
 #         model - instance of Model class
 #         fit   - an instance of model.summary (from R)
 #     RETURNS: 
-#         jnp.array; random effect modes (n, k, q)
+#         np.array; random effect modes (n, k, q)
 #     RAISES: None
 #     """
 #     ## R imports
@@ -603,13 +627,13 @@ def extract_estims(fit):
 #         coef_df = ro.conversion.get_conversion().rpy2py(rd_effs_modes)
 
 #     ## initialize
-#     rd_effs_estims = jnp.zeros((model.data.n, model.data.k, model.data.q))
+#     rd_effs_estims = np.zeros((model.data.n, model.data.k, model.data.q))
 #     col_names = coef_df.columns
 
 #     for eff_idx in range(len(col_names)):
 #         coef = coef_df.iloc[eff_idx]
 #         #eff_idx = int(re.sub(r'\D', '', coef.name))
-#         vals = jnp.tile(coef.values, (model.data.n, 1))
+#         vals = np.tile(coef.values, (model.data.n, 1))
 #         rd_effs_estims = rd_effs_estims.at[:, :, eff_idx].set(
 #             rd_effs_estims[:, :, eff_idx] + vals
 #         )

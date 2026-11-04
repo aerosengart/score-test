@@ -15,28 +15,27 @@ from stat_module import intermed
 
 def info_fx_effs_fx_effs(
         model
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute variance of score for fixed effects vector. Eq. (15) in Lin (1997).
 
     ARGS:
         model       - an instance of class Model
     RETURNS:
-        jnp.array - the covariance matrix for the score components for the fixed effects (n_targs, p, p)
+        np.array - the covariance matrix for the score components for the fixed effects (n_targs, p, p)
     RAISES:
         None
     """
-    ## omega values (rel_targs, n_samps)
-    omega_vals = intermed.compute_omega(model)#[model.data.rel_targs, :]
+    omega_vals = intermed.compute_omega(model)
     ## (n_samps, p)
     x_arr = model.data.x_arr
-    vals = jnp.swapaxes(x_arr[None, :, :] * omega_vals[:, :, None], 1, 2) @ x_arr
+    vals = np.swapaxes(x_arr[None, :, :] * omega_vals[:, :, None], 1, 2) @ x_arr
     return vals
 
 def info_disp_disp(
         model, 
         tol: float = 1e-12
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute variance of score for dispersion parameters. 
 
@@ -44,7 +43,7 @@ def info_disp_disp(
         model  - an instance of class Model
         tol    - positive float
     RETURNS:
-        jnp.array - the covariance matrix for the score components for the dispersion parameters (n_targs, 1, 1)
+        np.array - the covariance matrix for the score components for the dispersion parameters (n_targs, 1, 1)
     RAISES:
         None
     """
@@ -70,7 +69,7 @@ def info_var_comp_j_var_comp_l(
         model,
         j: int = 0,
         l: int = 0
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute variance of score for var_comp. 
 
@@ -79,7 +78,7 @@ def info_var_comp_j_var_comp_l(
         j     - int; first index of tau sqr score
         l     - int; second index of tau sqr score
     RETURNS:
-        jnp.array - the covariance of the score component corresponding to the j-th and l-th coordinates of var_comp (1, 1)
+        np.array - the covariance of the score component corresponding to the j-th and l-th coordinates of var_comp (1, 1)
     RAISES:
         None
     """
@@ -90,16 +89,17 @@ def info_var_comp_j_var_comp_l(
     a_l_arr = intermed.compute_a_j(model, j = l)
 
     def wrap_func(r_arr):
-        return jnp.sum(jnp.multiply(a_j_arr, jnp.multiply(r_arr, a_l_arr)))
-
-    vmap_func = jax.vmap(wrap_func, in_axes = [0])
-    vals = vmap_func(r_arrs)
-    return jnp.sum(vals) / 4
+        val = np.sum(np.multiply(a_j_arr, np.multiply(r_arr, a_l_arr)))
+        return np.expand_dims(val, 0)
+    vals = np.concatenate([wrap_func(r_arr) for r_arr in r_arrs], axis = 0)
+    # vmap_func = jax.vmap(wrap_func, in_axes = [0])
+    # vals = vmap_func(r_arrs)
+    return np.sum(vals) / 4
 
 def info_fx_effs_var_comp_j(
         model,
         j: int
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute covariance of score for fixed effects vector and j-th coordinate of var_comp. Eq. (14) in Lin (1997).
 
@@ -107,7 +107,7 @@ def info_fx_effs_var_comp_j(
         model       - an instance of class Model
         j           - int; index of variance components score
     RETURNS:
-        jnp.array - the covariance of score for fixed effects vector and j-th coordinate of var_comp (n_targs, p)
+        np.array - the covariance of score for fixed effects vector and j-th coordinate of var_comp (n_targs, p)
     RAISES:
         None
     """
@@ -116,22 +116,24 @@ def info_fx_effs_var_comp_j(
     ## (n_samps, n_samps)
     a_j_arr = intermed.compute_a_j(model, j = j)
     ## (n_samps, 1)
-    a_j_diag = jnp.expand_dims(jnp.diag(a_j_arr), 1)
+    a_j_diag = np.expand_dims(np.diag(a_j_arr), 1)
     ## (n_samps, p)
     x_arr = model.data.x_arr
     def wrap_func(c_targ):
-        c_targ = jnp.expand_dims(c_targ, 1)
-        return a_j_diag * c_targ * x_arr 
-    vmap_func = jax.vmap(wrap_func, in_axes = [0])
-    ## (rel_targs, n_samps, p)
-    vals = vmap_func(c_vals)
-    sum_vals = jnp.sum(vals, 1)
+        c_targ = np.expand_dims(c_targ, 1)
+        val = a_j_diag * c_targ * x_arr 
+        return np.expand_dims(val, 0)
+    vals = np.concatenate([wrap_func(c_targ) for c_targ in c_vals], axis = 0)
+    # vmap_func = jax.vmap(wrap_func, in_axes = [0])
+    # ## (rel_targs, n_samps, p)
+    # vals = vmap_func(c_vals)
+    sum_vals = np.sum(vals, 1)
     ## unravel Fortran style --- column-major because we want to do the values
     ## for the first covariate, then the second covariate, etc.
-    # result = jnp.ravel(sum_vals, order = 'F')
+    # result = np.ravel(sum_vals, order = 'F')
     ## unravel C style --- row-major because we want to do the values
     ## for the first target, then the second target, etc.
-    return sum_vals #jnp.ravel(sum_vals, order = 'C')
+    return sum_vals #np.ravel(sum_vals, order = 'C')
 
 def info_fx_effs_var_comp(model):
     """
@@ -140,7 +142,7 @@ def info_fx_effs_var_comp(model):
     ARGS:
         model       - an instance of class Model
     RETURNS:
-        jnp.array - (n_targs, q, p)
+        np.array - (n_targs, q, p)
     RAISES:
         None
     """
@@ -148,7 +150,7 @@ def info_fx_effs_var_comp(model):
     z_sqr = model.data.z_arr**2
     return (1 / 2) * np.swapaxes(z_sqr[None, :, :] * omega_vals[:, :, None], 1, 2) @ model.data.x_arr
 
-def info_disp_var_comp(model) -> jnp.array:
+def info_disp_var_comp(model) -> np.array:
     """
     Compute covariance of score for dispersion parameters and j-th coordinate of var_comp.
 
@@ -156,7 +158,7 @@ def info_disp_var_comp(model) -> jnp.array:
         model       - an instance of class Model
         j           - int; index of variance components score
     RETURNS:
-        jnp.array - the covariance of score for variance components and j-th coordinate of var_comp (n_targs, q, 1)
+        np.array - the covariance of score for variance components and j-th coordinate of var_comp (n_targs, q, 1)
     RAISES:
         None
     """
@@ -168,7 +170,7 @@ def info_disp_var_comp(model) -> jnp.array:
 def compute_info_eff(
         model,
         scale_val: float = None
-    ) -> jnp.array:
+    ) -> np.array:
     """
     Compute the (scaled) information matrix under H0. 
 
@@ -181,7 +183,7 @@ def compute_info_eff(
     """
     ## initializations
     q = model.data.z_arr.shape[-1]
-    info_var = jnp.zeros((q, q))
+    info_var = np.zeros((q, q))
 
     ## fx effs
     info_fx      = info_fx_effs_fx_effs(model)
@@ -196,8 +198,10 @@ def compute_info_eff(
                 j = idx1,
                 l = idx2
             )
-            info_var = info_var.at[idx1, idx2].set(info_tau_tau)
-            info_var = info_var.at[idx2, idx1].set(info_tau_tau)
+            info_var[idx1, idx2] = info_tau_tau
+            info_var[idx2, idx1] = info_tau_tau
+            #info_var = info_var.at[idx1, idx2].set(info_tau_tau)
+            #info_var = info_var.at[idx2, idx1].set(info_tau_tau)
 
     ## variance of efficient score
     try:
@@ -229,7 +233,7 @@ def compute_info_eff(
 # def compute_info(
 #         model,
 #         scale_val: float = None
-#     ) -> jnp.array:
+#     ) -> np.array:
 #     """
 #     Compute the (scaled) information matrix under H0. 
 
@@ -243,8 +247,8 @@ def compute_info_eff(
 #     q = model.data.z_arr.shape[-1]
 #     ## initializations
 #     p = model.data.x_arr.shape[-1]
-#     info_fx_var = jnp.zeros((model.data.n_targs, p, q))
-#     info_var = jnp.zeros((q, q))
+#     info_fx_var = np.zeros((model.data.n_targs, p, q))
+#     info_var = np.zeros((q, q))
 
 #     ## fx effs
 #     info_fx_effs = info_fx_effs_fx_effs(model)

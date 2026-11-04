@@ -46,7 +46,7 @@ def score_var_comp_emp_dist(
     data = data_types[d_config['outcome']](d_config)
     data.resample()
     ## initialize
-    scores_arr = jnp.zeros((data.z_arr.shape[-1], reps)) 
+    scores_arr = np.zeros((data.z_arr.shape[-1], reps)) 
     routine = 'score_var_comp_emp_dist'
     ## get plot name and document routine
     out_dir = doc.routine_dir(d_config, m_config, routine)
@@ -62,10 +62,11 @@ def score_var_comp_emp_dist(
         doc.log_routine(model, d_config, m_config, routine)
         ## compute score
         gradient, _ = score.compute_score_var_comp(model, scale = False)
-        scores_arr = scores_arr.at[:, i].set(gradient)
+        scores_arr[:, i] = gradient
+        #scores_arr = scores_arr.at[:, i].set(gradient)
 
     ## save full results
-    jnp.savez(
+    np.savez(
         os.path.join(out_dir, f'results_iter{iter_id}.npz'),
         scores = scores_arr
     )
@@ -93,7 +94,7 @@ def score_var_comp_by_disp_emp_dist(
     ## initialize
     disp_vals = [-0.5, -0.25, -0.1, -0.05, 0.0, \
                   0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
-    scores_arr = jnp.zeros((data.z_arr.shape[-1], len(disp_vals), reps)) 
+    scores_arr = np.zeros((data.z_arr.shape[-1], len(disp_vals), reps)) 
     routine = 'score_var_comp_by_disp_emp_dist'
     ## get plot name and document routine
     out_dir = doc.routine_dir(d_config, m_config, routine)
@@ -111,10 +112,11 @@ def score_var_comp_by_disp_emp_dist(
                 doc.debug_sample(model = model)
             ## compute score
             gradient, _ = score.compute_score_var_comp(model, scale = False)
-            scores_arr = scores_arr.at[:, i].set(gradient)
+            scores_arr[:, i] = gradient
+            #scores_arr = scores_arr.at[:, i].set(gradient)
 
     ## save full results
-    jnp.savez(
+    np.savez(
         os.path.join(out_dir, routine, f'results_iter{iter_id}.npz'),
         scores = scores_arr
     )
@@ -140,11 +142,11 @@ def score_hist(d_config, m_config, reps):
     out_dir = doc.output_directory_path(d_config, m_config)
     results = []
     for file in glob.glob(os.path.join(out_dir, routine, 'results_iter*.npz')):
-        iter_res = jnp.load(file)
+        iter_res = np.load(file)
         results.append(iter_res['scores'])
 
     ## join together results
-    scores_arr = jnp.concatenate(results)
+    scores_arr = np.concatenate(results)
 
     ## get necessary quantities/names
     dim = len(d_config['rd_effs']['sigma'])

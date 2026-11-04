@@ -37,20 +37,6 @@ class Data(simul_data.Data):
     ## ---------------------------------------------------------------------- ##
     ## SAMPLERS                                                               ##
     ## ---------------------------------------------------------------------- ##
-    def compute_eta(self) -> jnp.array:
-        """
-        Compute "true" linear predictor.
-
-        ARGS:    None
-        RAISES:  None
-        RETURNS: jnp.array; linear predictors (n_targs, n_samps)
-        """
-        fx_part = self.fx_effs_arr @ self.x_arr.T
-        rd_part = self.rd_effs_arr @ self.z_arr.T
-        lin_pred = fx_part + rd_part
-        # lin_pred += jnp.tile(self.offsets, (self.n_targs, 1))
-        return lin_pred
-
     def draw_covars(self):
         """
         Draw covariate arrays.
@@ -188,7 +174,28 @@ class Data(simul_data.Data):
     #     # log(col_sums) - mean(log(col_sums))
     #     offsets = jnp.log(col_sums) / jnp.exp(jnp.mean(jnp.log(col_sums)))
     #     return col_sums, offsets
+
+        
+    ## ---------------------------------------------------------------------- ##
+    ## COMPUTATIONS                                                           ##
+    ## ---------------------------------------------------------------------- ##
+    def compute_eta(self) -> jnp.array:
+        """
+        Compute "true" linear predictor.
+
+        ARGS:    None
+        RAISES:  None
+        RETURNS: jnp.array; linear predictors (n_targs, n_samps)
+        """
+        fx_part = self.fx_effs_arr @ self.x_arr.T
+        rd_part = self.rd_effs_arr @ self.z_arr.T
+        lin_pred = fx_part + rd_part
+        # lin_pred += jnp.tile(self.offsets, (self.n_targs, 1))
+        return lin_pred
     
+    ## ---------------------------------------------------------------------- ##
+    ## SETTERS                                                                ##
+    ## ---------------------------------------------------------------------- ##
     def update_n_samps(self, n_samps):
         """Update number of samples by removing data. Attributes that depend upon the number of samples include: n_samps, x_arr, z_arr, eta_arr, mu_arr, counts, targ_idx, samp_idx, column sums.
         """
@@ -214,7 +221,6 @@ class Data(simul_data.Data):
         ## set dimensions
         self.n_samps = n_samps
 
-
     def update_n_targs(self, n_targs):
         """Update number of targets by removing data. Attributes that depend upon the number of targets include: n_targs, fx_effs_arr, rd_effs_arr, eta_arr, mu_arr, counts, targ_idx, samp_idx.
         """
@@ -239,62 +245,11 @@ class Data(simul_data.Data):
         self.n_targs = n_targs
 
     ## ---------------------------------------------------------------------- ##
-    ## SETTERS                                                                ##
-    ## ---------------------------------------------------------------------- ##
-    def parse_config(self, config):
-        """Set attributes provided in config file."""
-        ## number of samples
-        self.n_samps = int(config['n_samps'])
-        ## number of targets
-        self.n_targs = int(config['n_targs'])
-
-        ## covariate types
-        self.x_types = config['x']['types']
-        self.z_types = config['z']['types']
-        self.x_dummy = config['x']['dummy']
-        self.z_dummy = config['z']['dummy']
-
-        # self.p = len(self.x_types) + 1
-        ## dimension of random effects
-        # self.q = len(self.z_types)
-
-        ## set column sums hyper parameters
-        # if 'col_sums' in config.keys():
-        #     self.col_sums_low  = int(config['col_sums']['low'])
-        #     self.col_sums_high = int(config['col_sums']['high'])
-        # else:
-        #     self.col_sums_low = None
-        #     self.col_sums_high = None
-
-        ## set fixed effects coefficients hyper parameters
-        self.fx_effs_mu    = float(config['fx_effs']['mu'])
-        self.fx_effs_sigma = float(config['fx_effs']['sigma'])
-
-        ## set random effects coefficients hyper parameters
-        self.rd_effs_mu    = float(config['rd_effs']['mu'])
-        self.rd_effs_sigma = config['rd_effs']['sigma']
-
-        ## set fixed effects coefficients hyper parameters
-        if 'mu' in config['x'].keys():
-            self.x_mu = float(config['x']['mu'])
-        if 'sigma' in config['x'].keys():
-            self.x_sigma = float(config['x']['sigma'])
-
-        ## set fixed effects coefficients hyper parameters
-        if 'mu' in config['z'].keys():
-            self.z_mu = float(config['z']['mu'])
-        if 'sigma' in config['z'].keys():
-            self.z_sigma = config['z']['sigma']
-
-
-    ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
     def sample(self):
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def compute_mu(self):
-        raise NotImplementedError("Subclasses must implement this method.")
 
     # def draw_offsets(self):
     #     raise NotImplementedError("Subclasses must implement this method.")

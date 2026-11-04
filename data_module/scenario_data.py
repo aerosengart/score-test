@@ -23,23 +23,30 @@ class Data(simul_data.Data):
         ## initialize parent class
         super().__init__(config)
 
-    ## ---------------------------------------------------------------------- ##
-    ## SETTERS                                                                ##
-    ## ---------------------------------------------------------------------- ##
-    def parse_config(self, config):
-        """Set attributes provided in config file."""
-        ## number of samples
-        self.n_samps = int(config['n_samps'])
-        ## number of targets
-        self.n_targs = int(config['n_targs'])
+        ## outcome distribution
+        self.outcome = str(config['outcome'])
+        
+        ## set covariates: (n_samps, p), (n_samps, q)
+        x_arr, z_arr, x_names, z_names = self.draw_covars()
+        self.set_covars(x_arr, z_arr, x_names, z_names)
+
+        ## set coefficients: (n_targs, p), (n_targs, q)
+        fx_effs_arr, rd_effs_arr = self.draw_effs()
+        self.set_effs(fx_effs_arr, rd_effs_arr)
 
     ## ---------------------------------------------------------------------- ##
     ## CHILD CLASS FUNCTIONS                                                  ##
     ## ---------------------------------------------------------------------- ##
     def sample(self):
         raise NotImplementedError("Subclasses must implement this method.")
+    
+    def update_n_samps(self, n_samps):
+        raise NotImplementedError("Subclasses must implement this method.")
+    
+    def update_n_targs(self, n_targs):
+        raise NotImplementedError("Subclasses must implement this method.")
 
-    def compute_mu(self):
+    def compute_eta(self):
         raise NotImplementedError("Subclasses must implement this method.")
     
     def draw_covars(self):

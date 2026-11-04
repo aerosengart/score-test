@@ -10,13 +10,13 @@ class Data():
         self.seed = int(config['seed'])
         self.rng  = np.random.default_rng(self.seed)
 
-        ## flag to center covariates
-        self.ctr_x = bool(config['x']['center'])
-        self.ctr_z = bool(config['z']['center'])
-
     ## ---------------------------------------------------------------------- ##
     ## GETTERS / SETTERS                                                      ##
     ## ---------------------------------------------------------------------- ##
+    def set_offsets(self, offsets):
+        """Setter for offsets."""
+        self.offsets = offsets
+
     def set_covars(self, x_arr, z_arr, x_cols, z_cols):
         """Setter for covariate arrays and column names."""
         ## column names
@@ -24,16 +24,16 @@ class Data():
         self.z_col_names = z_cols
         ## column values
         if self.ctr_x:
-            self.x_ctr_vals = jnp.mean(x_arr, axis = 0)
-            self.x_arr = x_arr - jnp.tile(self.x_ctr_vals, (x_arr.shape[0], 1))
+            self.x_ctr_vals = np.mean(x_arr, axis = 0)
+            self.x_arr = x_arr - np.tile(self.x_ctr_vals, (x_arr.shape[0], 1))
         else: 
-            self.x_ctr_vals = jnp.zeros((x_arr.shape[1],))
+            self.x_ctr_vals = np.zeros((x_arr.shape[1],))
             self.x_arr = x_arr
         if self.ctr_z:
-            self.z_ctr_vals = jnp.mean(z_arr, axis = 0)
-            self.z_arr = z_arr - jnp.tile(self.z_ctr_vals, (z_arr.shape[0], 1))
+            self.z_ctr_vals = np.mean(z_arr, axis = 0)
+            self.z_arr = z_arr - np.tile(self.z_ctr_vals, (z_arr.shape[0], 1))
         else:
-            self.z_ctr_vals = jnp.zeros((z_arr.shape[1],))
+            self.z_ctr_vals = np.zeros((z_arr.shape[1],))
             self.z_arr = z_arr
     
 
@@ -64,7 +64,7 @@ class Data():
         if ctr:
             return self.x_arr, self.z_arr, self.x_col_names, self.z_col_names
         unctr_x = self.x_arr \
-            + jnp.tile(self.x_ctr_vals, (self.x_arr.shape[0], 1))
+            + np.tile(self.x_ctr_vals, (self.x_arr.shape[0], 1))
         unctr_z = self.z_arr \
-            + jnp.tile(self.z_ctr_vals, (self.z_arr.shape[0], 1))
+            + np.tile(self.z_ctr_vals, (self.z_arr.shape[0], 1))
         return unctr_x, unctr_z, self.x_col_names, self.z_col_names

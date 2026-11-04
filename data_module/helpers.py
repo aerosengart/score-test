@@ -27,9 +27,9 @@ def draw_gaussian_arr(row, col, rng, mu = 0.0, sigma = 0.0):
         sigma - float; standard deviation
         rng   - numpy random number generator
     RAISES: None
-    RETURNS: jnp.array (row, col)
+    RETURNS: np.array (row, col)
     """
-    return jnp.array(rng.normal(
+    return np.array(rng.normal(
         loc   = mu,
         scale = sigma,
         size  = (row, col)
@@ -47,17 +47,17 @@ def draw_factor_arr(row, levels, rng, covar = None):
         covar  - str; name of covariate (if dummified)
     RAISES: None
     RETURNS: 
-        jnp.array (row, 1) and list (1,) if levels <= 2
-        jnp.array (row, levels - 1) and list (levels - 1,) if levels > 2
+        np.array (row, 1) and list (1,) if levels <= 2
+        np.array (row, levels - 1) and list (levels - 1,) if levels > 2
     """
     level_list = range(levels)
-    x_levels = jnp.asarray(rng.choice(level_list, size = row))
+    x_levels = np.asarray(rng.choice(level_list, size = row))
     if levels > 2:
         factor_vals = pd.get_dummies(x_levels, prefix = covar, drop_first = True)
         names = factor_vals.columns.tolist()
-        factor_vals = jnp.array(factor_vals)
+        factor_vals = np.array(factor_vals)
     else:
-        factor_vals = jnp.reshape(x_levels, (row, 1))
+        factor_vals = np.reshape(x_levels, (row, 1))
         names = covar
     return factor_vals, names
 
@@ -71,7 +71,7 @@ def draw_time_arr(row, col, reg_int, rng):
         reg_int - bool; whether "times" should be at regular intervals
         rng     - numpy random number generator
     RAISES:  None
-    RETURNS: jnp.array (row, col)
+    RETURNS: np.array (row, col)
     """
     arr = np.empty((row, col))
     for i in range(col):
@@ -81,7 +81,7 @@ def draw_time_arr(row, col, reg_int, rng):
             arr[:, i] = vals
         else:
             arr[:, i] = rng.uniform(0, 1, row)
-    return jnp.array(arr)
+    return np.array(arr)
 
 
 ## ---------------------------------------------------------------------- ##
@@ -91,7 +91,7 @@ def table_to_sparse_rep(counts):
     """
     Construct lists for CSC representation of count table.
 
-    ARGS:    counts - jnp.array; anchor count table 
+    ARGS:    counts - np.array; anchor count table 
     RAISES:  None
     RETURNS: three lists of integers; target indices, sample indices, and non-zero counts
     """
@@ -112,7 +112,7 @@ def sparse_rep_to_table(row_idx, col_idx, counts):
         col_idx - list of ints; column indices of non-zero counts
         counts  - list of ints; non-zero counts
     RAISES:  None
-    RETURNS: jnp.array (n_row, n_col); dense count table
+    RETURNS: np.array (n_row, n_col); dense count table
     """
     ## 1-indexed
     n_row = max(row_idx)
@@ -123,6 +123,19 @@ def sparse_rep_to_table(row_idx, col_idx, counts):
         (n_row, n_col)
     )
     return coo_arr.tocsc().todense()
+
+def load_offsets(
+        sample_idx: list,
+        offsets_file: str
+    ):
+    """
+    Read offsets from file.
+    """
+    offsets = pd.read_csv(offsets_file, sep = ',', header = 0)
+    offsets = offsets['offset'].to_list()
+    samples = [int(i) for i in sample_idx]
+    return [offsets[i] for i in samples]
+
 
 def satc_to_sparse_rep(
         anchor:     str, 
@@ -218,6 +231,29 @@ def construct_metadata(
     x_cov_df = x_cov_dum.drop_duplicates()
     z_cov_df = z_cov_dum.drop_duplicates()
     return x_cov_df, z_cov_df
+
+def extract_satc_from_bin(d_config, bin, start_idx, nrow): 
+    """
+    Load anchor SATC data from bin file.
+    """
+    bin_file = os.path.join(d_config['paths']['temp_dir'], f'bin{bin}.satc')
+    anch_data = pl.read_csv(bin_file, skip_rows = start_idx, n_rows = nrow, has_header = False, separator = '\t', new_columns = ['sample', 'anchor', 'target', 'count'])
+    return anch_data
+
+def process_bins(d_config, bins):
+    """
+    Make sure bin.satc are all dumped.
+    """
+    for bin in bins:
+        bin_file = os.path.join(d_config['paths']['temp_dir'], f'bin{bin}.satc')
+        ## dump SATC binary files as text if not already done
+        if not os.path.isfile(bin_file):
+            subprocess.call([
+                d_config['paths']['splash_dir'] + '/satc_dump', 
+                os.path.join(d_config['paths']['bin_dir'], f'bin{bin}.satc'),
+                os.path.join(d_config['paths']['temp_dir'], f'bin{bin}.satc'),
+            ])
+
 
 
 def process_bin(d_config, bin, anch_subset):

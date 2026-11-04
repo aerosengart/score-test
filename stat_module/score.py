@@ -24,7 +24,7 @@ from routine_module import doc
 #         NONE
 #     """
 #     q = model.data.z_arr.shape[-1]
-#     scores = jnp.zeros((q))
+#     scores = np.zeros((q))
 
 #     ## initial computations
 #     resid_vals     = model.compute_resid()
@@ -38,24 +38,24 @@ from routine_module import doc
 #         def wrap_func(resid_targ, delta_inv_omega_targ, xi_targ):
 #             rdo_targ = resid_targ * delta_inv_omega_targ
 #             term1 = rdo_targ.T @ a_j_arr @ rdo_targ
-#             term2 = jnp.diag(xi_targ) @ a_j_arr
-#             return term1 - jnp.trace(term2)
+#             term2 = np.diag(xi_targ) @ a_j_arr
+#             return term1 - np.trace(term2)
     
 #         ## compute values
 #         vmap_func = jax.vmap(wrap_func, in_axes = [0, 0, 0])
 #         summands = vmap_func(resid_vals, delta_inv_omega_vals, xi_vals)
-#         full_log_lik = (1 / 2) * jnp.sum(summands)
+#         full_log_lik = (1 / 2) * np.sum(summands)
 #         scores = scores.at[idx].set(full_log_lik)
 #     if scale:
 #         ## 2-norm
-#         scale_val = jnp.linalg.norm(scores)
+#         scale_val = np.linalg.norm(scores)
 #     else:
 #         scale_val = 1
 #     wrt_var_comp = scores / scale_val
 
 #     return wrt_var_comp, scale_val
 
-def compute_score_var_comp(model) -> jnp.array:
+def compute_score_var_comp(model) -> np.array:
     r"""Compute the first derivative of the (full) quasi-log-likelihood with respect to the variance components vector.
 
     ARGS:
@@ -71,7 +71,7 @@ def compute_score_var_comp(model) -> jnp.array:
     return (1 / 2) * (np.sum(upsilon_vals[:, :, None] * z_arr[None, :, :], axis = 1)**2 - np.sum(xi_vals[:, :, None] * z_arr[None, :, :]**2, axis = 1))
 
 
-def compute_score_fx_effs(model) -> jnp.array:
+def compute_score_fx_effs(model) -> np.array:
     r"""Compute the first derivative of the (full) TRUE (negative binomial) log-likelihood with respect to the fixed effects parameter vector. 
 
     ARGS:
@@ -84,7 +84,7 @@ def compute_score_fx_effs(model) -> jnp.array:
     upsilon_vals = intermed.compute_delta_inv_omega(model) * model.compute_resid()
     return upsilon_vals @ model.data.x_arr
 
-def compute_score_disp(model) -> jnp.array:
+def compute_score_disp(model) -> np.array:
     r"""Compute the first derivative of the (full) TRUE (negative binomial) log-likelihood with respect to the dispersion parameter vector. 
 
     ARGS:
@@ -101,20 +101,20 @@ def compute_score_disp(model) -> jnp.array:
         digamma(y + disp) - digamma(disp) is equal to sum from k = 0 to y-1 of 1 / (disp + k)
         """
         y_i = y_i.astype('int')
-        ks = jnp.arange(jnp.max(y_i))
+        ks = np.arange(np.max(y_i))
         summands = 1 / (disp_i + ks)
-        values = jnp.concatenate([jnp.zeros(1), jnp.cumsum(summands)])
+        values = np.concatenate([np.zeros(1), np.cumsum(summands)])
         return values[y_i]
 
-    term1 = jnp.array([
+    term1 = np.array([
         digamma_diff(y_i, disp_i) for y_i, disp_i in zip(model.data.construct_y(), model.disp_arr)
     ])
-    term2 = jnp.log1p(model.compute_mu() / model.disp_arr)
+    term2 = np.log1p(model.compute_mu() / model.disp_arr)
     term3 = model.compute_resid() / (model.disp_arr + model.compute_mu())
-    return jnp.sum(term1 - term2 - term3, axis = -1)[:, None]
+    return np.sum(term1 - term2 - term3, axis = -1)[:, None]
 
 
-def compute_score_eff(model, scale: bool = True) -> jnp.array:
+def compute_score_eff(model, scale: bool = True) -> np.array:
     r"""
     Compute the efficient score vector for the variance components.
 
@@ -147,7 +147,7 @@ def compute_score_eff(model, scale: bool = True) -> jnp.array:
     scores = (score_vc[:, :, None] - fx_crct - d_crct).sum(axis = 0)
     if scale:
         ## 2-norm
-        scale_val = jnp.linalg.norm(scores)
+        scale_val = np.linalg.norm(scores)
     else:
         scale_val = 1
     wrt_var_comp = scores / scale_val

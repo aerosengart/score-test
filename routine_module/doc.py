@@ -3,6 +3,7 @@ import shutil
 import yaml
 
 import jax.numpy     as jnp
+import numpy as np
 import pickle
 
 
@@ -379,14 +380,14 @@ def save_rep(model, d_config, m_config, sub_dir = None):
 #     kappa4    = model.compute_kappa(order = 4)
 
 #     ## save
-#     jnp.savez(
+#     np.savez(
 #         os.path.join(save_dir, 'cone_program.npz'),
 #         scale_val = scale_val,
 #         score_val = score_val,
 #         info_val  = info_val,
 #         schur_inv = schur_inv
 #     )
-#     jnp.savez(
+#     np.savez(
 #         os.path.join(save_dir, 'intermediate.npz'),
 #         omega     = omega,
 #         delta_inv = delta_inv,

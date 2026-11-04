@@ -1,13 +1,16 @@
-outcome: poi
+outcome: neg_bin
 seed: 7647766
 n_samps: 100
 n_targs: 100
 fx_effs: 
   mu: 0.5
-  sigma: 0.0
+  sigma: 1.0
 rd_effs:
   mu: 0.0
   sigma: [0.0]
+disp:
+  mu: 2.0
+  sigma: 0.5
 x: 
   center: False
   types: ['batch_2']

@@ -48,7 +48,7 @@ class Model(model.Model):
             disp_arr = self.data.disp_arr
             mu_arr   = self.data.compute_mu()
             # offsets  = self.data.offsets
-            offsets  = jnp.zeros((self.data.n_samps,))
+            offsets  = np.zeros((self.data.n_samps,))
         else:
             fx_effs, disp_arr, offsets, mu_arr = glmgampoi.fit(model = self)
         self.set_fx_effs_arr(fx_effs)
@@ -65,26 +65,26 @@ class Model(model.Model):
 
         ARGS: None
         RAISES: None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         """
-        return jnp.exp(self.compute_eta())
+        return np.exp(self.compute_eta())
 
-    def compute_resid(self) -> jnp.array:
+    def compute_resid(self) -> np.array:
         """
         Compute and return residual vector (y - mu) under H0.
 
         ARGS: None
         RAISES: None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         """
         ## (n_targs, n_samps)
         exp_val = self.compute_mu()
         exp_val_csc = sps.csc_array(exp_val)
         y_arr = self.data.construct_y()
         resid_arr = y_arr - exp_val_csc
-        return jnp.array(resid_arr)
+        return np.array(resid_arr)
 
-    def compute_g(self) -> jnp.array:
+    def compute_g(self) -> np.array:
         """
         Compute and return the linear predictor values under H0.
         
@@ -92,11 +92,11 @@ class Model(model.Model):
 
         ARGS:   None
         RAISES: None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         """
-        return jnp.exp(self.compute_mu())
+        return np.exp(self.compute_mu())
 
-    def compute_g_prime(self) -> jnp.array:
+    def compute_g_prime(self) -> np.array:
         r"""
         Compute and return the array of first derivatives of linear predictor (:math:`g'(\mu_i)`) with respect to mean under H0.
 
@@ -104,15 +104,17 @@ class Model(model.Model):
 
         ARGS:   None
         RAISES: None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         """
-        g_prime = 1 / self.compute_mu()
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            g_prime = 1 / self.compute_mu()
         zero_mu = np.where(self.compute_mu() == 0)
-        g_prime = g_prime.at[zero_mu].set(np.inf)
+        g_prime[zero_mu] = np.inf
+        #g_prime = g_prime.at[zero_mu].set(np.inf)
         return g_prime
 
 
-    def compute_g_prime_2(self) -> jnp.array:
+    def compute_g_prime_2(self) -> np.array:
         r"""
         Compute and return the diagonal array of second derivatives of linear predictor (:math:`g''(\mu_i)`) on main diagonal.
 
@@ -120,15 +122,17 @@ class Model(model.Model):
 
         ARGS:   None
         RAISES: None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         """
-        g_prime_2 = -1 / self.compute_mu()**2 
+        with np.errstate(divide = 'ignore', invalid = 'ignore'):
+            g_prime_2 = -1 / self.compute_mu()**2 
         zero_mu = np.where(self.compute_mu() == 0)
-        g_prime_2 = g_prime_2.at[zero_mu].set(-np.inf)
+        g_prime_2[zero_mu] = -np.inf
+        #g_prime_2 = g_prime_2.at[zero_mu].set(-np.inf)
         return g_prime_2
     
 
-    def compute_v(self) -> jnp.array:
+    def compute_v(self) -> np.array:
         """
         Compute and return the diagonal array by concatenating the cluster-specific vectors of variances.
 
@@ -136,14 +140,14 @@ class Model(model.Model):
 
         ARGS: None
         RAISES: None
-        RETURNS: jnp.array; diagonal array (n, k, 1)
+        RETURNS: np.array; diagonal array (n, k, 1)
         """
         mu_arr = self.compute_mu()
         prod = (1 / self.disp_arr) * mu_arr**2
         return mu_arr + prod
 
 
-    def compute_v_prime(self) -> jnp.array:
+    def compute_v_prime(self) -> np.array:
         """
         Compute and return the diagonal array by concatenating the cluster-specific vectors of first derivatives of variances with respect to the means.
 
@@ -151,14 +155,14 @@ class Model(model.Model):
 
         ARGS: None
         RAISES: None
-        RETURNS: jnp.array; diagonal array (n, k, 1)
+        RETURNS: np.array; diagonal array (n, k, 1)
         """        
         mu_arr = self.compute_mu()
         prod = (2 / self.disp_arr) * mu_arr
         return 1 + prod
 
 
-    def compute_v_prime_2(self) -> jnp.array:
+    def compute_v_prime_2(self) -> np.array:
         """
         Compute and return the diagonal array by concatenating the cluster-specific vectors of second derivatives of variances with respect to the means under H0.
 
@@ -166,7 +170,7 @@ class Model(model.Model):
 
         ARGS: None
         RAISES: None
-        RETURNS: jnp.array; diagonal array (n, k, 1)
+        RETURNS: np.array; diagonal array (n, k, 1)
         """        
         return 2 / self.disp_arr
 
@@ -175,37 +179,37 @@ class Model(model.Model):
     ## INTERMEDIATE QUANTITIES                                                ##
     ##     have to overwrite to avoid numerical issues (divide by zero)       ##
     ## ---------------------------------------------------------------------- ##
-    def compute_delta_inv_omega(self) -> jnp.array:
+    def compute_delta_inv_omega(self) -> np.array:
         """
         Compute and return the values of delta_i^{-1} * omega_i for negative binomial outcomes. This is:
 
         delta^2 / v(mu) * 1 / delta = delta / v(mu)
 
         ARGS:    None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         RAISES:  None
         """
         delta_inv = self.compute_mu()
         variances = self.compute_v()
         return delta_inv / variances
     
-    def compute_omega(self) -> jnp.array:
+    def compute_omega(self) -> np.array:
         """
         Compute and return the omega_i values for negative binomial responses. This is:
 
         delta^2 / v(mu) = mu^2 / (mu + mu^2 / disp) = mu / (1 + mu / disp)
 
         ARGS:    None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         RAISES:  None
         """
         return self.compute_mu() / (1 + self.compute_mu() / self.disp_arr)
 
-    def compute_epsilon(self) -> jnp.array:
+    def compute_epsilon(self) -> np.array:
         """
         Compute and return the epsilon_i values for negative binomial response. 
         ARGS:    None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         RAISES:  None
         """
         ## initial computations
@@ -219,14 +223,14 @@ class Model(model.Model):
         return numer_vals / denom_vals
 
 
-    def compute_xi(self) -> jnp.array:        
+    def compute_xi(self) -> np.array:        
         """
         Compute and return the xi_i values for negative binomial responses. This is:
 
         omega + eps * (y - mu)
 
         ARGS:    None
-        RETURNS: jnp.array (n_targs, n_samps)
+        RETURNS: np.array (n_targs, n_samps)
         RAISES:  None
         """
         return self.compute_omega() + self.compute_epsilon() * self.compute_resid()

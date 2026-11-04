@@ -18,6 +18,27 @@ from stat_module import intermed, info, score, helpers
 
 plt.rcParams['axes.unicode_minus']            = False
 
+
+def print_dims(data):
+    """Print dimensions of simulated data arrays related to the linear predictor.
+
+    ARGUMENTS: data - instance of simul_data.Data
+    RAISES:    None
+    RETURNS:   None
+    """
+    x_dim = data.x_arr.shape
+    z_dim = data.z_arr.shape
+    fx_dim = data.fx_effs_arr.shape
+    rd_dim = data.rd_effs_arr.shape
+
+    print(f'{data.n_targs} targets (rows) and {data.n_samps} samples (columns)')
+    print(f'X array: {x_dim}')
+    print(f'Z array: {z_dim}')
+    print(f'Fixed coefficients array: {fx_dim}')
+    print(f'Random coefficients array: {rd_dim}')
+    
+
+
 def make_info_heatmap(arr, var, out_dir):
     plt.rcParams.update({'font.size': 8})
     fig, axs = plt.subplots(nrows = 1, ncols = 1)
@@ -156,7 +177,7 @@ def make_counts_heatmap(y_arr, x_arr, z_arr, out_dir):
     _min, _max = np.amin(combined_data), np.amax(combined_data)
 
     plt.rcParams.update({'font.size': 8})
-    fig, axs = plt.subplots(ncols = 3)
+    fig, axs = plt.subplots(ncols = 3, figsize = (10, 6))
     fig.tight_layout(rect=[0.02, 0.03, 1, 0.95])
     heatmap = axs[0].imshow(y_arr, interpolation = None, aspect = 'auto', vmin = 0, vmax = np.max(y_arr))
     _ = axs[1].imshow(x_arr, interpolation = None, aspect = 'auto', vmin = _min, vmax = _max) 
@@ -245,21 +266,21 @@ def visualize_data(model_pickle):
     if model.data.q == 1:
         stat = score_val**2 * schur_inv
     else:
-        stat = jnp.matmul(
-            jnp.matmul(jnp.transpose(score_val), schur_inv), score_val
+        stat = np.matmul(
+            np.matmul(np.transpose(score_val), schur_inv), score_val
         )
 
     ## plot information
     info_fx_list = [info_fx[i, :, :] for i in range(data.n_targs)]
     info_fx_full = jax.scipy.linalg.block_diag(*info_fx_list)
     info_fx_var_list = [info_fx_var[i, :, :] for i in range(data.n_targs)]
-    info_fx_var_full = jnp.concatenate(info_fx_var_list, axis = 0)
-    info_mat = jnp.block([[info_fx_full, info_fx_var_full],[info_fx_var_full.T, info_var]])
+    info_fx_var_full = np.concatenate(info_fx_var_list, axis = 0)
+    info_mat = np.block([[info_fx_full, info_fx_var_full],[info_fx_var_full.T, info_var]])
     make_info_heatmap(info_mat, 'info_mat', out_dir)
 
 
-    make_intermed_heatmap(jnp.squeeze(info_fx, axis = 1), 'Information Matrix - Fixed Effects, Fixed Effects', 'info_fx', out_dir)
-    make_intermed_heatmap(jnp.squeeze(info_fx_var, axis = 1), 'Information Matrix - Fixed Effects, Variance Component(s)', 'info_fx_var', out_dir)
+    make_intermed_heatmap(np.squeeze(info_fx, axis = 1), 'Information Matrix - Fixed Effects, Fixed Effects', 'info_fx', out_dir)
+    make_intermed_heatmap(np.squeeze(info_fx_var, axis = 1), 'Information Matrix - Fixed Effects, Variance Component(s)', 'info_fx_var', out_dir)
 
 
     ## compute score
@@ -284,14 +305,14 @@ def visualize_data(model_pickle):
     if model.data.q == 1:
         stat2 = score_val2**2 * schur_inv2
     else:
-        stat2 = jnp.matmul(
-            jnp.matmul(jnp.transpose(score_val2), schur_inv2), score_val2
+        stat2 = np.matmul(
+            np.matmul(np.transpose(score_val2), schur_inv2), score_val2
         )
 
     ## compute target log-liks
-    scores = jnp.zeros((model.data.n_targs, model.data.q))
-    term1s = jnp.zeros((model.data.n_targs, model.data.q))
-    term2s = jnp.zeros((model.data.n_targs, model.data.q))
+    scores = np.zeros((model.data.n_targs, model.data.q))
+    term1s = np.zeros((model.data.n_targs, model.data.q))
+    term2s = np.zeros((model.data.n_targs, model.data.q))
 
     ## initial computations
     resid_vals     = model.compute_resid()
@@ -309,28 +330,28 @@ def visualize_data(model_pickle):
         
             ## vectorize wrapper --- compute target-by-target
         def wrap_func3(resid_targ, delta_inv_omega_targ, xi_targ):
-            term2 = jnp.diag(xi_targ) @ a_j_arr
-            return jnp.trace(term2)
+            term2 = np.diag(xi_targ) @ a_j_arr
+            return np.trace(term2)
     
         ## compute values
         vmap_func2 = jax.vmap(wrap_func2, in_axes = [0, 0, 0])
         vmap_func3 = jax.vmap(wrap_func3, in_axes = [0, 0, 0])
         summands2 = vmap_func2(resid_vals, delta_inv_omega_vals, xi_vals)
         summands3 = vmap_func3(resid_vals, delta_inv_omega_vals, xi_vals)
-        term1s = term1s.at[:, idx].set(summands2)
-        term2s = term2s.at[:, idx].set(summands3)
-        scores = scores.at[:, idx].set((summands2 - summands3) / 2)
+        term1s[:, idx] = summands2
+        term2s[:, idx] = summands3
+        scores[:, idx] = (summands2 - summands3) / 2
 
     make_intermed_heatmap(scores, 'Score Contributions by Target', var = 'target_score', out_dir = out_dir)
     make_intermed_heatmap(term1s, 'Score Term 1 by Target', var = 'target_score_term1', out_dir = out_dir)
     make_intermed_heatmap(term2s, 'Score Term 2 by Target', var = 'target_score_term2', out_dir = out_dir)
 
-    mean_val = jnp.mean(info_fx)
+    mean_val = np.mean(info_fx)
     upp_block = info_fx / mean_val
-    mid_scale = info_fx_var / jnp.sqrt(mean_val)
-    dets = jnp.linalg.det(upp_block)
+    mid_scale = info_fx_var / np.sqrt(mean_val)
+    dets = np.linalg.det(upp_block)
     def wrap_pinv(mat):
-        return jnp.linalg.pinv(mat)
+        return np.linalg.pinv(mat)
     pinv_func = jax.vmap(wrap_pinv, in_axes = [0])
     ## (rel_targs, p, p)
     upp_block_invs = pinv_func(upp_block)
@@ -342,7 +363,7 @@ def visualize_data(model_pickle):
     def wrap_func(c_i, a_i):
         ## c_i is (p, q)
         ## a_i is (p, p)
-        return jnp.matmul(jnp.matmul(c_i.T, a_i), c_i)
+        return np.matmul(np.matmul(c_i.T, a_i), c_i)
     vmap_func = jax.vmap(wrap_func, in_axes = [0, 0])
     vals = vmap_func(mid_scale, upp_block_invs)
     make_intermed_heatmap(vals, 'Schur Complement Values', 'schur_comp_vals', out_dir)

@@ -14,10 +14,10 @@ solvers.options['maxiters'] = 200
 solvers.options['feastol'] = 1e-7
 
 def lower_right_inv(
-        upp_left:  jnp.array,
-        middle:    jnp.array,
-        low_right: jnp.array,
-    ) -> jnp.array:
+        upp_left:  np.array,
+        middle:    np.array,
+        low_right: np.array,
+    ) -> np.array:
     r"""Compute inverse of the lower right block of the given matrix.
 
     We partition our matrix into:
@@ -56,35 +56,37 @@ def lower_right_inv(
     RAISES:
         None
     """
-    mean_val = jnp.mean(upp_left)
+    mean_val = np.mean(upp_left)
     upp_block = upp_left / mean_val
-    mid_scale = middle / jnp.sqrt(mean_val)
+    mid_scale = middle / np.sqrt(mean_val)
 
     # ## if upper left shape is (_, 1, 1) and non-invertible, do pseudo-inverse
     # if upp_left.shape[-1] == 1:
-    #     big_mat = jnp.diag(upp_block[:, 0, 0])
+    #     big_mat = np.diag(upp_block[:, 0, 0])
     #     if np.linalg.det(big_mat) == 0.0:
     #         upp_block_invs = np.linalg.pinv(big_mat)
     #     else:
     #         upp_block_invs = np.linalg.inv(big_mat)
     #     ## reshape to be (rel_targs, p, p)
-    #     upp_block_invs = jnp.diag(upp_block_invs)
-    #     upp_block_invs = jnp.expand_dims(upp_block_invs, axis = (1, 2))
+    #     upp_block_invs = np.diag(upp_block_invs)
+    #     upp_block_invs = np.expand_dims(upp_block_invs, axis = (1, 2))
 
     ## invert each matrix in block diagonal upp_left block --- this is kind of inefficient
-    dets = jnp.linalg.det(upp_block)
+    dets = np.linalg.det(upp_block)
     #zero_dets = np.where(dets == 0.0)
 
     def wrap_inv(mat):
-        return jnp.linalg.inv(mat)
+        return np.linalg.inv(mat)
     
     def wrap_pinv(mat):
-        return jnp.linalg.pinv(mat)
+        return np.expand_dims(np.linalg.pinv(mat), 0)
     
+
     #inv_func = jax.vmap(wrap_inv, in_axes = [0])
-    pinv_func = jax.vmap(wrap_pinv, in_axes = [0])
+    #pinv_func = jax.vmap(wrap_pinv, in_axes = [0])
     ## (rel_targs, p, p)
-    upp_block_invs = pinv_func(upp_block)
+    upp_block_invs = np.concatenate([wrap_pinv(mat) for mat in upp_block], axis = 0)
+    #upp_block_invs = pinv_func(upp_block)
     ## replace non-invertible entries with pseudo-inverses
     #upp_block_invs = upp_block_invs.at[zero_dets].set(pinv_func(upp_block[zero_dets]))
 
@@ -92,42 +94,44 @@ def lower_right_inv(
     def wrap_func(c_i, a_i):
         ## c_i is (p, q)
         ## a_i is (p, p)
-        return jnp.matmul(jnp.matmul(c_i.T, a_i), c_i)
-    vmap_func = jax.vmap(wrap_func, in_axes = [0, 0])
+        return np.expand_dims(np.matmul(np.matmul(c_i.T, a_i), c_i), 0)
+    
+    vals = np.concatenate([wrap_func(c_i, a_i) for c_i, a_i in zip(mid_scale, upp_block_invs)], axis = 0)
+    #vmap_func = jax.vmap(wrap_func, in_axes = [0, 0])
     ## (n_targs, q, q)
-    vals = vmap_func(mid_scale, upp_block_invs)
-    schur_comp = low_right - jnp.sum(vals, axis = 0)
+    #vals = vmap_func(mid_scale, upp_block_invs)
+    schur_comp = low_right - np.sum(vals, axis = 0)
     ## D^{-1} = (M/A)^{-1}
-    return jnp.linalg.inv(schur_comp)
+    return np.linalg.inv(schur_comp)
 
     # ## dimension of mat
     # dim = mat.shape[0]
     # ## get upper left block of matrix --- scale by mean for stability
     # #upp_block = mat[0:(dim - q), 0:(dim - q)]
     # upp_block = mat[:-q, :-q]
-    # #mean = scipy.stats.gmean(jnp.ravel(upp_block))
-    # mean = jnp.mean(upp_block)
+    # #mean = scipy.stats.gmean(np.ravel(upp_block))
+    # mean = np.mean(upp_block)
     # upp_block_scale = upp_block / mean
     # ## rightmost chunk of matrix --- scale by sqrt mean to retain value
     # #r_col = mat[0:(dim - q), (dim - q):]
     # r_col = mat[:-q, -q:]
-    # r_col_scale = r_col / jnp.sqrt(mean)
+    # r_col_scale = r_col / np.sqrt(mean)
     # ## compute Cholesky factor
     # l_arr = jax.scipy.linalg.cho_factor(upp_block)
     # l_arr_scale = jax.scipy.linalg.cho_factor(upp_block_scale)
     # ## compute c vector as in description --- Cholesky solve
     # c_vec_scale = jax.scipy.linalg.cho_solve(l_arr_scale, r_col_scale)
-    # ct_c_scale = jnp.matmul(jnp.transpose(c_vec_scale), c_vec_scale)
+    # ct_c_scale = np.matmul(np.transpose(c_vec_scale), c_vec_scale)
     # ## compute schur complement and invert
     # #low_block = mat[(dim - q):, (dim - q):]
     # low_block = mat[-q:, -q:]
     # schur_comp = low_block - ct_c_scale
-    # return jnp.linalg.inv(schur_comp)
+    # return np.linalg.inv(schur_comp)
 
 
 # def compute_infimum_scalar(
-#         score:     jnp.array, 
-#         schur_inv: jnp.array
+#         score:     np.array, 
+#         schur_inv: np.array
 #     ) -> float:
 #     """Compute the infimum of the quadratic program under the constraint that var_comp is non-negative...
     
@@ -139,7 +143,7 @@ def lower_right_inv(
 #         test_p    - int; the number of fixed effects being tested
 #         q         - int; dimension of variance component (var_comp)
 #     RETURNS:
-#         inf_val - jnp.array; the value of the objective function evaluated at the solution found by the solver (q + test_p, 1)
+#         inf_val - np.array; the value of the objective function evaluated at the solution found by the solver (q + test_p, 1)
 #     RAISES:
 #         None
 #     """
@@ -169,8 +173,8 @@ def lower_right_inv(
 
 
 def compute_infimum(
-        score:     jnp.array, 
-        info_inv:  jnp.array,
+        score:     np.array, 
+        info_inv:  np.array,
         test_p:    int,
         q:         int
     ) -> float:
@@ -184,15 +188,15 @@ def compute_infimum(
         test_p    - int; the number of fixed effects being tested
         q         - int; dimension of variance component (var_comp)
     RETURNS:
-        inf_val - jnp.array; the value of the objective function evaluated at the solution found by the solver (q + test_p, 1)
+        inf_val - np.array; the value of the objective function evaluated at the solution found by the solver (q + test_p, 1)
     RAISES:
         None
     """
     ## objective function
     dims = test_p + q
     if dims == 1 and not hasattr(score, 'shape'):
-        score = jnp.array([score])
-    q_arr = np.array(-jnp.matmul(info_inv, score), dtype = float)
+        score = np.array([score])
+    q_arr = np.array(-np.matmul(info_inv, score), dtype = float)
     p_arr = np.array(info_inv, dtype = float)
     q_vec = matrix(q_arr)
     p_arr = matrix(p_arr)
@@ -205,16 +209,16 @@ def compute_infimum(
     h_vec = matrix([1.0e-7] * dims) 
     ## solve the quadratic form
     sol = solvers.qp(p_arr, q_vec, g_arr, h_vec)
-    sol_x = jnp.squeeze(jnp.array(sol['x']))
+    sol_x = np.squeeze(np.array(sol['x']))
     ## compute infimum value
     if dims == 1:
-        inf_val = jnp.matmul(
-            jnp.matmul((score - sol_x), info_inv),
+        inf_val = np.matmul(
+            np.matmul((score - sol_x), info_inv),
             (score - sol_x)
         )
     else:
-        inf_val = jnp.matmul(
-            jnp.matmul(jnp.transpose((score - sol_x[:, None])), info_inv),
+        inf_val = np.matmul(
+            np.matmul(np.transpose((score - sol_x[:, None])), info_inv),
             (score - sol_x[:, None])
         )
     return inf_val
@@ -238,9 +242,9 @@ def trigamma_diff(y_i, disp_i):
     trigamma(y + disp) - trigamma(disp) is equal to sum from k = 0 to y-1 of -1 / (disp + k)^2
     """
     y_i = y_i.astype('int')
-    ks = jnp.arange(jnp.max(y_i))
+    ks = np.arange(np.max(y_i))
     summands = -1 / (disp_i + ks)**2
-    values = jnp.concatenate([jnp.zeros(1), jnp.cumsum(summands)])
+    values = np.concatenate([np.zeros(1), np.cumsum(summands)])
     return values[y_i]
 
 
@@ -258,9 +262,9 @@ def chi_sqr_m_quantiles(x, m):
 def chi_bar_sqr_sample(q, num_samps):
     weights      = [None] * (q + 1)
     components   = [None] * (q + 1)
-    weights = (1 / 2**q) * jnp.array([scipy.special.comb(q, i) for i in range(q + 1)])
-    components = Chi2(df = jnp.array(range(q + 1)))
-    mixing_dist  = CategoricalProbs(probs = jnp.array(weights))
+    weights = (1 / 2**q) * np.array([scipy.special.comb(q, i) for i in range(q + 1)])
+    components = Chi2(df = np.array(range(q + 1)))
+    mixing_dist  = CategoricalProbs(probs = np.array(weights))
     mixture_dist = MixtureSameFamily(mixing_dist, components)
     sample = mixture_dist.sample(jax.random.key(0), sample_shape = (num_samps,))
     return sample
